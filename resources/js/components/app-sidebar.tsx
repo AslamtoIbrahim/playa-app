@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { BookOpen, FolderGit2, LayoutGrid, User } from 'lucide-react';
+import { Banknote, BookOpen, FileText, FolderGit2, LayoutGrid, User } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -13,7 +13,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { accounts, dashboard } from '@/routes';
+import { accounts, dashboard, factures, payments } from '@/routes';
 import type { NavItem } from '@/types';
 
 const mainNavItems: NavItem[] = [
@@ -26,6 +26,16 @@ const mainNavItems: NavItem[] = [
         title: 'Accounts',
         href: accounts(),
         icon: User,
+    },
+    {
+        title: 'Factures',
+        href: factures(),
+        icon: FileText,
+    },
+    {
+        title: 'Payments',
+        href: payments(), // زدنا هادي
+        icon: Banknote,
     },
 ];
 

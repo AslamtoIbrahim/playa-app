@@ -81,6 +81,25 @@ export default [
                         'sibling',
                         'index',
                     ],
+
+                    // ------------------------------
+                    pathGroups: [
+                        {
+                            pattern: '@/components/**',
+                            group: 'internal',
+                            position: 'before',
+                        },
+                        {
+                            pattern: '@/routes/**',
+                            group: 'internal',
+                            position: 'after',
+                        },
+                    ],
+                    pathGroupsExcludedImportTypes: ['react'],
+                    // ------------------------------
+
+
+
                     alphabetize: {
                         order: 'asc',
                         caseInsensitive: true,
@@ -114,8 +133,8 @@ export default [
             'tailwind.config.js',
             'vite.config.ts',
             'resources/js/actions/**',
-            'resources/js/components/ui/*',
-            'resources/js/routes/**',
+            // 'resources/js/components/ui/*',
+            // 'resources/js/routes/**',
             'resources/js/wayfinder/**',
         ],
     },

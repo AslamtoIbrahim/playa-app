@@ -16,8 +16,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from '@/components/ui/spinner';
 import { store } from '@/routes/accounts';
- 
-export function AccountDialog() {
+
+export default function AddAccountDialog() {
     const [open, setOpen] = useState(false);
 
     return (
@@ -39,7 +39,7 @@ export function AccountDialog() {
                     {...store.form()}
                     resetOnSuccess={['name', 'title', 'type']}
                     onSuccess={() => {
-                        toast.success('Account has been created!'); 
+                        toast.success('Account has been created!');
                         setOpen(false);
                     }}
                     className="space-y-4 pt-4"

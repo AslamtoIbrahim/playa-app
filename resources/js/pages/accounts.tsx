@@ -1,14 +1,17 @@
 import { Head } from '@inertiajs/react';
-import { AccountDialog } from '@/components/account-dialog';
-import type { Account } from '@/types/accounts';
-import { 
-    Table, 
-    TableBody, 
-    TableCell, 
-    TableHead, 
-    TableHeader, 
-    TableRow 
+import AddAccountDialog from '@/components/add-account-dialog';
+import DeleteAccountDialog from '@/components/delete-account-dialog';
+import EditAccountDialog from '@/components/edit-account-dialog';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow
 } from '@/components/ui/table';
+import type { Account } from '@/types/accounts';
+
 
 interface Props {
     accounts: Account[];
@@ -22,9 +25,9 @@ export default function Accounts({ accounts }: Props) {
                 <div className="flex items-center justify-between px-2">
                     <h1 className="text-xl font-semibold">Accounts List</h1>
                     {/* هنا غانزيدو الـ Button ديال "Add" من بعد */}
-                    <AccountDialog />
+                    <AddAccountDialog />
                 </div>
-                
+
                 <div className="relative min-h-screen flex-1 overflow-hidden rounded-xl border border-sidebar-border/70 md:min-h-min dark:border-sidebar-border bg-white p-4">
                     <Table>
                         <TableHeader>
@@ -33,7 +36,8 @@ export default function Accounts({ accounts }: Props) {
                                 <TableHead>Name</TableHead>
                                 <TableHead>Title</TableHead>
                                 <TableHead>Type</TableHead>
-                                <TableHead className="text-right">Created At</TableHead>
+                                <TableHead className="text-left">Created At</TableHead>
+                                <TableHead className="text-center w-20">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -45,8 +49,17 @@ export default function Accounts({ accounts }: Props) {
                                     <TableCell>
                                         <span className="capitalize">{account.type}</span>
                                     </TableCell>
-                                    <TableCell className="text-right text-muted-foreground text-sm">
+                                    <TableCell className="text-left text-muted-foreground text-sm">
                                         {new Date(account.created_at).toLocaleDateString()}
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                        <div className="flex justify-center gap-2">
+                                            <EditAccountDialog account={account} />
+                                            <DeleteAccountDialog
+                                                accountId={account.id}
+                                                accountName={account.name}
+                                            />
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             ))}

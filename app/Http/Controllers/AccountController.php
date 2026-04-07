@@ -67,16 +67,26 @@ class AccountController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(Request $request, Account $account)
     {
-        //
+        $validated = $request->validate([
+            'name'  => 'required|string|max:255',
+            'type'  => 'required|string|max:100',
+            'title' => 'nullable|string|max:100',
+        ]);
+
+        $account->update($validated);
+
+        return redirect()->back()->with('success', 'Account updated successfully!');
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function destroy(Account $account)
     {
-        //
+        $account->delete();
+
+        return redirect()->back()->with('success', 'Account deleted successfully!');
     }
 }

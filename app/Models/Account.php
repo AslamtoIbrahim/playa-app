@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Account extends Model
 {
@@ -12,11 +13,16 @@ class Account extends Model
 
     // هادو هما العمدة اللي مسموح ليهم يتسجلو (Fillable)
     protected $fillable = [
-        'name', 
+        'name',
         'title',
-        'type', 
+        'type',
         'created_by'
     ];
+
+    public function factures(): HasMany
+    {
+        return $this->hasMany(Facture::class);
+    }
 
     // علاقة الربط مع الـ User (Admin)
     public function creator(): BelongsTo
