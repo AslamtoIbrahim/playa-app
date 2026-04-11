@@ -1,9 +1,9 @@
-import { router, usePage } from "@inertiajs/react";
+import { router } from "@inertiajs/react";
 import { Loader2, Trash2, AlertCircle } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { destroy } from "@/routes/accounts";
+import { destroy } from "@/routes/office-rooms";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -14,30 +14,36 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
     AlertDialogTrigger,
-} from "./ui/alert-dialog";
+} from "@/components/ui/alert-dialog";
 
-export default function DeleteAccountDialog({ accountId, accountName }: { accountId: number, accountName: string }) {
+interface Props {
+    officeRoomId: number;
+    officeRoomName: string;
+    officeRoomCity: string | null;
+}
+
+export default function DeleteOfficeRoomDialog({ officeRoomId, officeRoomName, officeRoomCity }: Props) {
     const [isDeleting, setIsDeleting] = useState(false);
-    const [open, setOpen] = useState(false); // باش نتحكمو فـ سدان الـ Dialog
+    const [open, setOpen] = useState(false); // التحكم في فتح/إغلاق الـ Dialog
 
     const handleDelete = () => {
         setIsDeleting(true);
 
-        router.delete(destroy(accountId).url, {
+        router.delete(destroy(officeRoomId).url, {
             onSuccess: (page) => {
                 const flash = page.props.flash as any;
-                
+
                 if (flash?.success) {
                     toast.success(flash.success);
-                    setOpen(false); // نسدو الـ Dialog غير إلا نجحت العملية
+                    setOpen(false); // كيتسد غير إلا نجحت العملية
                 }
-                
+
                 if (flash?.error) {
                     toast.error(flash.error, {
                         duration: 6000,
                         icon: <AlertCircle className="h-5 w-5 text-red-500" />
                     });
-                    // هنا مانسدوش الـ Dialog باش المستخدم يشوف الميساج ويعرف علاش ماتمسحش
+                    // كيبقى مفتوح باش يشوف المستخدم علاش ترفض المسح
                 }
             },
             onError: () => {
@@ -67,12 +73,10 @@ export default function DeleteAccountDialog({ accountId, accountName }: { accoun
                     </AlertDialogTitle>
                     <AlertDialogDescription className="space-y-3">
                         <p>
-                            Voulez-vous vraiment archiver le compte **{accountName}** ?
+                            Voulez-vous vraiment archiver le bureau **{officeRoomName}** ({officeRoomCity || '—'}) ?
                         </p>
-                        <div className="rounded-md bg-amber-50 p-3 border border-amber-100">
-                            <p className="text-xs text-amber-800 leading-relaxed">
-                                <strong>Note:</strong> Si ce compte est lié à des factures ou des bateaux, l'archivage sera bloqué pour préserver l'intégrité des données.
-                            </p>
+                        <div className="rounded-md bg-amber-50 p-3 border border-amber-100 text-xs text-amber-800">
+                            <strong>Note :</strong> S'il y a des factures liées à ce bureau, l'archivage sera impossible pour garantir l'historique des données.
                         </div>
                     </AlertDialogDescription>
                 </AlertDialogHeader>
@@ -87,7 +91,10 @@ export default function DeleteAccountDialog({ accountId, accountName }: { accoun
                         disabled={isDeleting}
                     >
                         {isDeleting ? (
-                            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Suppression...</>
+                            <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Archivage...
+                            </>
                         ) : 'Confirmer'}
                     </AlertDialogAction>
                 </AlertDialogFooter>

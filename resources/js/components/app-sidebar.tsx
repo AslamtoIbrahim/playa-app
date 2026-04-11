@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { Banknote, BookOpen, FileText, FolderGit2, LayoutGrid, User } from 'lucide-react';
+import { Banknote, BookOpen, DoorOpen, FileText, FolderGit2, LayoutGrid, Package, Ship, Tags, User } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -13,28 +13,48 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { accounts, dashboard, factures, payments } from '@/routes';
+import { accounts, boats, categories, dashboard, invoices, items, officeRooms, payments } from '@/routes';
 import type { NavItem } from '@/types';
 
 const mainNavItems: NavItem[] = [
     {
-        title: 'Dashboard',
+        title: 'Tableau de bord',
         href: dashboard(),
         icon: LayoutGrid,
     },
     {
-        title: 'Accounts',
+        title: 'Comptes',
         href: accounts(),
         icon: User,
     },
     {
+        title: 'Bateaux',
+        href: boats(),
+        icon: Ship,
+    },
+    {
+        title: 'Bureaux',
+        href: officeRooms(),
+        icon: DoorOpen,
+    },
+    {
+        title: 'Catégories',
+        href: categories(),
+        icon: Tags,
+    },
+    {
+        title: 'Articles',
+        href: items(),
+        icon: Package,
+    },
+    {
         title: 'Factures',
-        href: factures(),
+        href: invoices(),
         icon: FileText,
     },
     {
-        title: 'Payments',
-        href: payments(), // زدنا هادي
+        title: 'Paiements',
+        href: payments(),
         icon: Banknote,
     },
 ];

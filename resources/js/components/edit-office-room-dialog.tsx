@@ -3,22 +3,25 @@ import { Pencil, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { 
+    Dialog, 
+    DialogContent, 
+    DialogDescription, 
+    DialogHeader, 
+    DialogTitle, 
+    DialogTrigger 
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { update } from "@/routes/accounts";
+import { Label } from "@/components/ui/label";
+import { update } from "@/routes/office-rooms";
+import { OfficeRoom } from "@/types/office-room";
+import InputError from "@/components/input-error";
 
-interface Account {
-    id: number;
-    name: string;
-    type: string;
-    title: string | null;
-}
-
-export default function EditAccountDialog({ account }: { account: Account }) {
+export default function EditOfficeRoomDialog({ officeRoom }: { officeRoom: OfficeRoom }) {
     const [open, setOpen] = useState(false);
 
     return (
-        <Dialog open={open} onOpenChange={setOpen} key={`edit-account-${account.id}-${open}`}>
+        <Dialog open={open} onOpenChange={setOpen} key={`edit-office-${officeRoom.id}-${open}`}>
             <DialogTrigger asChild>
                 <Button
                     variant="ghost"
@@ -28,59 +31,53 @@ export default function EditAccountDialog({ account }: { account: Account }) {
                     <Pencil className="h-4 w-4" />
                 </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle>Modifier le compte</DialogTitle>
+                    <DialogTitle>Modifier le bureau</DialogTitle>
                     <DialogDescription>
-                        Apportez des modifications aux détails du compte ici.
+                        Mise à jour des informations pour le bureau **{officeRoom.name}**.
                     </DialogDescription>
                 </DialogHeader>
 
                 <Form
-                    action={update(account.id).url}
+                    action={update(officeRoom.id).url}
                     method="post"
                     data={{
                         _method: 'patch',
-                        name: account.name,
-                        type: account.type,
-                        title: account.title || '',
+                        name: officeRoom.name,
+                        city: officeRoom.city || '',
                     } as any}
                     onSuccess={() => {
-                        toast.success('Compte mis à jour ! ✨');
+                        toast.success('Bureau mis à jour ! ✨');
                         setOpen(false);
                     }}
                 >
-                    {({ processing }) => (
+                    {({ processing, errors }) => (
                         <div className="space-y-4 pt-4">
+                            {/* Laravel PATCH Method Trick */}
                             <input type="hidden" name="_method" value="PATCH" />
 
                             <div className="grid gap-2">
-                                <label className="text-sm font-medium">Nom</label>
+                                <Label htmlFor="name">Nom</Label>
                                 <Input 
+                                    id="name"
                                     name="name" 
-                                    defaultValue={account.name} 
-                                    placeholder="Nom du compte" 
+                                    defaultValue={officeRoom.name} 
+                                    placeholder="ex: Bureau A" 
                                     required 
                                 />
+                                <InputError message={errors.name} />
                             </div>
 
                             <div className="grid gap-2">
-                                <label className="text-sm font-medium">Type</label>
+                                <Label htmlFor="city">Ville</Label>
                                 <Input 
-                                    name="type" 
-                                    defaultValue={account.type} 
-                                    placeholder="Client, Fournisseur, etc." 
-                                    required 
+                                    id="city"
+                                    name="city" 
+                                    defaultValue={officeRoom.city || ''} 
+                                    placeholder="ex: Casablanca" 
                                 />
-                            </div>
-
-                            <div className="grid gap-2">
-                                <label className="text-sm font-medium">Titre</label>
-                                <Input 
-                                    name="title" 
-                                    defaultValue={account.title || ''} 
-                                    placeholder="Titre ou Référence" 
-                                />
+                                <InputError message={errors.city} />
                             </div>
 
                             <div className="flex justify-end gap-2 pt-2">
@@ -88,6 +85,7 @@ export default function EditAccountDialog({ account }: { account: Account }) {
                                     type="button" 
                                     variant="outline" 
                                     onClick={() => setOpen(false)}
+                                    disabled={processing}
                                 >
                                     Annuler
                                 </Button>
@@ -97,7 +95,7 @@ export default function EditAccountDialog({ account }: { account: Account }) {
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                             Enregistrement...
                                         </>
-                                    ) : 'Enregistrer les modifications'}
+                                    ) : 'Enregistrer'}
                                 </Button>
                             </div>
                         </div>
@@ -106,4 +104,4 @@ export default function EditAccountDialog({ account }: { account: Account }) {
             </DialogContent>
         </Dialog>
     );
-};
+}

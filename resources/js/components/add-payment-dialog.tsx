@@ -26,33 +26,35 @@ import {
 } from "@/components/ui/select";
 import { Spinner } from '@/components/ui/spinner';
 import { cn } from "@/lib/utils";
-import { store } from '@/routes/payments'; // تأكد بلي الـ store معرف فـ routes/payments
-import type { Facture } from '@/types/factures';
+import { store } from '@/routes/payments'; 
 import { Calendar } from './ui/calendar';
+import { Invoice } from '@/types/invoice';
 
 interface Props {
-    facture: Facture;
+    invoice: Invoice;
+    trigger?: React.ReactNode; // زدت هادي
 }
 
-export default function AddPaymentDialog({ facture }: Props) {
+export default function AddPaymentDialog({ invoice, trigger }: Props) {
     const [open, setOpen] = useState(false);
-    
-    // States for custom inputs (Date & Select)
     const [date, setDate] = useState<Date>(new Date());
     const [method, setMethod] = useState("cash");
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-green-600 hover:text-green-700 hover:bg-green-50">
-                    <Banknote className="h-4 w-4" />
-                </Button>
+                {/* إلا كاين trigger صيفطناه نخدمو بيه، إلا مكاينش نخدمو بـ Button الافتراضي */}
+                {trigger ? trigger : (
+                    <Button variant="ghost" size="icon" className="text-green-600 hover:text-green-700 hover:bg-green-50">
+                        <Banknote className="h-4 w-4" />
+                    </Button>
+                )}
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle>Record Payment</DialogTitle>
                     <DialogDescription>
-                        Enter the payment details for facture <strong>{facture.number}</strong>.
+                        Enter the payment details for invoice <strong>{invoice.invoice_number}</strong>.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -69,12 +71,10 @@ export default function AddPaymentDialog({ facture }: Props) {
                 >
                     {({ processing, errors }) => (
                         <>
-                            {/* Hidden Inputs for values managed by state */}
-                            <input type="hidden" name="facture_id" value={facture.id} />
+                            <input type="hidden" name="invoice_id" value={invoice.id} />
                             <input type="hidden" name="payment_date" value={date ? format(date, "yyyy-MM-dd") : ""} />
                             <input type="hidden" name="method" value={method} />
 
-                            {/* Amount Input */}
                             <div className="grid gap-2">
                                 <Label htmlFor="amount">Amount (DH)</Label>
                                 <Input 
@@ -90,7 +90,6 @@ export default function AddPaymentDialog({ facture }: Props) {
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
-                                {/* Date Picker */}
                                 <div className="grid gap-2">
                                     <Label>Date</Label>
                                     <Popover>
@@ -114,7 +113,6 @@ export default function AddPaymentDialog({ facture }: Props) {
                                     <InputError message={errors.payment_date} />
                                 </div>
 
-                                {/* Method Select */}
                                 <div className="grid gap-2">
                                     <Label>Method</Label>
                                     <Select value={method} onValueChange={setMethod}>
@@ -131,7 +129,6 @@ export default function AddPaymentDialog({ facture }: Props) {
                                 </div>
                             </div>
 
-                            {/* Reference Input */}
                             <div className="grid gap-2">
                                 <Label htmlFor="reference">Reference (Optional)</Label>
                                 <Input 

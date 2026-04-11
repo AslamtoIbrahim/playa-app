@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
             // الربط مع الفاتورة
-            $table->foreignId('facture_id')->constrained()->onDelete('cascade');
+            $table->foreignId('invoice_id')->constrained()->onDelete('cascade');
 
             $table->decimal('amount', 15, 2); // شحال تخلص
             $table->date('payment_date');    // تاريخ الأداء

@@ -3,10 +3,10 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Payment extends Model
 {
+    
     protected $fillable = [
         'facture_id',
         'amount',
@@ -16,9 +16,9 @@ class Payment extends Model
         'created_by'
     ];
 
-    public function facture(): BelongsTo
+    public function invoice()
     {
-        return $this->belongsTo(Facture::class);
+        return $this->belongsTo(Invoice::class);
     }
 
     protected static function booted()

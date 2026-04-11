@@ -1,4 +1,4 @@
-import type { Facture } from './factures';
+import type { Facture } from './invoice';
 
 export interface Payment {
     id: number;

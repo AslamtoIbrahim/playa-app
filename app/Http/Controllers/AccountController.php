@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Account;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 
 class AccountController extends Controller
@@ -12,7 +13,7 @@ class AccountController extends Controller
      */
     public function index()
     {
-        $accounts = \App\Models\Account::all();
+        $accounts = Account::withCount(['invoices', 'boats'])->get();
 
         return inertia('accounts', [
             'accounts' => $accounts
@@ -81,12 +82,33 @@ class AccountController extends Controller
     }
 
     /**
-     * Remove the specified resource from storage.
+     * أرشفة حساب
      */
     public function destroy(Account $account)
     {
+        // 1. تشيك واش كاينين فواتير (Invoices)
+        // ملاحظة: invoices() هي العلاقة اللي خاص تكون عندك فـ Model Account
+        $invoicesCount = $account->invoices()->count();
+
+        // 2. تشيك واش كاينين مراكب (Boats)
+        $boatsCount = $account->boats()->count();
+
+        // 3. المنع إذا وجد سجل واحد على الأقل
+        if ($invoicesCount > 0 || $boatsCount > 0) {
+            $message = "Impossible d'archiver ce compte : ";
+            $reasons = [];
+
+            if ($boatsCount > 0) $reasons[] = "$boatsCount bateau(x)";
+            if ($invoicesCount > 0) $reasons[] = "$invoicesCount facture(s)";
+
+            return redirect()->back()->with('error', $message . implode(' et ', $reasons) . '.');
+        }
+
+        // 4. إلا كان "صافي" (خاوي)، أرشفه
         $account->delete();
 
-        return redirect()->back()->with('success', 'Account deleted successfully!');
+        return redirect()->back()->with('success', 'Le compte "' . $account->name . '" a été archivé avec succès. ✅');
     }
+
+    
 }

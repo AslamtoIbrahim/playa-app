@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('factures', function (Blueprint $table) {
             $table->id();
-            $table->string('number')->unique(); // مثلا: FACT-2026-001
+            $table->string('invoice_number')->unique(); // مثلا: FACT-2026-001
             $table->foreignId('account_id')->constrained()->onDelete('cascade');
             $table->date('date');
             $table->decimal('amount', 15, 2); // montant (استعمل decimal للفلوس دائماً)
