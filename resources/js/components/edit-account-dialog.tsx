@@ -56,37 +56,39 @@ export default function EditAccountDialog({ account }: { account: Account }) {
 
                             <div className="grid gap-2">
                                 <label className="text-sm font-medium">Nom</label>
-                                <Input 
-                                    name="name" 
-                                    defaultValue={account.name} 
-                                    placeholder="Nom du compte" 
-                                    required 
-                                />
-                            </div>
-
-                            <div className="grid gap-2">
-                                <label className="text-sm font-medium">Type</label>
-                                <Input 
-                                    name="type" 
-                                    defaultValue={account.type} 
-                                    placeholder="Client, Fournisseur, etc." 
-                                    required 
+                                <Input
+                                    name="name"
+                                    defaultValue={account.name}
+                                    placeholder="Nom du compte"
+                                    required
                                 />
                             </div>
 
                             <div className="grid gap-2">
                                 <label className="text-sm font-medium">Titre</label>
-                                <Input 
-                                    name="title" 
-                                    defaultValue={account.title || ''} 
-                                    placeholder="Titre ou Référence" 
+                                <Input
+                                    name="title"
+                                    defaultValue={account.title || ''}
+                                    placeholder="Titre ou Référence"
                                 />
                             </div>
 
+                            <div className="grid gap-2">
+                                <label className="text-sm font-medium">Type</label>
+                                <Input
+                                    name="type"
+                                    defaultValue={account.type}
+                                    placeholder="Client, Fournisseur, etc."
+                                    required
+                                />
+                            </div>
+
+
+
                             <div className="flex justify-end gap-2 pt-2">
-                                <Button 
-                                    type="button" 
-                                    variant="outline" 
+                                <Button
+                                    type="button"
+                                    variant="outline"
                                     onClick={() => setOpen(false)}
                                 >
                                     Annuler

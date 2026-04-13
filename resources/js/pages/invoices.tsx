@@ -1,7 +1,6 @@
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { format } from "date-fns";
-import { cn } from '@/lib/utils';
-import { ChevronLeft, ChevronRight } from 'lucide-react'; // زدنا هادو
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 // Components
 import AddInvoiceDialog from '@/components/add-invoice-dialog';
@@ -16,6 +15,8 @@ import {
     TableHeader,
     TableRow
 } from '@/components/ui/table';
+import { cn } from '@/lib/utils';
+import { show } from "@/routes/invoices"; // تأكد من استيراد المسار
 
 // Types
 import type { Account } from '@/types/accounts';
@@ -42,6 +43,12 @@ const statusStyles: Record<string, string> = {
 };
 
 export default function Invoices({ invoices, accounts, officeRooms }: Props) {
+    
+    // Function handle row click
+    const handleRowClick = (invoiceId: number) => {
+        router.visit(show.url(invoiceId));
+    };
+
     return (
         <>
             <Head title="Factures" />
@@ -62,7 +69,7 @@ export default function Invoices({ invoices, accounts, officeRooms }: Props) {
                     <Table>
                         <TableHeader className="bg-slate-50/50">
                             <TableRow className="hover:bg-transparent border-b border-slate-200 text-sm">
-                                <TableHead className="w-[100px] font-bold text-slate-800">N°</TableHead>
+                                <TableHead className="w-25 font-bold text-slate-800">N°</TableHead>
                                 <TableHead className="font-bold text-slate-800">Date</TableHead>
                                 <TableHead className="font-bold text-slate-800">Ville</TableHead>
                                 <TableHead className="font-bold text-slate-800">Compte</TableHead>
@@ -71,13 +78,18 @@ export default function Invoices({ invoices, accounts, officeRooms }: Props) {
                                 <TableHead className="text-right font-bold text-slate-800">Net à Payer</TableHead>
                                 <TableHead className="font-bold text-slate-800">Statut</TableHead>
                                 <TableHead className="text-right font-bold text-emerald-700 uppercase text-[10px] tracking-wider leading-none pt-4">Payé (DH)</TableHead>
-                                <TableHead className="w-[50px]"></TableHead> 
+                                <TableHead className="w-12.5"></TableHead> 
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {invoices.data.length > 0 ? (
                                 invoices.data.map((invoice) => (
-                                    <TableRow key={invoice.id} className="group hover:bg-slate-50/80 transition-all border-b border-slate-100 last:border-0">
+                                    <TableRow 
+                                        key={invoice.id} 
+                                        // الكليك على السطر كامل
+                                        onClick={() => handleRowClick(invoice.id)}
+                                        className="group hover:bg-slate-50 cursor-pointer transition-all border-b border-slate-100 last:border-0"
+                                    >
                                         <TableCell className="font-mono text-sm font-bold text-blue-700">
                                             {invoice.invoice_number}
                                         </TableCell>
@@ -92,7 +104,7 @@ export default function Invoices({ invoices, accounts, officeRooms }: Props) {
                                             </Badge>
                                         </TableCell>
 
-                                        <TableCell className="font-semibold text-slate-700 text-sm max-w-[180px] truncate">
+                                        <TableCell className="font-semibold text-slate-700 text-sm max-w-45 truncate">
                                             {invoice.account?.name || '---'}
                                         </TableCell>
 
@@ -123,7 +135,11 @@ export default function Invoices({ invoices, accounts, officeRooms }: Props) {
                                             {new Intl.NumberFormat('fr-FR').format(invoice.total_paid || (invoice as any).payments_sum_amount || 0)}
                                         </TableCell>
 
-                                        <TableCell className="text-right">
+                                        <TableCell 
+                                            className="text-right"
+                                            // هنا كنمنعو الكليك فـ الأكشنز باش مايدخلش للتفاصيل بالخطأ
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
                                             <InvoiceActions invoice={invoice} accounts={accounts} />
                                         </TableCell>
                                     </TableRow>
@@ -138,14 +154,13 @@ export default function Invoices({ invoices, accounts, officeRooms }: Props) {
                         </TableBody>
                     </Table>
 
-                    {/* Pagination Pro Logic */}
+                    {/* Pagination */}
                     <div className="bg-slate-50/50 px-6 py-4 flex items-center justify-between border-t border-slate-200">
                         <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">
                             {invoices.total} Factures au total
                         </div>
                         <div className="flex gap-2">
                             {invoices.links.map((link, i) => {
-                                // Logic to replace &laquo; Previous and Next &raquo;
                                 const isPrevious = link.label.includes('Previous');
                                 const isNext = link.label.includes('Next');
                                 
@@ -155,7 +170,7 @@ export default function Invoices({ invoices, accounts, officeRooms }: Props) {
                                         variant={link.active ? "default" : "outline"}
                                         size="sm"
                                         className={cn(
-                                            "h-9 min-w-[36px] font-bold text-xs transition-all shadow-none", 
+                                            "h-9 min-w-9 font-bold text-xs transition-all shadow-none", 
                                             !link.url && "opacity-40 cursor-not-allowed pointer-events-none",
                                             link.active && "shadow-md scale-105"
                                         )}

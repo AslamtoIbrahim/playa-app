@@ -11,6 +11,7 @@ import { OfficeRoom } from '@/types/office-room';
 import AddOfficeRoomDialog from '@/components/add-office-room-dialog';
 import EditOfficeRoomDialog from '@/components/edit-office-room-dialog';
 import DeleteOfficeRoomDialog from '@/components/delete-office-room-dialog';
+import { Badge } from '@/components/ui/badge';
 
 interface Props {
     officeRooms: OfficeRoom[];
@@ -43,7 +44,11 @@ export default function OfficeRooms({ officeRooms }: Props) {
                                     <TableRow key={room.id}>
                                         <TableCell className="font-medium text-muted-foreground">#{room.id}</TableCell>
                                         <TableCell className="font-medium">{room.name}</TableCell>
-                                        <TableCell>{room.city || '—'}</TableCell>
+                                        <TableCell>
+                                            <Badge variant="secondary" className="bg-slate-100 text-slate-700 text-[10px] font-bold rounded-md uppercase">
+                                                {room.city || '—'}
+                                            </Badge>
+                                        </TableCell>
                                         <TableCell className="text-left text-muted-foreground text-sm">
                                             {new Date(room.created_at).toLocaleDateString('fr-FR')}
                                         </TableCell>
