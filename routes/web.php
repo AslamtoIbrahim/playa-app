@@ -32,12 +32,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('invoices/{invoice}', [InvoiceController::class, 'destroy'])->name('invoices.destroy');
 
     // Invoice Items (Details) Routes
-    // كنربطوهم بـ {invoice} باش ديما نعرفو السلعة لمن تابعة
+     
+    Route::post('invoices/{invoice}/items/bulk-duplicate', [InvoiceItemController::class, 'duplicateMany'])->name('invoices.items.duplicateMany');
     Route::post('invoices/{invoice}/items', [InvoiceItemController::class, 'store'])->name('invoices.items.store');
     Route::patch('invoices/{invoice}/items/{item}', [InvoiceItemController::class, 'update'])->name('invoices.items.update');
     Route::post('/invoices/{invoice}/items/reorder', [InvoiceItemController::class, 'reorder'])->name('invoices.items.reorder');
+    Route::delete('invoices/{invoice}/items/bulk-delete', [InvoiceItemController::class, 'destroyMany'])->name('invoices.items.destroyMany');
     Route::delete('invoices/{invoice}/items/{item}', [InvoiceItemController::class, 'destroy'])->name('invoices.items.destroy');
-    
+
 
 
     // Payments Routes (Direct Import Style)

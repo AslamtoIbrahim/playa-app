@@ -48,6 +48,55 @@ class InvoiceItemController extends Controller
         return back();
     }
 
+
+    /**
+     * تكرار عدة سطور مختارة
+     */
+    public function duplicateMany(Request $request, Invoice $invoice)
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:invoice_items,id'
+        ]);
+
+        try {
+            DB::transaction(function () use ($invoice, $validated) {
+                // 1. جيب السطور اللي بغينا نذوبلو مرتبين حسب البوزيسيون ديالهم
+                $itemsToDuplicate = $invoice->items()
+                    ->whereIn('id', $validated['ids'])
+                    ->orderBy('position', 'asc')
+                    ->get();
+
+                if ($itemsToDuplicate->isEmpty()) return;
+
+                // 2. حدد أكبر بوزيسيون في السطور المختارة (باش نحطو تحتها)
+                $lastSelectedPosition = $itemsToDuplicate->max('position');
+                $count = $itemsToDuplicate->count();
+
+                // 3. "دفع" كاع السطور اللي كاينين تحت هاد البوزيسيون بـ $count
+                // باش نخويو بلاصة للنسخ الجداد
+                $invoice->items()
+                    ->where('position', '>', $lastSelectedPosition)
+                    ->increment('position', $count);
+
+                // 4. كريي النسخ الجداد في البلاصة اللي خوينا
+                foreach ($itemsToDuplicate as $index => $item) {
+                    $newItem = $item->replicate();
+                    // كياخد البوزيسيون اللي مباشرة تحت آخر واحد سيلكتينا
+                    $newItem->position = $lastSelectedPosition + ($index + 1);
+                    $newItem->save();
+                }
+
+                $invoice->refresh();
+                $invoice->calculateTotals();
+            });
+
+            return back()->with('success', 'Lignes dupliquées avec succès.');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Erreur lors de la duplication.');
+        }
+    }
+
     /**
      * تحديث سطر موجود
      */
@@ -120,6 +169,35 @@ class InvoiceItemController extends Controller
             return back()->with('success', 'La ligne a été supprimée. ✅');
         } catch (\Exception $e) {
             return back()->with('error', 'Erreur lors de la suppression.');
+        }
+    }
+
+
+
+
+    /**
+     * حذف عدة سطور دفعة واحدة
+     */
+    public function destroyMany(Request $request, Invoice $invoice)
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'integer|exists:invoice_items,id'
+        ]);
+
+        try {
+            DB::transaction(function () use ($invoice, $validated) {
+                // حذف السطور المختارة المرتبطة حصراً بهاد الفاتورة (أمان إضافي)
+                $invoice->items()->whereIn('id', $validated['ids'])->delete();
+
+                // تحديث الحسابات الإجمالية للفاتورة
+                $invoice->refresh();
+                $invoice->calculateTotals();
+            });
+
+            return back()->with('success', count($validated['ids']) . ' lignes supprimées. ✅');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Erreur lors de la suppression groupée.');
         }
     }
 }

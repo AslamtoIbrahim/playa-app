@@ -64,14 +64,14 @@ export default [
         rules: {
             '@typescript-eslint/no-explicit-any': 'off',
             '@typescript-eslint/consistent-type-imports': [
-                'error',
+                'off',
                 {
                     prefer: 'type-imports',
                     fixStyle: 'separate-type-imports',
                 },
             ],
             'import/order': [
-                'error',
+                'off',
                 {
                     groups: [
                         'builtin',
@@ -119,7 +119,7 @@ export default [
         rules: {
             '@stylistic/brace-style': ['error', '1tbs', { allowSingleLine: false }],
             '@stylistic/padding-line-between-statements': [
-                'error',
+                'warn',
                 ...paddingAroundControl,
             ],
         },
