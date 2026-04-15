@@ -24,9 +24,10 @@ class Invoice extends Model
     /**
      * العلاقات
      */
+    
     public function items()
     {
-        return $this->hasMany(InvoiceItem::class);
+        return $this->hasMany(InvoiceItem::class)->orderBy('position', 'asc');
     }
 
     public function account()
@@ -53,7 +54,7 @@ class Invoice extends Model
 
         // 1. المجموع الصافي (HT) هو مجموع مبالغ السطور ديجا محسوبة ف Controller
         $totalHT = $items->sum('amount');
-        
+
         // 2. مجموع الوزن الإجمالي
         $totalWeight = $items->sum('weight');
 

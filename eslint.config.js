@@ -63,6 +63,7 @@ export default [
         },
         rules: {
             '@typescript-eslint/no-explicit-any': 'off',
+            '@typescript-eslint/no-unused-expressions': 'off',
             '@typescript-eslint/consistent-type-imports': [
                 'off',
                 {

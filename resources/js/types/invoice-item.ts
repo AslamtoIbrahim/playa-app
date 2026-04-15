@@ -13,8 +13,16 @@ export interface InvoiceItem {
     amount: number;
     created_at?: string;
     updated_at?: string;
-    
-    // العلاقات (Relationships) اللي كيجيو مع الـ Load
     boat?: Boat;
     item?: Item;
+}
+
+
+export interface InvoiceItemFormData {
+    boat_id: number | string;
+    item_id: number | string;
+    unit_count: number | string;
+    unit_price: number | string;
+    weight: number | string;
+    unit: string;
 }

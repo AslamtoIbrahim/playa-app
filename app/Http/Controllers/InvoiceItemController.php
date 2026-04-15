@@ -15,30 +15,51 @@ class InvoiceItemController extends Controller
     public function store(Request $request, Invoice $invoice)
     {
         $validated = $request->validate([
-            'item_id'    => 'required|exists:items,id',
-            'boat_id'    => 'required|exists:boats,id',
-            'unit_count' => 'required|numeric',
-            'unit_price' => 'required|numeric',
+            'boat_id'    => 'nullable|exists:boats,id',
+            'item_id'    => 'nullable|exists:items,id',
+            'unit_count' => 'nullable|numeric',
+            'unit_price' => 'nullable|numeric',
             'weight'     => 'nullable|numeric',
             'unit'       => 'nullable|string',
+            'target_id'  => 'nullable|exists:invoice_items,id',
+            'direction'  => 'nullable|in:above,below',
         ]);
 
-        // الحساب الموحد (باش نضمنوا الـ amount يدوز صحيص للـ Database)
-        $rowAmount = floatval($validated['unit_count']) * floatval($validated['unit_price']);
+        $unitCount = floatval($validated['unit_count'] ?? 0);
+        $unitPrice = floatval($validated['unit_price'] ?? 0);
+        $rowAmount = $unitCount * $unitPrice;
 
-        DB::transaction(function () use ($invoice, $validated, $rowAmount) {
-            // كنجيبو آخر بوزيسيون باش نزيدو عليها 1
-            $maxPosition = $invoice->items()->max('position') ?? 0;
+        DB::transaction(function () use ($request, $invoice, $validated, $rowAmount, $unitCount, $unitPrice) {
+            $position = 0;
+
+            if ($request->filled('target_id') && $request->filled('direction')) {
+                $targetItem = \App\Models\InvoiceItem::findOrFail($validated['target_id']);
+
+                if ($validated['direction'] === 'above') {
+                    $position = $targetItem->position;
+                    $invoice->items()->where('position', '>=', $position)->increment('position');
+                } else {
+                    $position = $targetItem->position + 1;
+                    $invoice->items()->where('position', '>=', $position)->increment('position');
+                }
+            } else {
+                // --- التعديل هنا ---
+                // السطر الجديد غاياخد Position 0 (يعني لفوق كاع)
+                $position = 0;
+
+                // دفع كاع السطور اللي كاينين حالياً بـ +1 لتحت باش نخويو رقم 0 للسطر الجديد
+                $invoice->items()->increment('position');
+            }
 
             $invoice->items()->create([
-                'item_id'    => $validated['item_id'],
-                'boat_id'    => $validated['boat_id'],
+                'boat_id'    => $validated['boat_id'] ?? null,
+                'item_id'    => $validated['item_id'] ?? null,
                 'unit'       => $validated['unit'] ?? 'caisse',
-                'unit_count' => $validated['unit_count'],
-                'unit_price' => $validated['unit_price'],
-                'weight'     => $validated['weight'] ?? 0,
+                'unit_count' => $unitCount,
+                'unit_price' => $unitPrice,
+                'weight'     => floatval($validated['weight'] ?? 0),
                 'amount'     => $rowAmount,
-                'position'   => $maxPosition + 1,
+                'position'   => $position,
             ]);
 
             $invoice->refresh();
@@ -102,26 +123,30 @@ class InvoiceItemController extends Controller
      */
     public function update(Request $request, Invoice $invoice, InvoiceItem $item)
     {
+        // 1. ردينا كلشي nullable باش يقبل التعديلات الجزئية
         $validated = $request->validate([
-            'item_id'    => 'required|exists:items,id',
-            'boat_id'    => 'required|exists:boats,id',
-            'unit_count' => 'required|numeric',
-            'unit_price' => 'required|numeric',
+            'item_id'    => 'nullable|exists:items,id',
+            'boat_id'    => 'nullable|exists:boats,id',
+            'unit_count' => 'nullable|numeric',
+            'unit_price' => 'nullable|numeric',
             'weight'     => 'nullable|numeric',
             'unit'       => 'nullable|string',
             'position'   => 'nullable|integer',
         ]);
 
-        $rowAmount = floatval($validated['unit_count']) * floatval($validated['unit_price']);
+        // 2. حساب الـ Amount مع معالجة القيم الفارغة (حيت يقدر يكون واحد فيهم null)
+        $unitCount = floatval($validated['unit_count'] ?? $item->unit_count ?? 0);
+        $unitPrice = floatval($validated['unit_price'] ?? $item->unit_price ?? 0);
+        $rowAmount = $unitCount * $unitPrice;
 
         DB::transaction(function () use ($item, $invoice, $validated, $rowAmount) {
             $item->update([
-                'item_id'    => $validated['item_id'],
-                'boat_id'    => $validated['boat_id'],
-                'unit'       => $validated['unit'] ?? 'caisse',
-                'unit_count' => $validated['unit_count'],
-                'unit_price' => $validated['unit_price'],
-                'weight'     => $validated['weight'] ?? 0,
+                'item_id'    => $validated['item_id'] ?? $item->item_id,
+                'boat_id'    => $validated['boat_id'] ?? $item->boat_id,
+                'unit'       => $validated['unit'] ?? $item->unit ?? 'caisse',
+                'unit_count' => $validated['unit_count'] ?? $item->unit_count ?? 0,
+                'unit_price' => $validated['unit_price'] ?? $item->unit_price ?? 0,
+                'weight'     => $validated['weight'] ?? $item->weight ?? 0,
                 'amount'     => $rowAmount,
                 'position'   => $validated['position'] ?? $item->position,
             ]);
