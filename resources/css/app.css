@@ -143,3 +143,27 @@
 }
  
 
+/* index.css أو أي ملف تنسيق */
+/* .screenshot-mode {
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+}
+
+.screenshot-mode .overflow-y-auto {
+    max-height: none !important;
+    overflow: visible !important;
+} */
+
+
+@layer components {
+    /* هادي هي النسخة ديال Tailwind */
+    .screenshot-mode {
+        @apply max-h-none! h-auto! overflow-visible!;
+    }
+
+    /* هادي كتطبق التغيير على أي div وسط منها فيه scroll */
+    .screenshot-mode .overflow-y-auto {
+        @apply max-h-none! overflow-visible!;
+    }
+}

@@ -3,7 +3,7 @@ import { Head, router } from '@inertiajs/react';
 import { UniqueIdentifier, DragStartEvent, DragEndEvent, closestCenter, DndContext, DragOverlay, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
-import { Trash2, Copy, X, Printer } from 'lucide-react';
+import { Trash2, Copy, X, Printer, Camera } from 'lucide-react';
 
 // UI Components
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -27,6 +27,7 @@ import { destroyMany, duplicateMany, reorder } from '@/routes/invoices/items';
 import { InvoicePrintFooter } from '@/components/print-invoice-footer';
 import { useInvoiceExport } from '@/hooks/use-invoice-export';
 import { InvoiceExportDropdown } from '@/components/invoice-export-dropdown';
+import { useInvoiceScreenshot } from '@/hooks/use-invoice-screenshot';
 
 interface Props {
     invoice: Invoice & { items: InvoiceItem[] };
@@ -38,6 +39,9 @@ export default function Show({ invoice, boats, items }: Props) {
     // --- State Management (Manual Synchronization) ---
     const [localItems, setLocalItems] = useState<InvoiceItem[]>(invoice.items || []);
     const [prevItems, setPrevItems] = useState(invoice.items);
+
+    const { exportToExcel, exportToCSV, exportToPDF } = useInvoiceExport();
+    const { copyToClipboard } = useInvoiceScreenshot();
 
     // تصحيح الـ State فاش كيتبدل الـ Prop بلا useEffect
     if (invoice.items !== prevItems) {
@@ -115,7 +119,7 @@ export default function Show({ invoice, boats, items }: Props) {
         window.print();
     };
 
-    const { exportToExcel, exportToCSV, exportToPDF } = useInvoiceExport();
+
 
     const handleExport = (type: 'excel' | 'csv' | 'pdf') => {
         if (type === 'excel') {
@@ -133,6 +137,10 @@ export default function Show({ invoice, boats, items }: Props) {
 
     };
 
+    const handleScreenshot = () => {
+        copyToClipboard();
+    };
+
     return (
         <div className="p-6 space-y-6 max-w-7xl mx-auto bg-white min-h-screen text-slate-900 font-sans">
             <Head title={`Facture ${invoice.invoice_number}`} />
@@ -143,6 +151,15 @@ export default function Show({ invoice, boats, items }: Props) {
             <InvoiceStatsGrid stats={stats} />
             {/* زر الطباعة - نضعه فوق الـ Header على اليمين */}
             <div className="flex justify-end gap-4 print:hidden">
+                <Button
+                    onClick={handleScreenshot}
+                    variant="outline"
+                    size="sm"
+                    title="Copy for WhatsApp"
+                    className="h-9 border-slate-200 shadow-sm hover:bg-slate-50 text-slate-500"
+                >
+                    <Camera className="h-4 w-4" />
+                </Button>
                 <Button
                     onClick={handlePrint}
                     variant="outline"
@@ -192,7 +209,7 @@ export default function Show({ invoice, boats, items }: Props) {
             </div>
 
             {/* Table Area */}
-            <div className="border border-slate-100 rounded-lg rounded-b-none overflow-hidden shadow-sm relative">
+            <div id="invoice-content" className="border border-slate-100 rounded-lg rounded-b-none overflow-hidden shadow-sm relative">
                 <DndContext
                     sensors={sensors}
                     collisionDetection={closestCenter}
