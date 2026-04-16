@@ -3,7 +3,7 @@ import { Head, router } from '@inertiajs/react';
 import { UniqueIdentifier, DragStartEvent, DragEndEvent, closestCenter, DndContext, DragOverlay, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
-import { Trash2, Copy, X } from 'lucide-react';
+import { Trash2, Copy, X, Printer } from 'lucide-react';
 
 // UI Components
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -24,6 +24,7 @@ import { Boat } from '@/types/boat';
 import { Item } from '@/types/item';
 import { InvoiceItem } from '@/types/invoice-item';
 import { destroyMany, duplicateMany, reorder } from '@/routes/invoices/items';
+import { InvoicePrintFooter } from '@/components/print-invoice-footer';
 
 interface Props {
     invoice: Invoice & { items: InvoiceItem[] };
@@ -108,16 +109,32 @@ export default function Show({ invoice, boats, items }: Props) {
         }
     };
 
+    const handlePrint = () => {
+        window.print();
+    };
+
     return (
         <div className="p-6 space-y-6 max-w-7xl mx-auto bg-white min-h-screen text-slate-900 font-sans">
             <Head title={`Facture ${invoice.invoice_number}`} />
 
+
             {/* Header & Stats */}
             <InvoiceHeader invoice={invoice} />
             <InvoiceStatsGrid stats={stats} />
+            {/* زر الطباعة - نضعه فوق الـ Header على اليمين */}
+            <div className="flex justify-end print:hidden">
+                <Button
+                    onClick={handlePrint}
+                    variant="outline"
+                    size="sm"
+                    className="h-9 border-slate-200 shadow-sm hover:bg-slate-50"
+                >
+                    <Printer className="h-3 w-3" />
+                </Button>
+            </div>
 
             {/* Toolbar */}
-            <div className="flex items-center justify-between h-10">
+            <div className="flex items-center justify-between">
                 {selectedIds.length > 0 ? (
                     <div className="flex items-center gap-3 animate-in fade-in slide-in-from-left-2 duration-200">
                         <div className="flex items-center gap-2">
@@ -151,7 +168,7 @@ export default function Show({ invoice, boats, items }: Props) {
             </div>
 
             {/* Table Area */}
-            <div className="border border-slate-100 rounded-lg overflow-hidden shadow-sm relative">
+            <div className="border border-slate-100 rounded-lg rounded-b-none overflow-hidden shadow-sm relative">
                 <DndContext
                     sensors={sensors}
                     collisionDetection={closestCenter}
@@ -162,9 +179,10 @@ export default function Show({ invoice, boats, items }: Props) {
                     <Table>
                         <TableHeader className="bg-slate-50/50 border-b border-slate-100">
                             <TableRow className="h-11 hover:bg-transparent">
-                                <TableHead className="w-8"></TableHead>
-                                <TableHead className="w-10 px-2">
+                                <TableHead className="w-8 print:hidden"></TableHead>
+                                <TableHead className="w-10 print:hidden">
                                     <Checkbox
+                                    className='mr-2 mt-1'
                                         checked={selectedIds.length === localItems.length && localItems.length > 0}
                                         onCheckedChange={(checked) => {
                                             if (checked) setSelectedIds(localItems.map(i => i.id));
@@ -179,7 +197,7 @@ export default function Show({ invoice, boats, items }: Props) {
                                 <TableHead className="text-center text-[10px] font-black uppercase tracking-tight text-slate-500">Unité</TableHead>
                                 <TableHead className="text-center text-[10px] font-black uppercase tracking-tight text-slate-500">Poids</TableHead>
                                 <TableHead className="text-right px-6 text-[10px] font-black uppercase tracking-tight text-slate-500">Valeur DH</TableHead>
-                                <TableHead className="w-12"></TableHead>
+                                <TableHead className="w-12 print:hidden"></TableHead>
                             </TableRow>
                         </TableHeader>
 
@@ -220,6 +238,8 @@ export default function Show({ invoice, boats, items }: Props) {
                     </DragOverlay>
                 </DndContext>
             </div>
+
+            <InvoicePrintFooter stats={stats} />
 
             <DeleteManyItemsDialog
                 open={isDeleteDialogOpen}

@@ -89,10 +89,11 @@ export default function InvoiceItemRow({
                 isNew ? 'bg-slate-50/50' : 'hover:bg-slate-50/30',
                 isDragging && 'bg-blue-50/80 shadow-2xl',
                 selected && 'bg-blue-50/50',
+                isNew && 'print:hidden',
             )}
         >
             {/* Drag Handle */}
-            <TableCell className="w-8 border-r p-0 text-center">
+            <TableCell className="w-8 border-r p-0 text-center print:hidden">
                 {!isNew && (
                     <button
                         {...attributes}
@@ -105,7 +106,7 @@ export default function InvoiceItemRow({
             </TableCell>
 
             {/* Checkbox */}
-            <TableCell className="w-8 border-r p-0 text-center">
+            <TableCell className="w-8 border-r p-0 text-center print:hidden">
                 {!isNew && (
                     <div className="flex h-10 items-center justify-center">
                         <Checkbox
@@ -243,7 +244,7 @@ export default function InvoiceItemRow({
             </TableCell>
 
             {/* ACTIONS */}
-            <TableCell className="relative w-12 border-l p-0 text-center">
+            <TableCell className="relative w-12 border-l p-0 text-center print:hidden">
                 {loading ? (
                     <div className="flex h-10 w-full items-center justify-center">
                         <Loader2 className="h-3 w-3 animate-spin text-slate-400" />

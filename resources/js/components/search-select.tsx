@@ -54,7 +54,7 @@ export function SearchSelect({
                     <span className={cn('truncate', !value && 'text-slate-400 italic')}>
                         {selectedOption ? selectedOption.name : placeholder}
                     </span>
-                    <ChevronsUpDown className="h-3 w-3 opacity-20" />
+                    <ChevronsUpDown className="h-3 w-3 opacity-20 print:hidden" />
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="w-64 p-0" align="start">

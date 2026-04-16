@@ -1,17 +1,9 @@
 import { Card, CardContent } from '@/components/ui/card';
+import { Stats } from '@/types/stats';
 
-interface StatsProps {
-    totalBoxes: number;
-    totalHT: number;
-    formattedNetToPay: string;
-    formattedTotalHT: string;
-    formattedTaxAndBoxes: string;
-    formattedWeight: string;
-}
-
-export function InvoiceStatsGrid({ stats }: { stats: StatsProps }) {
+export function InvoiceStatsGrid({ stats }: { stats: Stats }) {
     return (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 print:hidden">
             <Card className="shadow-none border-slate-100 h-24 flex flex-col justify-center">
                 <CardContent className="p-4 py-0">
                     <p className="text-[9px] uppercase font-bold text-slate-400 mb-1 tracking-wider">Total Caisses</p>
