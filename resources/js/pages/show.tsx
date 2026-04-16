@@ -25,6 +25,8 @@ import { Item } from '@/types/item';
 import { InvoiceItem } from '@/types/invoice-item';
 import { destroyMany, duplicateMany, reorder } from '@/routes/invoices/items';
 import { InvoicePrintFooter } from '@/components/print-invoice-footer';
+import { useInvoiceExport } from '@/hooks/use-invoice-export';
+import { InvoiceExportDropdown } from '@/components/invoice-export-dropdown';
 
 interface Props {
     invoice: Invoice & { items: InvoiceItem[] };
@@ -113,6 +115,24 @@ export default function Show({ invoice, boats, items }: Props) {
         window.print();
     };
 
+    const { exportToExcel, exportToCSV, exportToPDF } = useInvoiceExport();
+
+    const handleExport = (type: 'excel' | 'csv' | 'pdf') => {
+        if (type === 'excel') {
+            // Google Sheets كيقبل ملفات Excel عادي
+            exportToExcel(invoice, localItems);
+        }
+
+        if (type === 'pdf') {
+            exportToPDF(invoice, localItems, stats);
+        }
+
+        if (type === 'csv') {
+            exportToCSV(invoice, localItems);
+        }
+
+    };
+
     return (
         <div className="p-6 space-y-6 max-w-7xl mx-auto bg-white min-h-screen text-slate-900 font-sans">
             <Head title={`Facture ${invoice.invoice_number}`} />
@@ -122,15 +142,19 @@ export default function Show({ invoice, boats, items }: Props) {
             <InvoiceHeader invoice={invoice} />
             <InvoiceStatsGrid stats={stats} />
             {/* زر الطباعة - نضعه فوق الـ Header على اليمين */}
-            <div className="flex justify-end print:hidden">
+            <div className="flex justify-end gap-4 print:hidden">
                 <Button
                     onClick={handlePrint}
                     variant="outline"
                     size="sm"
-                    className="h-9 border-slate-200 shadow-sm hover:bg-slate-50"
+                    className="h-9 border-slate-200 shadow-sm hover:bg-slate-50 text-slate-500"
                 >
                     <Printer className="h-3 w-3" />
                 </Button>
+
+                <InvoiceExportDropdown
+                    onExport={handleExport}
+                />
             </div>
 
             {/* Toolbar */}
@@ -182,7 +206,7 @@ export default function Show({ invoice, boats, items }: Props) {
                                 <TableHead className="w-8 print:hidden"></TableHead>
                                 <TableHead className="w-10 print:hidden">
                                     <Checkbox
-                                    className='mr-2 mt-1'
+                                        className='mr-2 mt-1'
                                         checked={selectedIds.length === localItems.length && localItems.length > 0}
                                         onCheckedChange={(checked) => {
                                             if (checked) setSelectedIds(localItems.map(i => i.id));
