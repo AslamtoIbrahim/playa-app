@@ -158,6 +158,54 @@ class InvoiceItemController extends Controller
         return back();
     }
 
+
+    public function bulkStore(Request $request, Invoice $invoice)
+    {
+        $validated = $request->validate([
+            'items' => 'required|array',
+            'items.*.boat_id' => 'nullable|exists:boats,id',
+            'items.*.item_id' => 'nullable|exists:items,id',
+            'items.*.unit_count' => 'required|numeric',
+            'items.*.unit_price' => 'required|numeric',
+            'items.*.unit' => 'required|string',
+            'items.*.weight' => 'nullable|numeric',
+        ]);
+
+        try {
+            DB::transaction(function () use ($invoice, $validated) {
+                // 1. نعرفو آخر Position كاين دابا باش نزيدو تحت منه
+                $lastPosition = $invoice->items()->max('position') ?? -1;
+
+                $itemsData = collect($validated['items'])->map(function ($item, $index) use ($invoice, $lastPosition) {
+                    return [
+                        'invoice_id' => $invoice->id,
+                        'boat_id'    => $item['boat_id'] ?? null,
+                        'item_id'    => $item['item_id'] ?? null,
+                        'unit'       => $item['unit'] ?? 'caisse',
+                        'unit_count' => $item['unit_count'],
+                        'unit_price' => $item['unit_price'],
+                        'weight'     => $item['weight'] ?? 0,
+                        'amount'     => $item['unit_count'] * $item['unit_price'],
+                        'position'   => $lastPosition + ($index + 1), // ترتيبهم تحت السطور اللي كاينين
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                })->toArray();
+
+                // 2. Insert Bulk
+                InvoiceItem::insert($itemsData);
+
+                // 3. تحديث حسابات الفاتورة ضروري جداً
+                $invoice->refresh();
+                $invoice->calculateTotals();
+            });
+
+            return back()->with('success', count($validated['items']) . ' articles importés avec succès !');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Erreur lors de l\'importation groupée.');
+        }
+    }
+
     /**
      * ترتيب السطور (Drag & Drop)
      */

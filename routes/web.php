@@ -32,7 +32,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('invoices/{invoice}', [InvoiceController::class, 'destroy'])->name('invoices.destroy');
 
     // Invoice Items (Details) Routes
-     
+    Route::post('invoices/{invoice}/items/bulk', [InvoiceItemController::class, 'bulkStore'])->name('invoices.items.bulkStore');
     Route::post('invoices/{invoice}/items/bulk-duplicate', [InvoiceItemController::class, 'duplicateMany'])->name('invoices.items.duplicateMany');
     Route::post('invoices/{invoice}/items', [InvoiceItemController::class, 'store'])->name('invoices.items.store');
     Route::patch('invoices/{invoice}/items/{item}', [InvoiceItemController::class, 'update'])->name('invoices.items.update');

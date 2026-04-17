@@ -23,11 +23,14 @@ import { Invoice } from '@/types/invoice';
 import { Boat } from '@/types/boat';
 import { Item } from '@/types/item';
 import { InvoiceItem } from '@/types/invoice-item';
-import { destroyMany, duplicateMany, reorder } from '@/routes/invoices/items';
+import { bulkStore, destroyMany, duplicateMany, reorder } from '@/routes/invoices/items';
 import { InvoicePrintFooter } from '@/components/print-invoice-footer';
 import { useInvoiceExport } from '@/hooks/use-invoice-export';
 import { InvoiceExportDropdown } from '@/components/invoice-export-dropdown';
 import { useInvoiceScreenshot } from '@/hooks/use-invoice-screenshot';
+import { useInvoiceImport } from '@/hooks/use-invoice-import';
+import { toast } from 'sonner';
+import { ImportItemsDialog } from '@/components/import-items-dialog';
 
 interface Props {
     invoice: Invoice & { items: InvoiceItem[] };
@@ -77,7 +80,10 @@ export default function Show({ invoice, boats, items }: Props) {
     };
 
     const handleBulkDuplicate = () => {
-        if (selectedIds.length === 0) return;
+        if (selectedIds.length === 0) {
+            return;
+        }
+
         router.post(duplicateMany(invoice.id), { ids: selectedIds }, {
             onSuccess: () => setSelectedIds([]),
             preserveScroll: true,
@@ -141,6 +147,45 @@ export default function Show({ invoice, boats, items }: Props) {
         copyToClipboard();
     };
 
+    // داخل Show.tsx
+    const { parsePasteData } = useInvoiceImport(boats, items);
+
+    const handleImport = (text: string) => {
+        const rawData = parsePasteData(text);
+
+        if (rawData.length === 0) {
+            toast.error("Aucune donnée valide trouvée.");
+            
+            return;
+        }
+
+        // 🧹 تصفية الداتا: كنصيفطو غير لي محتاج الـ Backend
+        const cleanData = rawData.map(row => ({
+            boat_id: row.boat_id,
+            item_id: row.item_id,
+            unit_count: row.unit_count,
+            unit_price: row.unit_price,
+            unit: row.unit,
+            weight: row.weight,
+        }));
+
+        router.post(bulkStore(invoice.id), {
+            items: cleanData // دابا TypeScript غادي يكون فرحان
+        }, {
+            onSuccess: () => {
+                toast.success("Importation réussie !");
+                setSelectedIds([]);
+            },
+            onError: (errors) => {
+                console.log(errors);
+                toast.error("Erreur lors de l'importation.");
+            },
+            preserveScroll: true
+        });
+    };
+
+
+
     return (
         <div className="p-6 space-y-6 max-w-7xl mx-auto bg-white min-h-screen text-slate-900 font-sans">
             <Head title={`Facture ${invoice.invoice_number}`} />
@@ -168,6 +213,8 @@ export default function Show({ invoice, boats, items }: Props) {
                 >
                     <Printer className="h-3 w-3" />
                 </Button>
+
+                <ImportItemsDialog onImport={handleImport} />
 
                 <InvoiceExportDropdown
                     onExport={handleExport}
@@ -226,8 +273,11 @@ export default function Show({ invoice, boats, items }: Props) {
                                         className='mr-2 mt-1'
                                         checked={selectedIds.length === localItems.length && localItems.length > 0}
                                         onCheckedChange={(checked) => {
-                                            if (checked) setSelectedIds(localItems.map(i => i.id));
-                                            else setSelectedIds([]);
+                                            if (checked) {
+                                                setSelectedIds(localItems.map(i => i.id));
+                                            } else {
+                                                setSelectedIds([]);
+                                            }
                                         }}
                                     />
                                 </TableHead>
