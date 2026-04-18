@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { Banknote, BookOpen, DoorOpen, FileText, FolderGit2, LayoutGrid, Package, Ship, Tags, User } from 'lucide-react';
+import { Banknote, BookOpen, Building2, CalendarClock, DoorOpen, FileText, FolderGit2, LayoutGrid, Package, Ship, Tags, User } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -13,7 +13,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { accounts, boats, categories, dashboard, invoices, items, officeRooms, payments } from '@/routes';
+import { customers, boats, categories, dashboard, invoices, items, officeRooms, payments, companies, sessions } from '@/routes';
 import type { NavItem } from '@/types';
 
 const mainNavItems: NavItem[] = [
@@ -23,8 +23,18 @@ const mainNavItems: NavItem[] = [
         icon: LayoutGrid,
     },
     {
-        title: 'Comptes',
-        href: accounts(),
+        title: 'Sociétés',
+        href: companies(),
+        icon: Building2,
+    },
+    {
+        title: 'Journées',
+        href: sessions(),
+        icon: CalendarClock,
+    },
+    {
+        title: 'Clients',
+        href: customers(),
         icon: User,
     },
     {

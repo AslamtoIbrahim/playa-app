@@ -30,17 +30,17 @@ import { store } from '@/routes/invoices';
 import { Calendar } from './ui/calendar';
 
 interface Props {
-    accounts: { id: number; name: string }[];
+    customers: { id: number; name: string }[];
     officeRooms: { id: number; name: string; city: string }[];
 }
 
-export default function AddInvoiceDialog({ accounts, officeRooms }: Props) {
+export default function AddInvoiceDialog({ customers, officeRooms }: Props) {
     const [open, setOpen] = useState(false);
     
-    const [accountComboOpen, setAccountComboOpen] = useState(false);
+    const [customerComboOpen, setCustomerComboOpen] = useState(false);
     const [officeComboOpen, setOfficeComboOpen] = useState(false);
     
-    const [selectedAccountId, setSelectedAccountId] = useState("");
+    const [selectedCustomerId, setSelectedCustomerId] = useState("");
     const [selectedOfficeId, setSelectedOfficeId] = useState("");
     const [date, setDate] = useState<Date>(new Date());
 
@@ -64,7 +64,7 @@ export default function AddInvoiceDialog({ accounts, officeRooms }: Props) {
                     onSuccess={() => {
                         toast.success('Facture créée avec succès !');
                         setOpen(false);
-                        setSelectedAccountId("");
+                        setSelectedCustomerId("");
                         setSelectedOfficeId("");
                         setDate(new Date());
                     }}
@@ -73,43 +73,43 @@ export default function AddInvoiceDialog({ accounts, officeRooms }: Props) {
                     {({ processing, errors }) => (
                         <>
                             {/* Inputs cachés pour le formulaire */}
-                            <input type="hidden" name="account_id" value={selectedAccountId} />
+                            <input type="hidden" name="customer_id" value={selectedCustomerId} />
                             <input type="hidden" name="office_room_id" value={selectedOfficeId} />
                             <input type="hidden" name="date" value={date ? format(date, "yyyy-MM-dd") : ""} />
 
                             {/* Sélection du Compte */}
                             <div className="grid gap-2">
                                 <Label className="text-xs font-bold uppercase text-slate-500">Compte / Client</Label>
-                                <Popover open={accountComboOpen} onOpenChange={setAccountComboOpen}>
+                                <Popover open={customerComboOpen} onOpenChange={setCustomerComboOpen}>
                                     <PopoverTrigger asChild>
                                         <Button
                                             variant="outline"
                                             role="combobox"
-                                            className={cn("w-full justify-between font-medium", !selectedAccountId && "text-muted-foreground")}
+                                            className={cn("w-full justify-between font-medium", !selectedCustomerId && "text-muted-foreground")}
                                         >
-                                            {selectedAccountId
-                                                ? accounts.find((acc) => acc.id.toString() === selectedAccountId)?.name
-                                                : "Sélectionner un compte..."}
+                                            {selectedCustomerId
+                                                ? customers.find((cust) => cust.id.toString() === selectedCustomerId)?.name
+                                                : "Sélectionner un client..."}
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                         <Command>
-                                            <CommandInput placeholder="Rechercher un compte..." />
+                                            <CommandInput placeholder="Rechercher un client..." />
                                             <CommandList>
-                                                <CommandEmpty>Aucun compte trouvé.</CommandEmpty>
+                                                <CommandEmpty>Aucun client trouvé.</CommandEmpty>
                                                 <CommandGroup>
-                                                    {accounts.map((acc) => (
+                                                    {customers.map((cust) => (
                                                         <CommandItem
-                                                            key={acc.id}
-                                                            value={acc.name}
+                                                            key={cust.id}
+                                                            value={cust.name}
                                                             onSelect={() => {
-                                                                setSelectedAccountId(acc.id.toString());
-                                                                setAccountComboOpen(false);
+                                                                setSelectedCustomerId(cust.id.toString());
+                                                                setCustomerComboOpen(false);
                                                             }}
                                                         >
-                                                            <Check className={cn("mr-2 h-4 w-4", selectedAccountId === acc.id.toString() ? "opacity-100" : "opacity-0")} />
-                                                            {acc.name}
+                                                            <Check className={cn("mr-2 h-4 w-4", selectedCustomerId === cust.id.toString() ? "opacity-100" : "opacity-0")} />
+                                                            {cust.name}
                                                         </CommandItem>
                                                     ))}
                                                 </CommandGroup>
@@ -117,7 +117,7 @@ export default function AddInvoiceDialog({ accounts, officeRooms }: Props) {
                                         </Command>
                                     </PopoverContent>
                                 </Popover>
-                                <InputError message={errors.account_id} />
+                                <InputError message={errors.customer_id} />
                             </div>
 
                             {/* Sélection du Bureau / Ville */}

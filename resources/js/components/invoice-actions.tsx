@@ -16,7 +16,7 @@ import EditInvoiceDialog from './edit-invoice-dialog';
 import DeleteInvoiceDialog from './delete-invoice-dialog';
 import AddPaymentDialog from './add-payment-dialog';
 
-export default function InvoiceActions({ invoice, accounts }: any) {
+export default function InvoiceActions({ invoice, customers }: any) {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -53,7 +53,7 @@ export default function InvoiceActions({ invoice, accounts }: any) {
 
                 {/* Edit */}
                 <div onClick={(e) => e.stopPropagation()}>
-                    <EditInvoiceDialog invoice={invoice} accounts={accounts} trigger={
+                    <EditInvoiceDialog invoice={invoice} customers={customers} trigger={
                         <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer gap-2 text-slate-600">
                             <Pencil className="h-4 w-4" />
                             <span className="font-medium">Modifier</span>

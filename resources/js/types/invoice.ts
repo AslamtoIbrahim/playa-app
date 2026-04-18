@@ -1,4 +1,4 @@
-import type { Account } from './accounts';
+import type { Customer } from './customers';
 import { InvoiceItem } from './invoice-item';
 import type { OfficeRoom } from './office-room';
 
@@ -11,8 +11,8 @@ export interface Invoice {
     tva: number;
     boxes: number;
     status: 'paid' | 'partially_paid' | 'unpaid' | 'pending';
-    account_id: number;
-    account?: Account;
+    customer_id: number;
+    customer?: Customer;
     office_room?: OfficeRoom; // هادي اللي كانت ناقصاك
     total_paid?: number;
     payments_sum_amount?: number;

@@ -11,12 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('accounts', function (Blueprint $table) {
+        Schema::create('boats', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
-            $table->string('type');
-            $table->foreignId('created_by')->nullable()->constrained('users')->onDelete('set null');
+            $table->string('name')->unique();
+            // بلاصة account_id، غادي نخدمو بـ billable حيت بدلنا السيستيم
+            $table->unsignedBigInteger('owner_id');
+            $table->string('owner_type');
+
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 
@@ -25,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('accounts');
+        Schema::dropIfExists('boat');
     }
 };

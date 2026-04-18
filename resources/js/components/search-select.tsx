@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Check, ChevronsUpDown } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, commandItemClass } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
     Command,
@@ -41,7 +41,7 @@ export function SearchSelect({
 }: SearchSelectProps) {
     const selectedOption = options.find((opt) => String(opt.id) === String(value));
 
-    const commandItemClass = 'text-xs !bg-white cursor-pointer flex items-center gap-2 px-3 py-2 rounded-sm outline-none data-[selected=true]:!bg-slate-200 data-[selected=true]:!text-black transition-colors';
+    // const commandItemClass = 'text-xs !bg-white cursor-pointer flex items-center gap-2 px-3 py-2 rounded-sm outline-none data-[selected=true]:!bg-slate-200 data-[selected=true]:!text-black transition-colors';
 
     return (
         <Popover open={open} onOpenChange={onOpenChange}>

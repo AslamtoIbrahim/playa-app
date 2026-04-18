@@ -13,8 +13,9 @@ return new class extends Migration
     {
         Schema::create('categories', function (Blueprint $table) {
             $table->id();
-            $table->string('name'); // مثلاً: الأسماك، التجميد، إلخ.
+            $table->string('name')->unique(); // مثلاً: الأسماك، التجميد، إلخ.
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

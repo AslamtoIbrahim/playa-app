@@ -13,8 +13,9 @@ return new class extends Migration
     {
         Schema::create('items', function (Blueprint $table) {
             $table->id();
-            $table->string('name'); // اسم السلعة
-            $table->foreignId('category_id')->constrained()->onDelete('cascade'); // الربط مع الصنف
+            $table->string('name')->unique(); // اسم السلعة
+            $table->foreignId('category_id')->constrained()->restrictOnDelete();
+            $table->softDeletes();
             $table->timestamps();
         });
     }

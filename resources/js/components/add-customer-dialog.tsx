@@ -15,31 +15,31 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from '@/components/ui/spinner';
-import { store } from '@/routes/accounts';
+import { store } from '@/routes/customers';
 
-export default function AddAccountDialog() {
+export default function AddCustomerDialog() {
     const [open, setOpen] = useState(false);
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 <Button size="sm">
-                    <Plus className="mr-2 h-4 w-4" /> Ajouter un compte
+                    <Plus className="mr-2 h-4 w-4" /> Ajouter un client
                 </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-106.25">
                 <DialogHeader>
-                    <DialogTitle>Ajouter un compte</DialogTitle>
+                    <DialogTitle>Ajouter un client</DialogTitle>
                     <DialogDescription>
-                        Entrez les détails du compte ci-dessous.
+                        Entrez le nom du client ci-dessous.
                     </DialogDescription>
                 </DialogHeader>
 
                 <Form
                     {...store.form()}
-                    resetOnSuccess={['name', 'title', 'type']}
+                    resetOnSuccess={['name']}
                     onSuccess={() => {
-                        toast.success('Le compte a été créé avec succès !');
+                        toast.success('Le client a été créé avec succès !');
                         setOpen(false);
                     }}
                     className="space-y-4 pt-4"
@@ -47,35 +47,15 @@ export default function AddAccountDialog() {
                     {({ processing, errors }) => (
                         <>
                             <div className="grid gap-2">
-                                <Label htmlFor="name">Nom du compte</Label>
+                                <Label htmlFor="name">Nom du client</Label>
                                 <Input
                                     id="name"
                                     name="name"
                                     required
+                                    autoFocus
                                     placeholder="ex: Ahmed Mansouri"
                                 />
                                 <InputError message={errors.name} />
-                            </div>
-
-                            <div className="grid gap-2">
-                                <Label htmlFor="title">Titre</Label>
-                                <Input
-                                    id="title"
-                                    name="title"
-                                    placeholder="ex: Mr, Mme, Sté"
-                                />
-                                <InputError message={errors.title} />
-                            </div>
-
-                            <div className="grid gap-2">
-                                <Label htmlFor="type">Type</Label>
-                                <Input
-                                    id="type"
-                                    name="type"
-                                    required
-                                    placeholder="Client / Fournisseur"
-                                />
-                                <InputError message={errors.type} />
                             </div>
 
                             <div className="flex justify-end gap-3 pt-4">

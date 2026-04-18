@@ -11,8 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('accounts', function (Blueprint $table) {
-            $table->string('title')->after('name')->nullable();
+        Schema::create('customers', function (Blueprint $table) {
+            $table->id();
+            $table->string('name')->unique(); // Unique name
+            $table->foreignId('created_by')->nullable()->constrained('users');
+            $table->timestamps();
+            $table->softDeletes();
         });
     }
 
@@ -21,8 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('accounts', function (Blueprint $table) {
-        $table->dropColumn('title');
-    });
+        Schema::dropIfExists('customers');
     }
 };

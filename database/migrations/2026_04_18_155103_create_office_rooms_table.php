@@ -10,20 +10,21 @@ return new class extends Migration
      * Run the migrations.
      */
     public function up(): void
-    {
-        Schema::table('invoice_items', function (Blueprint $table) {
-            // كنردوه nullable باش يقبل الفراغ
-            $table->foreignId('boat_id')->nullable()->change();
-        });
-    }
+{
+    Schema::create('office_rooms', function (Blueprint $table) {
+        $table->id();
+        $table->string('name');
+        $table->string('city')->unique();
+        $table->softDeletes();  
+        $table->timestamps();
+    });
+}
 
     /**
      * Reverse the migrations.
      */
     public function down(): void
     {
-        Schema::table('invoice_items', function (Blueprint $table) {
-            //
-        });
+        Schema::dropIfExists('office_rooms');
     }
 };

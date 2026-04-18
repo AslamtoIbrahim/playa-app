@@ -1,8 +1,11 @@
 <?php
 
-use App\Http\Controllers\AccountController;
 use App\Http\Controllers\BoatController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\CompanyController;
+use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\DailySessionController;
+use App\Http\Controllers\DifferenceController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\InvoiceItemController;
 use App\Http\Controllers\ItemController;
@@ -16,13 +19,37 @@ Route::inertia('/', 'welcome', [
 ])->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::inertia('dashboard', 'dashboard')->name('dashboard');
-    // ... Accounts Routes
-    Route::get('accounts', [AccountController::class, 'index'])->name('accounts');
-    Route::post('accounts', [AccountController::class, 'store'])->name('accounts.store');
-    Route::patch('accounts/{account}', [AccountController::class, 'update'])->name('accounts.update');
-    Route::delete('accounts/{account}', [AccountController::class, 'destroy'])->name('accounts.destroy');
 
+    Route::inertia('dashboard', 'dashboard')->name('dashboard');
+
+    // --- Customers Routes
+    Route::prefix('customers')->group(function () {
+        Route::get('/', [CustomerController::class, 'index'])->name('customers');
+        Route::post('/', [CustomerController::class, 'store'])->name('customers.store');
+        Route::patch('/{customer}', [CustomerController::class, 'update'])->name('customers.update');
+        Route::delete('/{customer}', [CustomerController::class, 'destroy'])->name('customers.destroy');
+    });
+
+    // --- Companies Routes
+    Route::prefix('companies')->group(function () {
+        Route::get('/', [CompanyController::class, 'index'])->name('companies');
+        Route::post('/', [CompanyController::class, 'store'])->name('companies.store');
+        Route::patch('/{company}', [CompanyController::class, 'update'])->name('companies.update');
+        Route::delete('/{company}', [CompanyController::class, 'destroy'])->name('companies.destroy');
+    });
+
+    // --- Daily Sessions Routes
+    Route::prefix('sessions')->group(function () {
+        Route::get('/', [DailySessionController::class, 'index'])->name('sessions');
+        Route::post('/', [DailySessionController::class, 'store'])->name('sessions.store');
+
+        // التعديل (مثلا تصحيح التاريخ)
+        Route::patch('/{session}', [DailySessionController::class, 'update'])->name('sessions.update');
+        Route::delete('/{session}', [DailySessionController::class, 'destroy'])->name('sessions.destroy');
+
+        // سد الحصة
+        Route::patch('/{session}/close', [DailySessionController::class, 'close'])->name('sessions.close');
+    });
 
     // Invoices Routes (Direct Import Style)
     Route::get('invoices', [InvoiceController::class, 'index'])->name('invoices');
@@ -41,7 +68,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('invoices/{invoice}/items/{item}', [InvoiceItemController::class, 'destroy'])->name('invoices.items.destroy');
 
 
+    // Difference Management Routes
+    Route::prefix('differences')->name('differences.')->group(function () {
+        Route::get('/', [DifferenceController::class, 'index'])->name('index');
+        Route::post('/', [DifferenceController::class, 'store'])->name('store');
+        Route::patch('/{difference}', [DifferenceController::class, 'update'])->name('update');
+        Route::delete('/{difference}', [DifferenceController::class, 'destroy'])->name('destroy');
 
+        // Bulk & UX Actions
+        Route::post('/reorder', [DifferenceController::class, 'reorder'])->name('reorder');
+        Route::post('/bulk-duplicate', [DifferenceController::class, 'duplicateMany'])->name('duplicateMany');
+        Route::delete('/bulk-delete', [DifferenceController::class, 'destroyMany'])->name('destroyMany');
+    });
+
+    
     // Payments Routes (Direct Import Style)
     Route::get('payments', [PaymentController::class, 'index'])->name('payments');
     Route::post('payments', [PaymentController::class, 'store'])->name('payments.store');

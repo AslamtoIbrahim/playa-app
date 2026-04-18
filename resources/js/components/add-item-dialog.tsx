@@ -2,7 +2,7 @@ import { Form } from '@inertiajs/react';
 import { Plus, Check, ChevronsUpDown, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { cn } from "@/lib/utils";
+import { cn, commandItemClass } from "@/lib/utils";
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import {
@@ -108,6 +108,7 @@ export default function AddItemDialog({ categories }: Props) {
                                                 <CommandGroup>
                                                     {categories.map((category) => (
                                                         <CommandItem
+                                                            className={commandItemClass}
                                                             key={category.id}
                                                             value={category.name}
                                                             onSelect={() => {

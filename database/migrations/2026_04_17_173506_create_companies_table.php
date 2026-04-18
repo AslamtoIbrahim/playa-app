@@ -11,8 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('invoice_items', function (Blueprint $table) {
-            $table->foreignId('item_id')->nullable()->change();
+        Schema::create('companies', function (Blueprint $table) {
+            $table->id();
+            $table->string('name')->unique(); // اسم الشركة
+            $table->timestamps();
+            $table->softDeletes(); // مهمة للأرشفة باش ما تمسحش الداتا نهائياً
         });
     }
 
@@ -21,8 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('invoice_items', function (Blueprint $table) {
-            //
-        });
+        Schema::dropIfExists('companies');
     }
 };
