@@ -27,17 +27,17 @@ class DifferenceController extends Controller
 
         return DB::transaction(function () use ($validated) {
             $invoiceItem = InvoiceItem::findOrFail($validated['invoice_item_id']);
-            
+
             $alreadyDistributed = Difference::where('invoice_item_id', $invoiceItem->id)->sum('unit_count');
             $remaining = $invoiceItem->unit_count - $alreadyDistributed;
 
             if ($validated['unit_count'] > $remaining) {
-                return back()->with('error', "Quantité insuffisante ! Max disponible: $remaining");
+                return back()->with('error', "Quantité insuffisante ! Max: $remaining");
             }
 
             $lastPos = Difference::where('invoice_item_id', $invoiceItem->id)->max('position') ?? -1;
 
-            Difference::create([
+            $newDiff = Difference::create([
                 'invoice_item_id' => $validated['invoice_item_id'],
                 'customer_id'    => $validated['customer_id'],
                 'unit_count'     => $validated['unit_count'],
@@ -47,7 +47,13 @@ class DifferenceController extends Controller
                 'position'       => $lastPos + 1,
             ]);
 
-            return back()->with('success', 'Répartition enregistrée ! ✅');
+            // كنصيفطو الـ item كامل مع الـ differences باش React يعرف شنو زاد
+            $fullItem = $invoiceItem->load('differences.customer');
+
+            return back()->with([
+                'success' => 'Répartition enregistrée ! ✅',
+                'updated_item' => $fullItem
+            ]);
         });
     }
 
@@ -67,7 +73,7 @@ class DifferenceController extends Controller
 
             $otherDist = Difference::where('invoice_item_id', $invoiceItem->id)
                 ->where('id', '!=', $difference->id)->sum('unit_count');
-            
+
             if ($newCount > ($invoiceItem->unit_count - $otherDist)) {
                 return back()->with('error', "Quantité invalide !");
             }
@@ -81,7 +87,12 @@ class DifferenceController extends Controller
                 'position'    => $validated['position'] ?? $difference->position,
             ]);
 
-            return back()->with('success', 'Mise à jour réussie ! ✅');
+            $fullItem = $invoiceItem->load('differences.customer');
+
+            return back()->with([
+                'success' => 'Mise à jour réussie ! ✅',
+                'updated_item' => $fullItem
+            ]);
         });
     }
 
@@ -111,10 +122,10 @@ class DifferenceController extends Controller
     public function duplicateMany(Request $request)
     {
         $validated = $request->validate(['ids' => 'required|array', 'ids.*' => 'exists:differences,id']);
-        
+
         return DB::transaction(function () use ($validated) {
             $items = Difference::whereIn('id', $validated['ids'])->orderBy('position')->get();
-            
+
             foreach ($items as $item) {
                 // Duplicate Logic (Checking if stock allows can be complex here, 
                 // typically we duplicate with 0 or same count and let user adjust)
@@ -128,7 +139,14 @@ class DifferenceController extends Controller
 
     public function destroy(Difference $difference)
     {
+        $invoiceItem = $difference->invoiceItem;
         $difference->delete();
-        return back()->with('success', 'Supprimé ! ✅');
+
+        $fullItem = $invoiceItem->load('differences.customer');
+
+        return back()->with([
+            'success' => 'Supprimé ! ✅',
+            'updated_item' => $fullItem
+        ]);
     }
 }

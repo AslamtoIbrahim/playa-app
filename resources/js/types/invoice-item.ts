@@ -1,5 +1,6 @@
 import { Boat } from './boat';
 import { Item } from './item';
+import { Difference } from './difference';
 
 export interface InvoiceItem {
     id: number;
@@ -15,6 +16,8 @@ export interface InvoiceItem {
     updated_at?: string;
     boat?: Boat;
     item?: Item;
+
+    differences?: Difference[];
 }
 
 

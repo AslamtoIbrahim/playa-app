@@ -7,6 +7,7 @@ use App\Models\Invoice;
 use App\Models\Item;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class InvoiceItem extends Model
@@ -49,6 +50,12 @@ class InvoiceItem extends Model
     public function boat()
     {
         return $this->belongsTo(Boat::class, 'boat_id');
+    }
+
+
+    public function differences(): HasMany
+    {
+        return $this->hasMany(Difference::class)->orderBy('position', 'asc');
     }
 
     /**

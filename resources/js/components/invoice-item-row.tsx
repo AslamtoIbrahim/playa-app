@@ -32,6 +32,7 @@ interface Props {
     isNew?: boolean;
     selected?: boolean;
     onSelectChange?: (checked: boolean) => void;
+    onOpenDifference: (item: InvoiceItem) => void; // Prop جديدة للـ Difference
 }
 
 export default function InvoiceItemRow({
@@ -42,6 +43,7 @@ export default function InvoiceItemRow({
     isNew,
     selected,
     onSelectChange,
+    onOpenDifference,
 }: Props) {
     const {
         data,
@@ -275,6 +277,7 @@ export default function InvoiceItemRow({
                                     invoiceId={invoiceId}
                                     item={item!}
                                     data={data}
+                                    onOpenDifference={onOpenDifference} // تمرير الـ function للـ Actions
                                 />
                             </div>
                         )}

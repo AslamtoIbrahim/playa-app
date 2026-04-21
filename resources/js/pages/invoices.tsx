@@ -1,10 +1,9 @@
 import { Head, router } from '@inertiajs/react';
 import { format } from 'date-fns';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, ChevronLeft, ChevronRight } from 'lucide-react';
 
 // Components
 import AddInvoiceDialog from '@/components/add-invoice-dialog';
-import InvoiceActions from '@/components/invoice-actions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,12 +15,12 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
-import { show } from '@/routes/invoices'; // تأكد من استيراد المسار
+import { show } from '@/routes/invoices';
 
 // Types
-import type { Customer } from '@/types/customers';
-import type { Invoice } from '@/types/invoice';
+import type { Billable, Invoice } from '@/types/invoice';
 import type { OfficeRoom } from '@/types/office-room';
+import InvoiceActions from '@/components/invoice-actions';
 
 interface Props {
     invoices: {
@@ -31,7 +30,7 @@ interface Props {
         last_page: number;
         total: number;
     };
-    customers: Customer[];
+    billables: Billable[];
     officeRooms: OfficeRoom[];
 }
 
@@ -42,11 +41,11 @@ const statusStyles: Record<string, string> = {
     pending: 'bg-slate-50 text-slate-600 border-slate-200 border-dashed',
 };
 
-export default function Invoices({ invoices, customers, officeRooms }: Props) {
-    // Function handle row click
+export default function Invoices({ invoices, billables, officeRooms }: Props) {
     const handleRowClick = (invoiceId: number) => {
         router.visit(show.url(invoiceId));
     };
+
 
     return (
         <>
@@ -60,11 +59,12 @@ export default function Invoices({ invoices, customers, officeRooms }: Props) {
                             Factures
                         </h1>
                         <p className="text-sm font-medium text-muted-foreground">
-                            Gestion et suivi de la facturation client.
+                            Gestion et suivi de la facturation (Ventes & Achats).
                         </p>
                     </div>
+
                     <AddInvoiceDialog
-                        customers={customers}
+                        billables={billables}
                         officeRooms={officeRooms}
                     />
                 </div>
@@ -74,34 +74,15 @@ export default function Invoices({ invoices, customers, officeRooms }: Props) {
                     <Table>
                         <TableHeader className="bg-slate-50/50">
                             <TableRow className="border-b border-slate-200 text-sm hover:bg-transparent">
-                                <TableHead className="w-25 font-bold text-slate-800">
-                                    N°
-                                </TableHead>
-                                <TableHead className="font-bold text-slate-800">
-                                    Date
-                                </TableHead>
-                                <TableHead className="font-bold text-slate-800">
-                                    Ville
-                                </TableHead>
-                                <TableHead className="font-bold text-slate-800">
-                                    Compte
-                                </TableHead>
-                                <TableHead className="text-center font-bold text-slate-800">
-                                    NC
-                                </TableHead>
-                                <TableHead className="text-center font-bold text-slate-800">
-                                    Poids (KG)
-                                </TableHead>
-                                <TableHead className="text-right font-bold text-slate-800">
-                                    Net à Payer
-                                </TableHead>
-                                <TableHead className="font-bold text-slate-800">
-                                    Statut
-                                </TableHead>
-                                <TableHead className="pt-4 text-right text-[10px] leading-none font-bold tracking-wider text-emerald-700 uppercase">
-                                    Payé (DH)
-                                </TableHead>
-                                <TableHead className="w-12.5"></TableHead>
+                                <TableHead className="w-24 font-bold text-slate-800">N°</TableHead>
+                                <TableHead className="font-bold text-slate-800">Type</TableHead>
+                                <TableHead className="font-bold text-slate-800">Date</TableHead>
+                                <TableHead className="font-bold text-slate-800">Ville</TableHead>
+                                <TableHead className="font-bold text-slate-800">Bénéficiaire</TableHead>
+                                <TableHead className="text-center font-bold text-slate-800">NC</TableHead>
+                                <TableHead className="text-right font-bold text-slate-800">Total (DH)</TableHead>
+                                <TableHead className="font-bold text-slate-800 text-center">Statut</TableHead>
+                                <TableHead className="w-12"></TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -109,21 +90,27 @@ export default function Invoices({ invoices, customers, officeRooms }: Props) {
                                 invoices.data.map((invoice) => (
                                     <TableRow
                                         key={invoice.id}
-                                        // الكليك على السطر كامل
-                                        onClick={() =>
-                                            handleRowClick(invoice.id)
-                                        }
+                                        onClick={() => handleRowClick(invoice.id)}
                                         className="group cursor-pointer border-b border-slate-100 transition-all last:border-0 hover:bg-slate-50"
                                     >
                                         <TableCell className="font-mono text-sm font-bold text-blue-700">
                                             {invoice.invoice_number}
                                         </TableCell>
 
-                                        <TableCell className="text-sm font-medium text-slate-600">
-                                            {format(
-                                                new Date(invoice.date),
-                                                'dd/MM/yyyy',
+                                        <TableCell>
+                                            {invoice.type === 'sale' ? (
+                                                <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
+                                                    <ArrowUpRight className="mr-1 h-3 w-3" /> Vente
+                                                </Badge>
+                                            ) : (
+                                                <Badge variant="outline" className="border-orange-200 bg-orange-50 text-orange-700">
+                                                    <ArrowDownLeft className="mr-1 h-3 w-3" /> Achat
+                                                </Badge>
                                             )}
+                                        </TableCell>
+
+                                        <TableCell className="text-sm font-medium text-slate-600">
+                                            {format(new Date(invoice.date), 'dd/MM/yyyy')}
                                         </TableCell>
 
                                         <TableCell>
@@ -131,67 +118,60 @@ export default function Invoices({ invoices, customers, officeRooms }: Props) {
                                                 variant="secondary"
                                                 className="rounded-md bg-slate-100 text-[10px] font-bold text-slate-700 uppercase"
                                             >
-                                                {(invoice as any).office_room
-                                                    ?.city || '-'}
+                                                {(invoice as any).office_room?.city || '-'}
                                             </Badge>
                                         </TableCell>
 
                                         <TableCell className="max-w-45 truncate text-sm font-semibold text-slate-700">
-                                            {invoice.customer?.name || '---'}
+                                            <div className="flex flex-col gap-1">
+                                                <span>{invoice.billable?.name || '---'}</span>
+
+                                                <div className="flex">
+                                                    {invoice.billable_type && (
+                                                        <Badge
+                                                            variant="secondary"
+                                                            className={cn(
+                                                                "text-[10px] px-1.5 py-0 font-medium uppercase tracking-wider",
+                                                                invoice.billable_type.includes('Customer')
+                                                                    ? "bg-blue-50 text-blue-600 hover:bg-blue-50 border-blue-100"
+                                                                    : "bg-amber-50 text-amber-600 hover:bg-amber-50 border-amber-100"
+                                                            )}
+                                                        >
+                                                            {invoice.billable_type.split('\\').pop() === 'Customer' ? 'Client' : 'Société'}
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </TableCell>
 
                                         <TableCell className="text-center font-bold text-slate-700">
                                             {invoice.boxes || 0}
                                         </TableCell>
 
-                                        <TableCell className="text-center text-sm font-medium text-slate-500">
-                                            {invoice.weight &&
-                                            invoice.weight > 0
-                                                ? invoice.weight
-                                                : '-'}
-                                        </TableCell>
-
                                         <TableCell className="bg-slate-50/30 text-right text-base font-black text-slate-900">
                                             {new Intl.NumberFormat('fr-FR', {
                                                 minimumFractionDigits: 2,
-                                            }).format(invoice.amount)}
+                                            }).format(Number(invoice.amount))}
                                         </TableCell>
 
-                                        <TableCell>
+                                        <TableCell className="text-center">
                                             <Badge
                                                 className={cn(
                                                     'rounded-full border px-2.5 py-0.5 text-[10px] font-bold capitalize shadow-none',
-                                                    statusStyles[
-                                                        invoice.status
-                                                    ],
+                                                    statusStyles[invoice.status]
                                                 )}
                                             >
-                                                {invoice.status.replace(
-                                                    '_',
-                                                    ' ',
-                                                )}
+                                                {invoice.status.replace('_', ' ')}
                                             </Badge>
-                                        </TableCell>
-
-                                        <TableCell className="text-right text-sm font-bold text-emerald-600">
-                                            {new Intl.NumberFormat(
-                                                'fr-FR',
-                                            ).format(
-                                                invoice.total_paid ||
-                                                    (invoice as any)
-                                                        .payments_sum_amount ||
-                                                    0,
-                                            )}
                                         </TableCell>
 
                                         <TableCell
                                             className="text-right"
-                                            // هنا كنمنعو الكليك فـ الأكشنز باش مايدخلش للتفاصيل بالخطأ
                                             onClick={(e) => e.stopPropagation()}
                                         >
                                             <InvoiceActions
                                                 invoice={invoice}
-                                                customers={customers}
+                                                billables={billables}
                                             />
                                         </TableCell>
                                     </TableRow>
@@ -199,11 +179,10 @@ export default function Invoices({ invoices, customers, officeRooms }: Props) {
                             ) : (
                                 <TableRow>
                                     <TableCell
-                                        colSpan={10}
+                                        colSpan={9}
                                         className="py-24 text-center font-medium text-muted-foreground italic"
                                     >
-                                        Aucune facture enregistrée pour le
-                                        moment.
+                                        Aucune facture enregistrée pour le moment.
                                     </TableCell>
                                 </TableRow>
                             )}
@@ -215,47 +194,35 @@ export default function Invoices({ invoices, customers, officeRooms }: Props) {
                         <div className="text-xs font-bold tracking-widest text-slate-500 uppercase">
                             {invoices.total} Factures au total
                         </div>
+
                         <div className="flex gap-2">
                             {invoices.links.map((link, i) => {
-                                const isPrevious =
-                                    link.label.includes('Previous');
+                                const isPrevious = link.label.includes('Previous');
                                 const isNext = link.label.includes('Next');
 
                                 return (
                                     <Button
                                         key={i}
-                                        variant={
-                                            link.active ? 'default' : 'outline'
-                                        }
+                                        variant={link.active ? 'default' : 'outline'}
                                         size="sm"
                                         className={cn(
                                             'h-9 min-w-9 text-xs font-bold shadow-none transition-all',
-                                            !link.url &&
-                                                'pointer-events-none cursor-not-allowed opacity-40',
-                                            link.active &&
-                                                'scale-105 shadow-md',
+                                            !link.url && 'pointer-events-none cursor-not-allowed opacity-40',
+                                            link.active && 'scale-105 shadow-md',
                                         )}
                                         asChild={!!link.url}
                                     >
                                         {link.url ? (
                                             <a href={link.url}>
-                                                {isPrevious ? (
-                                                    <ChevronLeft className="h-4 w-4" />
-                                                ) : isNext ? (
-                                                    <ChevronRight className="h-4 w-4" />
-                                                ) : (
-                                                    link.label
-                                                )}
+                                                {isPrevious ? <ChevronLeft className="h-4 w-4" /> :
+                                                    isNext ? <ChevronRight className="h-4 w-4" /> :
+                                                        link.label}
                                             </a>
                                         ) : (
                                             <span>
-                                                {isPrevious ? (
-                                                    <ChevronLeft className="h-4 w-4" />
-                                                ) : isNext ? (
-                                                    <ChevronRight className="h-4 w-4" />
-                                                ) : (
-                                                    link.label
-                                                )}
+                                                {isPrevious ? <ChevronLeft className="h-4 w-4" /> :
+                                                    isNext ? <ChevronRight className="h-4 w-4" /> :
+                                                        link.label}
                                             </span>
                                         )}
                                     </Button>

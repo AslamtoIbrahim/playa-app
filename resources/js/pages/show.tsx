@@ -31,14 +31,17 @@ import { useInvoiceScreenshot } from '@/hooks/use-invoice-screenshot';
 import { useInvoiceImport } from '@/hooks/use-invoice-import';
 import { toast } from 'sonner';
 import { ImportItemsDialog } from '@/components/import-items-dialog';
+import { DifferenceDialog } from '@/components/difference-dialog';
+import { Customer } from '@/types/customers';
 
 interface Props {
     invoice: Invoice & { items: InvoiceItem[] };
     boats: Boat[];
     items: Item[];
+    customers: Customer[];
 }
 
-export default function Show({ invoice, boats, items }: Props) {
+export default function Show({ invoice, boats, items, customers }: Props) {
     // --- State Management (Manual Synchronization) ---
     const [localItems, setLocalItems] = useState<InvoiceItem[]>(invoice.items || []);
     const [prevItems, setPrevItems] = useState(invoice.items);
@@ -46,15 +49,30 @@ export default function Show({ invoice, boats, items }: Props) {
     const { exportToExcel, exportToCSV, exportToPDF } = useInvoiceExport();
     const { copyToClipboard } = useInvoiceScreenshot();
 
-    // تصحيح الـ State فاش كيتبدل الـ Prop بلا useEffect
+    // State لـ Difference Dialog
+    const [diffItem, setDiffItem] = useState<InvoiceItem | null>(null);
+    const [isDiffOpen, setIsDiffOpen] = useState(false);
+
+    // فـ Show.tsx
     if (invoice.items !== prevItems) {
         setPrevItems(invoice.items);
         setLocalItems(invoice.items);
+
+        // هاد السطور هما اللي غيخليو الـ Dialog يزيد الـ Rows فالبلاصة
+        if (isDiffOpen && diffItem) {
+            const freshItem = invoice.items.find(i => i.id === diffItem.id);
+
+            if (freshItem) {
+                setDiffItem(freshItem);
+            }
+        }
     }
 
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
+
+
 
     // الحسابات
     const stats = useInvoiceCalculations(invoice);
@@ -91,7 +109,9 @@ export default function Show({ invoice, boats, items }: Props) {
     };
 
     // --- Drag & Drop Logic ---
-    const handleDragStart = (event: DragStartEvent) => setActiveId(event.active.id);
+    const handleDragStart = (event: DragStartEvent) => {
+        setActiveId(event.active.id);
+    };
 
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
@@ -125,11 +145,8 @@ export default function Show({ invoice, boats, items }: Props) {
         window.print();
     };
 
-
-
     const handleExport = (type: 'excel' | 'csv' | 'pdf') => {
         if (type === 'excel') {
-            // Google Sheets كيقبل ملفات Excel عادي
             exportToExcel(invoice, localItems);
         }
 
@@ -140,14 +157,12 @@ export default function Show({ invoice, boats, items }: Props) {
         if (type === 'csv') {
             exportToCSV(invoice, localItems);
         }
-
     };
 
     const handleScreenshot = () => {
         copyToClipboard();
     };
 
-    // داخل Show.tsx
     const { parsePasteData } = useInvoiceImport(boats, items);
 
     const handleImport = (text: string) => {
@@ -155,11 +170,10 @@ export default function Show({ invoice, boats, items }: Props) {
 
         if (rawData.length === 0) {
             toast.error("Aucune donnée valide trouvée.");
-            
+
             return;
         }
 
-        // 🧹 تصفية الداتا: كنصيفطو غير لي محتاج الـ Backend
         const cleanData = rawData.map(row => ({
             boat_id: row.boat_id,
             item_id: row.item_id,
@@ -170,7 +184,7 @@ export default function Show({ invoice, boats, items }: Props) {
         }));
 
         router.post(bulkStore(invoice.id), {
-            items: cleanData // دابا TypeScript غادي يكون فرحان
+            items: cleanData
         }, {
             onSuccess: () => {
                 toast.success("Importation réussie !");
@@ -184,17 +198,19 @@ export default function Show({ invoice, boats, items }: Props) {
         });
     };
 
-
+    const handleOpenDifference = (item: InvoiceItem) => {
+        setDiffItem(item);
+        setIsDiffOpen(true);
+    };
 
     return (
         <div className="p-6 space-y-6 max-w-7xl mx-auto bg-white min-h-screen text-slate-900 font-sans">
             <Head title={`Facture ${invoice.invoice_number}`} />
 
-
             {/* Header & Stats */}
             <InvoiceHeader invoice={invoice} />
             <InvoiceStatsGrid stats={stats} />
-            {/* زر الطباعة - نضعه فوق الـ Header على اليمين */}
+
             <div className="flex justify-end gap-4 print:hidden">
                 <Button
                     onClick={handleScreenshot}
@@ -205,6 +221,7 @@ export default function Show({ invoice, boats, items }: Props) {
                 >
                     <Camera className="h-4 w-4" />
                 </Button>
+
                 <Button
                     onClick={handlePrint}
                     variant="outline"
@@ -293,8 +310,13 @@ export default function Show({ invoice, boats, items }: Props) {
                         </TableHeader>
 
                         <TableBody>
-                            {/* Input row for new entries */}
-                            <InvoiceItemRow invoiceId={invoice.id} boats={boats} items={items} isNew={true} />
+                            <InvoiceItemRow
+                                invoiceId={invoice.id}
+                                boats={boats}
+                                items={items}
+                                isNew={true}
+                                onOpenDifference={() => { }} // New row doesn't need this
+                            />
 
                             <SortableContext items={localItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
                                 {localItems.map((row) => (
@@ -311,6 +333,7 @@ export default function Show({ invoice, boats, items }: Props) {
                                                 : prev.filter(id => id !== row.id)
                                             );
                                         }}
+                                        onOpenDifference={handleOpenDifference}
                                     />
                                 ))}
                             </SortableContext>
@@ -338,6 +361,17 @@ export default function Show({ invoice, boats, items }: Props) {
                 onConfirm={confirmBulkDelete}
                 count={selectedIds.length}
             />
+
+            {/* Difference Dialog Component */}
+            {diffItem && (
+                <DifferenceDialog
+                    key={diffItem.id}
+                    open={isDiffOpen}
+                    onOpenChange={setIsDiffOpen}
+                    item={diffItem}
+                    customers={customers}
+                />
+            )}
         </div>
     );
 }

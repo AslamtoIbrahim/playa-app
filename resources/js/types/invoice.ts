@@ -1,21 +1,46 @@
-import type { Customer } from './customers';
-import { InvoiceItem } from './invoice-item';
+import type { InvoiceItem } from './invoice-item';
 import type { OfficeRoom } from './office-room';
+
+// هادي هي الواجهة اللي كتمثل الـ Polymorphic Relation (billable)
+export interface Billable {
+    id: number;
+    name: string;
+    // 'App\\Models\\Customer' أو 'App\\Models\\Company'
+    type?: string; 
+}
 
 export interface Invoice {
     id: number;
     invoice_number: string;
     date: string;
+    
+    // النوع: واش بيع (Sale) أو شراء (Purchase)
+    type: 'sale' | 'purchase';
+    
+    // Polymorphic Fields
+    billable_id: number;
+    billable_type: string;
+    billable?: Billable; // هنا فين كيرجع الـ Model المرتبط
+
+    // الارتباطات الأخرى
+    session_id: number;
+    office_room_id: number | null;
+    office_room?: OfficeRoom;
+    
+    // الحسابات المالية
     amount: number;
-    weight: number | null; // ضروري نزيدو null
+    weight: number | null;
     tva: number;
     boxes: number;
+    
+    // الحالة والبيانات الوصفية
     status: 'paid' | 'partially_paid' | 'unpaid' | 'pending';
-    customer_id: number;
-    customer?: Customer;
-    office_room?: OfficeRoom; // هادي اللي كانت ناقصاك
+    created_by?: number;
     total_paid?: number;
     payments_sum_amount?: number;
 
+    // التفاصيل
     items?: InvoiceItem[];
+    created_at: string;
+    updated_at: string;
 }
