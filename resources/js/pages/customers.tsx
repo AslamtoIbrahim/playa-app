@@ -46,7 +46,7 @@ export default function Customers({ customers }: Props) {
                                     <TableCell className="font-medium">
                                         #{customer.id}
                                     </TableCell>
-                                    <TableCell>{customer.name}</TableCell>
+                                    <TableCell className='capitalize font-medium'>{customer.name}</TableCell>
                                     <TableCell className="text-left text-sm text-muted-foreground">
                                         {new Date(
                                             customer.created_at,

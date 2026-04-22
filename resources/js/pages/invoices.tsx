@@ -1,6 +1,6 @@
 import { Head, router } from '@inertiajs/react';
 import { format } from 'date-fns';
-import { ArrowDownLeft, ArrowUpRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 
 // Components
 import AddInvoiceDialog from '@/components/add-invoice-dialog';
@@ -20,6 +20,7 @@ import { show } from '@/routes/invoices';
 // Types
 import type { Billable, Invoice } from '@/types/invoice';
 import type { OfficeRoom } from '@/types/office-room';
+import type { DailySession } from '@/types/daily-session'; // تأكد من المسار
 import InvoiceActions from '@/components/invoice-actions';
 
 interface Props {
@@ -32,6 +33,7 @@ interface Props {
     };
     billables: Billable[];
     officeRooms: OfficeRoom[];
+    sessions: DailySession[]; // زدنا السيسيونات هنا
 }
 
 const statusStyles: Record<string, string> = {
@@ -41,7 +43,7 @@ const statusStyles: Record<string, string> = {
     pending: 'bg-slate-50 text-slate-600 border-slate-200 border-dashed',
 };
 
-export default function Invoices({ invoices, billables, officeRooms }: Props) {
+export default function Invoices({ invoices, billables, officeRooms, sessions }: Props) {
     const handleRowClick = (invoiceId: number) => {
         router.visit(show.url(invoiceId));
     };
@@ -66,6 +68,7 @@ export default function Invoices({ invoices, billables, officeRooms }: Props) {
                     <AddInvoiceDialog
                         billables={billables}
                         officeRooms={officeRooms}
+                        sessions={sessions}
                     />
                 </div>
 
@@ -77,7 +80,7 @@ export default function Invoices({ invoices, billables, officeRooms }: Props) {
                                 <TableHead className="w-24 font-bold text-slate-800">N°</TableHead>
                                 <TableHead className="font-bold text-slate-800">Type</TableHead>
                                 <TableHead className="font-bold text-slate-800">Date</TableHead>
-                                <TableHead className="font-bold text-slate-800">Ville</TableHead>
+                                <TableHead className="font-bold text-slate-800">Session</TableHead>
                                 <TableHead className="font-bold text-slate-800">Bénéficiaire</TableHead>
                                 <TableHead className="text-center font-bold text-slate-800">NC</TableHead>
                                 <TableHead className="text-right font-bold text-slate-800">Total (DH)</TableHead>
@@ -114,12 +117,37 @@ export default function Invoices({ invoices, billables, officeRooms }: Props) {
                                         </TableCell>
 
                                         <TableCell>
-                                            <Badge
-                                                variant="secondary"
-                                                className="rounded-md bg-slate-100 text-[10px] font-bold text-slate-700 uppercase"
-                                            >
-                                                {(invoice as any).office_room?.city || '-'}
-                                            </Badge>
+                                            {/* تسييق الـ Session كـ Badge ملون */}
+                                            <div className="flex items-center gap-1.5">
+                                                {(invoice as any).session ? (
+                                                    <Badge
+                                                        variant="outline"
+                                                        className={cn(
+                                                            "flex items-center gap-1 px-2 py-0.5 font-bold border",
+                                                            (invoice as any).session.status === 'open'
+                                                                ? "bg-emerald-50 text-emerald-700 border-emerald-200" // أخضر يلا كانت محلولة
+                                                                : "bg-slate-50 text-slate-600 border-slate-200"      // رمادي يلا كانت مسدودة
+                                                        )}
+                                                    >
+                                                        <Clock className={cn(
+                                                            "h-3 w-3",
+                                                            (invoice as any).session.status === 'open' ? "text-emerald-500" : "text-slate-400"
+                                                        )} />
+
+                                                        <span className="text-[10px] uppercase tracking-wider">
+                                                            {format(new Date((invoice as any).session.session_date), 'dd/MM/yy')}
+                                                        </span>
+
+                                                        {/* نقطة صغيرة اختيارية لزيادة الوضوح */}
+                                                        <span className={cn(
+                                                            "size-2 rounded-full ml-0.5",
+                                                            (invoice as any).session.status === 'open' ? "bg-emerald-500 animate-pulse" : "bg-slate-300"
+                                                        )} />
+                                                    </Badge>
+                                                ) : (
+                                                    <span className="text-xs text-slate-400">-</span>
+                                                )}
+                                            </div>
                                         </TableCell>
 
                                         <TableCell className="max-w-45 truncate text-sm font-semibold text-slate-700">
@@ -172,6 +200,7 @@ export default function Invoices({ invoices, billables, officeRooms }: Props) {
                                             <InvoiceActions
                                                 invoice={invoice}
                                                 billables={billables}
+                                                sessions={sessions}
                                             />
                                         </TableCell>
                                     </TableRow>
@@ -199,6 +228,11 @@ export default function Invoices({ invoices, billables, officeRooms }: Props) {
                             {invoices.links.map((link, i) => {
                                 const isPrevious = link.label.includes('Previous');
                                 const isNext = link.label.includes('Next');
+
+
+                                if (!link.url && !link.active) {
+                                    return null;
+                                }
 
                                 return (
                                     <Button

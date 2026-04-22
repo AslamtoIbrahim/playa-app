@@ -69,16 +69,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 
     // Difference Management Routes
-    Route::prefix('differences')->name('differences.')->group(function () {
-        Route::get('/', [DifferenceController::class, 'index'])->name('index');
-        Route::post('/', [DifferenceController::class, 'store'])->name('store');
-        Route::patch('/{difference}', [DifferenceController::class, 'update'])->name('update');
-        Route::delete('/{difference}', [DifferenceController::class, 'destroy'])->name('destroy');
+    Route::prefix('differences')->group(function () {
+        Route::get('/', [DifferenceController::class, 'index'])->name('differences');
+
+        Route::get('/report', [DifferenceController::class, 'showReport'])->name('differences.report'); 
+
+        Route::post('/', [DifferenceController::class, 'store'])->name('differences.store');
+        Route::patch('/{difference}', [DifferenceController::class, 'update'])->name('differences.update');
+        Route::delete('/{difference}', [DifferenceController::class, 'destroy'])->name('differences.destroy');
 
         // Bulk & UX Actions
-        Route::post('/reorder', [DifferenceController::class, 'reorder'])->name('reorder');
-        Route::post('/bulk-duplicate', [DifferenceController::class, 'duplicateMany'])->name('duplicateMany');
-        Route::delete('/bulk-delete', [DifferenceController::class, 'destroyMany'])->name('destroyMany');
+        Route::post('/reorder', [DifferenceController::class, 'reorder'])->name('differences.reorder');
+        Route::post('/bulk-duplicate', [DifferenceController::class, 'duplicateMany'])->name('differences.duplicateMany');
+        Route::delete('/bulk-delete', [DifferenceController::class, 'destroyMany'])->name('differences.destroyMany');
     });
 
     

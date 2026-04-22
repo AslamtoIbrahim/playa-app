@@ -11,42 +11,41 @@ use App\Models\Item;
 use App\Models\OfficeRoom;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\DB;
 
 class InvoiceController extends Controller
 {
     /**
-     * Display a listing of invoices
+     * Afficher la liste des factures
      */
     public function index()
     {
-        $invoices = Invoice::with(['billable', 'officeRoom'])
-            // ->withSum('payments as total_paid', 'amount')
+        $invoices = Invoice::with(['billable', 'officeRoom', 'session'])
             ->latest()
             ->paginate(10);
 
         $customers = Customer::select('id', 'name')->get()->map(fn($c) => [
-            'id'    => $c->id,
-            'name'  => $c->name,
-            'type'  => Customer::class,
-            'label' => 'Client: ' . $c->name
+            'id'   => $c->id,
+            'name' => $c->name,
+            'type' => Customer::class,
         ]);
 
         $companies = Company::select('id', 'name')->get()->map(fn($c) => [
-            'id'    => $c->id,
-            'name'  => $c->name,
-            'type'  => Company::class,
-            'label' => 'Société: ' . $c->name
+            'id'   => $c->id,
+            'name' => $c->name,
+            'type' => Company::class,
         ]);
 
         return Inertia::render('invoices', [
             'invoices'    => $invoices,
             'billables'   => $customers->concat($companies),
             'officeRooms' => OfficeRoom::all(['id', 'name', 'city']),
+            'sessions'    => DailySession::where('status', 'open')->latest()->get(['id', 'session_date']),
         ]);
     }
 
     /**
-     * Store a new invoice
+     * Créer une nouvelle facture
      */
     public function store(Request $request)
     {
@@ -55,60 +54,55 @@ class InvoiceController extends Controller
             'type'           => 'required|in:sale,purchase',
             'billable_id'    => 'required|integer',
             'billable_type'  => 'required|string|in:App\Models\Customer,App\Models\Company',
-            'office_room_id' => 'nullable|exists:office_rooms,id',
+            'session_id'     => 'required|exists:daily_sessions,id',
+            'office_room_id' => 'required|exists:office_rooms,id',
         ]);
 
-        // استعملنا whereDate باش نتفاداو مشكل الوقت 00:00:00
-        $session = DailySession::whereDate('session_date', $validated['date'])->first();
-
-        if (!$session) {
-            return back()->withErrors([
-                'date' => "Aucune session n'est ouverte pour cette date. Veuillez créer une session d'abord."
-            ]);
-        }
-
+        $session = DailySession::findOrFail($validated['session_id']);
         if ($session->status === 'closed') {
-            return back()->withErrors([
-                'date' => "La session pour cette date est déjà clôturée."
-            ]);
+            return back()->withErrors(['session_id' => "Action impossible : La session est clôturée."]);
         }
 
-        $invoice = Invoice::create([
-            'date'           => $validated['date'],
-            'type'           => $validated['type'],
-            'billable_id'    => $validated['billable_id'],
-            'billable_type'  => $validated['billable_type'],
-            'session_id'     => $session->id,
-            'office_room_id' => $validated['office_room_id'],
-            'created_by'     => $request->user()->id,
-            'status'         => 'pending',
-            'amount'         => 0,
-            'tva'            => 0,
-            'boxes'          => 0,
-            'weight'         => 0,
-        ]);
+        return DB::transaction(function () use ($validated, $request) {
+            $year = now()->year;
 
-        return redirect()->route('invoices.show', $invoice->id)
-            ->with('success', 'Facture initialisée avec succès.');
+            // التعديل هنا: كنحولوا invoice_number لـ Integer باش SQLite ما يتلفش
+            $lastInvoice = Invoice::withTrashed() // كيشوف حتى الممسوحين
+                ->where('invoice_number', 'like', $year . '%')
+                ->selectRaw('MAX(CAST(invoice_number AS INTEGER)) as max_val')
+                ->first();
+
+            $maxNumber = $lastInvoice ? $lastInvoice->max_val : null;
+            $nextNumber = $maxNumber ? ($maxNumber + 1) : ($year . '00001');
+
+            // صمام أمان كيقلب بـ withTrashed
+            while (Invoice::withTrashed()->where('invoice_number', $nextNumber)->exists()) {
+                $nextNumber++;
+            }
+
+            $invoice = Invoice::create([
+                'date'           => $validated['date'],
+                'type'           => $validated['type'],
+                'billable_id'    => $validated['billable_id'],
+                'billable_type'  => $validated['billable_type'],
+                'session_id'     => $validated['session_id'],
+                'office_room_id' => $validated['office_room_id'],
+                'invoice_number' => (int)$nextNumber, // فرض الرقم كـ Integer
+                'created_by'     => $request->user()->id,
+                'status'         => 'pending',
+                'amount'         => 0,
+                'tva'            => 0,
+                'boxes'          => 0,
+                'weight'         => 0,
+            ]);
+
+            return redirect()->route('invoices.show', $invoice->id)
+                ->with('success', "Facture #{$nextNumber} créée avec succès.");
+        });
     }
 
     /**
-     * Show invoice details
-     */
-    public function show(Invoice $invoice)
-    {
-        $invoice->load(['billable', 'officeRoom', 'items.item', 'items.boat', 'items.differences.customer']);
-
-        return Inertia::render('show', [
-            'invoice' => $invoice,
-            'boats'   => Boat::all(['id', 'name']),
-            'items'   => Item::all(['id', 'name']),
-            'customers' => Customer::all(['id', 'name']),
-        ]);
-    }
-
-    /**
-     * Update invoice and handle session validation
+     * Mettre à jour une facture
      */
     public function update(Request $request, Invoice $invoice)
     {
@@ -117,48 +111,52 @@ class InvoiceController extends Controller
             'billable_id'    => 'required|integer',
             'billable_type'  => 'required|string|in:App\Models\Customer,App\Models\Company',
             'office_room_id' => 'nullable|exists:office_rooms,id',
+            'session_id'     => 'required|exists:daily_sessions,id',
             'status'         => 'required|string',
         ]);
 
-        if ($invoice->date !== $validated['date']) {
-            // نفس الشيء هنا: whereDate
-            $session = DailySession::whereDate('session_date', $validated['date'])->first();
+        $session = DailySession::findOrFail($validated['session_id']);
 
-            if (!$session) {
-                return back()->withErrors([
-                    'date' => "Impossible de changer la date : Aucune session n'existe pour ce jour."
-                ]);
-            }
-
-            if ($session->status === 'closed') {
-                return back()->withErrors([
-                    'date' => "Impossible de changer la date : La session de ce jour est déjà clôturée."
-                ]);
-            }
-
-            $invoice->session_id = $session->id;
+        // Empêcher le déplacement vers une session clôturée
+        if ($session->status === 'closed' && $invoice->session_id !== (int)$validated['session_id']) {
+            return back()->withErrors(['session_id' => "Transfert impossible : La session cible est clôturée."]);
         }
 
         $invoice->update($validated);
 
-        return back()->with('success', 'Facture mise à jour avec succès.');
+        return back()->with('success', "Facture mise à jour avec succès.");
     }
 
     /**
-     * Archive (Soft Delete)
+     * Afficher les détails d'une facture
+     */
+    public function show(Invoice $invoice)
+    {
+        $invoice->load(['billable', 'officeRoom', 'items.item', 'items.boat', 'items.differences.customer', 'session']);
+
+        return Inertia::render('show', [
+            'invoice'   => $invoice,
+            'boats'     => Boat::all(['id', 'name']),
+            'items'     => Item::all(['id', 'name']),
+            'customers' => Customer::all(['id', 'name']),
+        ]);
+    }
+
+    /**
+     * Archiver une facture (Soft Delete)
      */
     public function destroy(Invoice $invoice)
     {
+        // Sécurité : Ne pas supprimer une facture qui contient déjà des calculs/montants
         if ($invoice->amount > 0) {
-            return back()->with(
-                'error',
-                "Action interdite : La facture #{$invoice->invoice_number} contient des montants financiers."
-            );
+            return back()->with('error', "Suppression impossible : Cette facture contient déjà des montants.");
         }
 
         try {
-            $invoice->items()->delete();
-            $invoice->delete();
+            DB::transaction(function () use ($invoice) {
+                $invoice->items()->delete();
+                $invoice->delete();
+            });
 
             return back()->with('success', "La facture a été archivée avec succès.");
         } catch (\Exception $e) {

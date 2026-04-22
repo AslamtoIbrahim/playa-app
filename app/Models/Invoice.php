@@ -13,17 +13,17 @@ class Invoice extends Model
     protected $fillable = [
         'date',
         'invoice_number',
+        'type',
         'billable_id',
         'billable_type',
         'session_id',
-        'type',
         'office_room_id',
+        'created_by',
+        'status',
+        'amount',
         'tva',
         'boxes',
-        'amount',
-        'weight',
-        'status',
-        'created_by'
+        'weight'
     ];
 
     /**
@@ -94,12 +94,9 @@ class Invoice extends Model
         parent::boot();
 
         static::creating(function ($model) {
-            // Génération du numéro de facture unique
-            // format: 202600001
-            $latestId = static::max('id') ?? 0;
-            $model->invoice_number = date('Y') . str_pad($latestId + 1, 5, '0', STR_PAD_LEFT);
+            // حيدنا الحساب ديال invoice_number من هنا حيت ولا كيجي واجد من الـ Controller
 
-            // Default values
+            // خلي غير القيم الافتراضية إيلا بغيتي
             $model->status = $model->status ?? 'pending';
             $model->tva = $model->tva ?? 0;
             $model->boxes = $model->boxes ?? 0;

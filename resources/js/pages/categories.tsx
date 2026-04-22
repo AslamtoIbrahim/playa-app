@@ -41,7 +41,7 @@ export default function Categories({ categories }: Props) {
                                 categories.map((category) => (
                                     <TableRow key={category.id}>
                                         <TableCell className="font-medium text-muted-foreground">#{category.id}</TableCell>
-                                        <TableCell className="font-medium">{category.name}</TableCell>
+                                        <TableCell className="font-medium capitalize">{category.name}</TableCell>
                                         <TableCell className="text-left text-muted-foreground text-sm">
                                             {category.created_at 
                                                 ? new Date(category.created_at).toLocaleDateString('fr-FR') 

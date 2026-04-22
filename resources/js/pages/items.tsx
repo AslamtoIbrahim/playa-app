@@ -45,7 +45,7 @@ export default function Items({ items, categories }: Props) {
                                 items.map((item) => (
                                     <TableRow key={item.id}>
                                         <TableCell className="font-medium text-muted-foreground">#{item.id}</TableCell>
-                                        <TableCell className="font-medium">{item.name}</TableCell>
+                                        <TableCell className="font-medium capitalize">{item.name}</TableCell>
                                         <TableCell>
                                             <Badge variant="secondary" className="font-normal">
                                                 {item.category?.name || 'Sans catégorie'}

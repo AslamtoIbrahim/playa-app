@@ -16,13 +16,15 @@ import { Invoice, Billable } from '@/types/invoice';
 import EditInvoiceDialog from './edit-invoice-dialog';
 import DeleteInvoiceDialog from './delete-invoice-dialog';
 import AddPaymentDialog from './add-payment-dialog';
+import { DailySession } from "@/types/daily-session";
 
 interface Props {
     invoice: Invoice;
     billables: Billable[];
+    sessions: DailySession[];
 }
 
-export default function InvoiceActions({ invoice, billables }: Props) {
+export default function InvoiceActions({ invoice, billables, sessions }: Props) {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -66,7 +68,7 @@ export default function InvoiceActions({ invoice, billables }: Props) {
                 <div onClick={(e) => {
                     e.stopPropagation();
                 }}>
-                    <EditInvoiceDialog invoice={invoice} billables={billables} trigger={
+                    <EditInvoiceDialog sessions={sessions} invoice={invoice} billables={billables} trigger={
                         <DropdownMenuItem onSelect={(e) => {
                             e.preventDefault();
                         }} className="cursor-pointer gap-2 text-slate-600">

@@ -10,11 +10,56 @@ use Inertia\Inertia;
 
 class DifferenceController extends Controller
 {
+    // public function index()
+    // {
+    //     $differences = Difference::with(['invoiceItem', 'customer'])->orderBy('position')->get();
+    //     return Inertia::render('differences', ['differences' => $differences]);
+    // }
+
     public function index()
     {
-        $differences = Difference::with(['invoiceItem', 'customer'])->orderBy('position')->get();
-        return Inertia::render('differences', ['differences' => $differences]);
+        $reports = Difference::whereHas('invoiceItem.invoice')
+            ->join('invoice_items', 'differences.invoice_item_id', '=', 'invoice_items.id')
+            ->join('invoices', 'invoice_items.invoice_id', '=', 'invoices.id')
+            ->join('boats', 'invoice_items.boat_id', '=', 'boats.id')
+            ->select(
+                'differences.customer_id',
+                DB::raw('invoices.date as invoice_date'),
+                DB::raw('SUM(differences.total_diff) as total_diff_amount'),
+                DB::raw('COUNT(differences.id) as items_count'),
+                DB::raw('GROUP_CONCAT(DISTINCT boats.name) as boat_name')
+            )
+            ->with(['customer'])
+            ->groupBy('differences.customer_id', 'invoices.date')
+            ->orderBy('invoices.date', 'desc')
+            ->get();
+
+        return Inertia::render('differences', [
+            'reports' => $reports
+        ]);
     }
+
+    public function showReport(Request $request)
+    {
+        $customerId = $request->query('customer_id');
+        $date = $request->query('date');
+
+        $details = Difference::where('customer_id', $customerId)
+            ->whereHas('invoiceItem.invoice', function ($query) use ($date) {
+                $query->whereDate('date', $date);
+            })
+            ->with(['invoiceItem.invoice', 'invoiceItem.item', 'invoiceItem.boat', 'customer'])
+            ->get();
+
+        if ($details->isEmpty()) {
+            return redirect()->route('differences')->with('error', 'Aucun détail trouvé.');
+        }
+
+        return Inertia::render('differences-show', [
+            'details' => $details
+        ]);
+    }
+
 
     public function store(Request $request)
     {

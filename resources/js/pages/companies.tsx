@@ -48,7 +48,7 @@ export default function Companies({ companies }: Props) {
                                         #{company.id}
                                     </TableCell>
                                     
-                                    <TableCell className="font-semibold">
+                                    <TableCell className="font-semibold capitalize">
                                         {company.name}
                                     </TableCell>
                                     

@@ -6,6 +6,7 @@ import {
     Calendar as CalendarIcon,
     Check,
     ChevronsUpDown,
+    Clock,
     Pencil,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -37,29 +38,37 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover';
 import { Spinner } from '@/components/ui/spinner';
-import { cn } from '@/lib/utils';
+import { cn, commandItemClass } from '@/lib/utils';
 
 import { update } from '@/routes/invoices';
 import type { Invoice, Billable } from '@/types/invoice';
+import type { DailySession } from '@/types/daily-session';
 
 interface Props {
     invoice: Invoice;
     billables: Billable[];
+    sessions: DailySession[];
     trigger?: React.ReactNode;
 }
 
 export default function EditInvoiceDialog({
     invoice,
     billables,
+    sessions,
     trigger,
 }: Props) {
     const [open, setOpen] = useState<boolean>(false);
     const [comboOpen, setComboOpen] = useState<boolean>(false);
+    const [sessionComboOpen, setSessionComboOpen] = useState<boolean>(false);
 
     const [selectedBillable, setSelectedBillable] = useState<Billable | null>(
         billables.find(
             (b) => b.id === invoice.billable_id && b.type === invoice.billable_type
         ) || null
+    );
+
+    const [selectedSession, setSelectedSession] = useState<DailySession | null>(
+        sessions.find((s) => Number(s.id) === Number(invoice.session_id)) || null
     );
 
     const [date, setDate] = useState<Date>(parseISO(invoice.date));
@@ -97,9 +106,8 @@ export default function EditInvoiceDialog({
                         setOpen(false);
                     }}
                     onError={(e) => {
-                        console.log('msg', e)
-                    }
-                    }
+                        console.log('Error update invoice:', e);
+                    }}
                     className="space-y-4 pt-4"
                 >
                     {({ processing, errors, clearErrors }) => {
@@ -140,16 +148,11 @@ export default function EditInvoiceDialog({
 
                         return (
                             <>
-                                {/* Hidden Fields for Form Submission */}
+                                {/* --- حقول مخفية لإرسال البيانات لـ Laravel --- */}
                                 <input
                                     type="hidden"
                                     name="billable_id"
                                     value={selectedBillable?.id || ''}
-                                />
-                                <input
-                                    type="hidden"
-                                    name="status"
-                                    value={invoice.status}  
                                 />
                                 <input
                                     type="hidden"
@@ -158,9 +161,84 @@ export default function EditInvoiceDialog({
                                 />
                                 <input
                                     type="hidden"
+                                    name="status"
+                                    value={invoice.status}
+                                />
+                                <input
+                                    type="hidden"
                                     name="date"
                                     value={date ? format(date, 'yyyy-MM-dd') : ''}
                                 />
+                                {/* الحقل المهم للـ Session */}
+                                <input
+                                    type="hidden"
+                                    name="session_id"
+                                    value={selectedSession?.id || ''}
+                                />
+
+                                {/* Session Selector */}
+                                <div className="grid gap-2">
+                                    <Label className="text-xs font-bold text-slate-500 uppercase">
+                                        Session de travail
+                                    </Label>
+                                    <Popover
+                                        open={sessionComboOpen}
+                                        onOpenChange={setSessionComboOpen}
+                                    >
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                role="combobox"
+                                                className={cn(
+                                                    "w-full justify-between font-medium",
+                                                    !selectedSession && "text-muted-foreground"
+                                                )}
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <Clock className="h-4 w-4 opacity-50" />
+                                                    {selectedSession
+                                                        ? format(parseISO(selectedSession.session_date), 'dd MMMM yyyy')
+                                                        : 'Sélectionner une session...'}
+                                                </div>
+                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                            <Command>
+                                                <SearchInput placeholder="Rechercher une session..." />
+                                                <CommandList>
+                                                    <CommandEmpty>Aucune session trouvée.</CommandEmpty>
+                                                    <CommandGroup>
+                                                        {sessions.map((session) => (
+                                                            <CommandItem
+                                                                className={commandItemClass}
+                                                                key={session.id}
+                                                                value={session.session_date}
+                                                                onSelect={() => {
+                                                                    setSelectedSession(session);
+                                                                    setSessionComboOpen(false);
+                                                                }}
+                                                            >
+                                                                <Check
+                                                                    className={cn(
+                                                                        'mr-2 h-4 w-4',
+                                                                        selectedSession?.id === session.id ? 'opacity-100' : 'opacity-0'
+                                                                    )}
+                                                                />
+                                                                {format(parseISO(session.session_date), 'dd/MM/yyyy')}
+                                                            </CommandItem>
+                                                        ))}
+                                                    </CommandGroup>
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
+                                    {errors.daily_session_id && (
+                                        <p className="text-sm font-medium text-red-500">
+                                            {errors.daily_session_id}
+                                        </p>
+                                    )}
+                                </div>
 
                                 {/* Billable Selector */}
                                 <div className="grid gap-2">
@@ -187,9 +265,7 @@ export default function EditInvoiceDialog({
                                             <Command>
                                                 <SearchInput placeholder="Rechercher un compte..." />
                                                 <CommandList>
-                                                    <CommandEmpty>
-                                                        Aucun compte trouvé.
-                                                    </CommandEmpty>
+                                                    <CommandEmpty>Aucun compte trouvé.</CommandEmpty>
                                                     <CommandGroup>
                                                         {billables.map((item) => {
                                                             const isSelected =
@@ -198,6 +274,7 @@ export default function EditInvoiceDialog({
 
                                                             return (
                                                                 <CommandItem
+                                                                    className={commandItemClass}
                                                                     key={`${item.type}-${item.id}`}
                                                                     value={item.name}
                                                                     onSelect={() => {
@@ -266,7 +343,7 @@ export default function EditInvoiceDialog({
                                     )}
                                 </div>
 
-                                {/* Read-only Summary */}
+                                {/* Summary Section */}
                                 <div className="grid grid-cols-2 gap-4 rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3">
                                     <div className="space-y-1">
                                         <span className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">
