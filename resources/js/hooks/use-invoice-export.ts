@@ -20,7 +20,8 @@ export function useInvoiceExport() {
         }));
     };
 
-    /** * 2. تصدير Excel مع تحديد العناوين بالعربية
+    /**
+     * 2. تصدير Excel مع الحفاظ على دقة الحسابات وتنسيق الأرقام
      */
     const exportToExcel = (invoice: Invoice, items: InvoiceItem[]) => {
         const data = prepareData(items);
@@ -28,16 +29,38 @@ export function useInvoiceExport() {
         const excelData = data.map((d) => ({
             BATEAU: d.boatName,
             ESPÈCES: d.itemName,
-            'QTE / NC': d.qty,
-            'PRIX UNITAIRE': d.price,
+            'QTE / NC': Number(d.qty),
+            'PRIX UNITAIRE': Number(d.price),
             UNITÉ: d.unit,
-            'POIDS (KG)': d.weight,
-            'VALEUR DH': d.amount,
+            'POIDS (KG)': Number(d.weight),
+            'VALEUR DH': Number(d.amount),
         }));
 
         const worksheet = XLSX.utils.json_to_sheet(excelData);
+
+        const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+
+        for (let R = range.s.r + 1; R <= range.e.r; ++R) {
+            /**
+             * الأعمدة الرقمية:
+             * C: QTE / NC
+             * D: PRIX UNITAIRE
+             * F: POIDS (KG)
+             * G: VALEUR DH
+             */
+            ['C', 'D', 'F', 'G'].forEach((col) => {
+                const cell = worksheet[col + (R + 1)];
+
+                if (cell && cell.t === 'n') {
+                    cell.z = '#,##0.00';
+                }
+            });
+        }
+
         const workbook = XLSX.utils.book_new();
+
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Invoice Items');
+
         XLSX.writeFile(workbook, `Facture_${invoice.invoice_number}.xlsx`);
     };
 

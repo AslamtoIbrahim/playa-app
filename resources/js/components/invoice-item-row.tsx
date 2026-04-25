@@ -20,7 +20,7 @@ import { Boat } from '@/types/boat';
 import { Item } from '@/types/item';
 import { InvoiceItem } from '@/types/invoice-item';
 import { Checkbox } from './ui/checkbox';
-import { RowActions } from './row-actions';
+import { InvoiceRowActions } from './invoice-row-actions';
 import { useInvoiceItem } from '@/hooks/use-invoice-item';
 import { SearchSelect } from './search-select';
 
@@ -32,7 +32,7 @@ interface Props {
     isNew?: boolean;
     selected?: boolean;
     onSelectChange?: (checked: boolean) => void;
-    onOpenDifference: (item: InvoiceItem) => void; // Prop جديدة للـ Difference
+    onOpenDifference: (item: InvoiceItem) => void;
 }
 
 export default function InvoiceItemRow({
@@ -47,7 +47,7 @@ export default function InvoiceItemRow({
 }: Props) {
     const {
         data,
-        setData,
+        handleDataChange, // استعملنا هادي عوض setData
         loading,
         openBoat,
         setOpenBoat,
@@ -55,6 +55,7 @@ export default function InvoiceItemRow({
         setOpenItem,
         weight,
         amount,
+        displayBox, // هادي هي القيمة اللي غتبان في الـ Input ديال الـ Box
         isReadyToSave,
         submitSave,
         handleKeyDown,
@@ -80,6 +81,7 @@ export default function InvoiceItemRow({
     };
 
     const cellFocusClass = 'focus-within:ring-1 focus-within:ring-inset focus-within:ring-slate-300 focus-within:bg-slate-100/50 transition-all';
+
     const inputBaseClass = 'border-none rounded-none h-10 text-xs shadow-none bg-transparent focus-visible:ring-0 w-full font-normal [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none';
 
     return (
@@ -94,7 +96,6 @@ export default function InvoiceItemRow({
                 isNew && 'print:hidden',
             )}
         >
-            {/* Drag Handle */}
             <TableCell className="w-8 border-r p-0 text-center print:hidden">
                 {!isNew && (
                     <button
@@ -107,14 +108,15 @@ export default function InvoiceItemRow({
                 )}
             </TableCell>
 
-            {/* Checkbox */}
             <TableCell className="w-8 border-r p-0 text-center print:hidden">
                 {!isNew && (
                     <div className="flex h-10 items-center justify-center">
                         <Checkbox
                             checked={selected || false}
                             onCheckedChange={(checked: boolean) => {
-                                onSelectChange?.(checked);
+                                {
+                                    onSelectChange?.(checked);
+                                }
                             }}
                             className="h-4 w-4 border-slate-300"
                         />
@@ -122,7 +124,6 @@ export default function InvoiceItemRow({
                 )}
             </TableCell>
 
-            {/* BATEAU */}
             <TableCell className={cn('w-45 border-r p-0', cellFocusClass)}>
                 <SearchSelect
                     value={data.boat_id}
@@ -131,21 +132,19 @@ export default function InvoiceItemRow({
                     open={openBoat}
                     onOpenChange={setOpenBoat}
                     onKeyDown={(e) => {
-                        handleKeyDown(e, 'boat');
+                        {
+                            handleKeyDown(e, 'boat');
+                        }
                     }}
                     onSelect={(id) => {
-                        const updated = { ...data, boat_id: id };
-                        setData(updated);
-                        setOpenBoat(false);
-
-                        if (isReadyToSave(updated)) {
-                            submitSave(updated);
+                        {
+                            handleDataChange({ boat_id: id });
+                            setOpenBoat(false);
                         }
                     }}
                 />
             </TableCell>
 
-            {/* ESPECES */}
             <TableCell className={cn('w-45 border-r p-0', cellFocusClass)}>
                 <SearchSelect
                     value={data.item_id}
@@ -154,64 +153,62 @@ export default function InvoiceItemRow({
                     open={openItem}
                     onOpenChange={setOpenItem}
                     onKeyDown={(e) => {
-                        handleKeyDown(e, 'item');
+                        {
+                            handleKeyDown(e, 'item');
+                        }
                     }}
                     onSelect={(id) => {
-                        const selectedItem = items.find(i => String(i.id) === String(id));
-                        const isPoulpe = selectedItem?.name?.toLowerCase().includes('poulpe') || selectedItem?.name?.toLowerCase().includes('بولبو');
-                        
-                        const updated = {
-                            ...data,
-                            item_id: id,
-                            unit: isPoulpe ? 'kg' : 'caisse'
-                        };
-                        
-                        setData(updated);
-                        setOpenItem(false);
+                        {
+                            const selectedItem = items.find(i => String(i.id) === String(id));
+                            const isPoulpe = selectedItem?.name?.toLowerCase().includes('poulpe') || selectedItem?.name?.toLowerCase().includes('بولبو');
 
-                        if (isReadyToSave(updated)) {
-                            submitSave(updated);
+                            handleDataChange({
+                                item_id: id,
+                                unit: isPoulpe ? 'kg' : 'caisse'
+                            });
+
+                            setOpenItem(false);
                         }
                     }}
                 />
             </TableCell>
 
-            {/* UNIT COUNT */}
+
+
             <TableCell className={cn('w-24 border-r p-0', cellFocusClass)}>
                 <Input
                     type="number"
                     value={data.unit_count}
                     onChange={(e) => {
-                        setData({ ...data, unit_count: e.target.value });
+                        {
+                            handleDataChange({ unit_count: e.target.value });
+                        }
                     }}
                     onKeyDown={handleKeyDown}
                     className={cn(inputBaseClass, 'text-center')}
                 />
             </TableCell>
 
-            {/* UNIT PRICE */}
             <TableCell className={cn('w-28 border-r p-0', cellFocusClass)}>
                 <Input
                     type="number"
                     value={data.unit_price}
                     onChange={(e) => {
-                        setData({ ...data, unit_price: e.target.value });
+                        {
+                            handleDataChange({ unit_price: e.target.value });
+                        }
                     }}
                     onKeyDown={handleKeyDown}
                     className={cn(inputBaseClass, 'pr-4 text-right')}
                 />
             </TableCell>
 
-            {/* UNIT SELECT */}
             <TableCell className={cn('w-28 border-r p-0', cellFocusClass)}>
                 <Select
                     value={data.unit}
                     onValueChange={(val) => {
-                        const updated = { ...data, unit: val };
-                        setData(updated);
-
-                        if (isReadyToSave(updated)) {
-                            submitSave(updated);
+                        {
+                            handleDataChange({ unit: val });
                         }
                     }}
                 >
@@ -228,7 +225,6 @@ export default function InvoiceItemRow({
                 </Select>
             </TableCell>
 
-            {/* WEIGHT (ReadOnly) */}
             <TableCell className="w-24 border-r bg-slate-50/20 p-0">
                 <Input
                     type="number"
@@ -238,14 +234,32 @@ export default function InvoiceItemRow({
                 />
             </TableCell>
 
-            {/* AMOUNT */}
+            {/* BOX - الحقل الجديد */}
+            <TableCell className={cn('w-20 border-r p-0', cellFocusClass)}>
+                <Input
+                    type="number"
+                    value={displayBox}
+                    readOnly={data.unit === 'caisse'}
+                    onChange={(e) => {
+                        {
+                            handleDataChange({ box: e.target.value });
+                        }
+                    }}
+                    onKeyDown={handleKeyDown}
+                    className={cn(
+                        inputBaseClass,
+                        'text-center font-bold text-blue-900',
+                        data.unit === 'caisse' && 'text-slate-500 font-normal'
+                    )}
+                />
+            </TableCell>
+
             <TableCell className="w-32 bg-slate-50/10 px-6 text-right text-xs font-normal text-slate-900">
                 {amount > 0
                     ? amount.toLocaleString('fr-FR', { minimumFractionDigits: 2 })
                     : '0.00'}
             </TableCell>
 
-            {/* ACTIONS */}
             <TableCell className="relative w-12 border-l p-0 text-center print:hidden">
                 {loading ? (
                     <div className="flex h-10 w-full items-center justify-center">
@@ -265,7 +279,9 @@ export default function InvoiceItemRow({
                                 )}
                                 onClick={() => {
                                     if (isReadyToSave()) {
-                                        submitSave(data);
+                                        {
+                                            submitSave(data);
+                                        }
                                     }
                                 }}
                             >
@@ -273,11 +289,11 @@ export default function InvoiceItemRow({
                             </Button>
                         ) : (
                             <div className="w-full opacity-0 transition-opacity group-hover:opacity-100">
-                                <RowActions
+                                <InvoiceRowActions
                                     invoiceId={invoiceId}
                                     item={item!}
                                     data={data}
-                                    onOpenDifference={onOpenDifference} // تمرير الـ function للـ Actions
+                                    onOpenDifference={onOpenDifference}
                                 />
                             </div>
                         )}

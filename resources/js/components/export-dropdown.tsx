@@ -17,7 +17,7 @@ interface Props {
     onExport: (type: 'excel' | 'csv' | 'pdf') => void;
 }
 
-export function InvoiceExportDropdown({ onExport }: Props) {
+export function ExportDropdown({ onExport }: Props) {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>

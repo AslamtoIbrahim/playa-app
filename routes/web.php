@@ -11,6 +11,8 @@ use App\Http\Controllers\InvoiceItemController;
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\OfficeRoomController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\ReceiptController;
+use App\Http\Controllers\ReceiptItemController;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 
@@ -72,7 +74,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('differences')->group(function () {
         Route::get('/', [DifferenceController::class, 'index'])->name('differences');
 
-        Route::get('/report', [DifferenceController::class, 'showReport'])->name('differences.report'); 
+        Route::get('/report', [DifferenceController::class, 'showReport'])->name('differences.report');
 
         Route::post('/', [DifferenceController::class, 'store'])->name('differences.store');
         Route::patch('/{difference}', [DifferenceController::class, 'update'])->name('differences.update');
@@ -84,7 +86,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/bulk-delete', [DifferenceController::class, 'destroyMany'])->name('differences.destroyMany');
     });
 
-    
+
     // Payments Routes (Direct Import Style)
     Route::get('payments', [PaymentController::class, 'index'])->name('payments');
     Route::post('payments', [PaymentController::class, 'store'])->name('payments.store');
@@ -114,6 +116,30 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('items', [ItemController::class, 'store'])->name('items.store');
     Route::patch('items/{item}', [ItemController::class, 'update'])->name('items.update');
     Route::delete('items/{item}', [ItemController::class, 'destroy'])->name('items.destroy');
+
+
+    // --- Receipts Routes
+    Route::get('receipts', [ReceiptController::class, 'index'])->name('receipts');
+    Route::post('receipts', [ReceiptController::class, 'store'])->name('receipts.store');
+    Route::get('receipts/{receipt}', [ReceiptController::class, 'show'])->name('receipts.show');
+    Route::patch('receipts/{receipt}', [ReceiptController::class, 'update'])->name('receipts.update');
+    Route::delete('receipts/{receipt}', [ReceiptController::class, 'destroy'])->name('receipts.destroy');
+
+    // --- Receipt Items (Details) Routes
+    Route::prefix('receipts/{receipt}/items')->group(function () {
+        Route::post('/bulk', [ReceiptItemController::class, 'bulkStore'])->name('receipts.items.bulkStore');
+        // Bulk & UX Actions
+        Route::post('/reorder', [ReceiptItemController::class, 'reorder'])->name('receipts.items.reorder');
+        
+        Route::post('/bulk-duplicate', [ReceiptItemController::class, 'duplicateMany'])->name('receipts.items.duplicateMany');
+
+        Route::delete('/bulk-delete', [ReceiptItemController::class, 'destroyMany'])->name('receipts.items.destroyMany');
+
+        Route::post('/', [ReceiptItemController::class, 'store'])->name('receipts.items.store');
+        Route::patch('/{item}', [ReceiptItemController::class, 'update'])->name('receipts.items.update');
+        Route::delete('/{item}', [ReceiptItemController::class, 'destroy'])->name('receipts.items.destroy');
+
+    });
 });
 
 require __DIR__ . '/settings.php';

@@ -13,13 +13,21 @@ return new class extends Migration
     {
         Schema::create('differences', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('invoice_item_id')->constrained()->onDelete('cascade');
-            $table->foreignId('customer_id')->constrained()->restrictOnDelete();
 
-            $table->integer('unit_count');       // شحال من صندوق وزعتي لهاد الكليان
-            $table->decimal('real_price', 15, 2); // الثمن الجديد
-            $table->decimal('amount', 15, 2);     // unit_count * real_price
-            $table->decimal('total_diff', 15, 2); // الفرق المالي (real_price - original_price) * unit_count
+            // رجعناه Nullable لأن سلع Hortax ماعندهاش invoice_item
+            $table->foreignId('invoice_item_id')->nullable()->constrained()->onDelete('cascade');
+
+            $table->foreignId('customer_id')->constrained()->restrictOnDelete();
+            $table->foreignId('item_id')->constrained('items')->restrictOnDelete();
+
+            $table->integer('unit_count');
+            $table->decimal('real_price', 15, 2);
+            $table->decimal('amount', 15, 2);
+
+            // حقل الصناديق الجديد
+            $table->integer('boxes')->nullable()->default(0);
+
+            $table->decimal('total_diff', 15, 2)->default(0);
             $table->integer('position')->default(0);
 
             $table->timestamps();

@@ -1,7 +1,7 @@
-import { useState, KeyboardEvent } from 'react';
-import { router } from '@inertiajs/react';
 import { store, update } from '@/routes/invoices/items';
 import { InvoiceItem } from '@/types/invoice-item';
+import { router } from '@inertiajs/react';
+import { KeyboardEvent, useState } from 'react';
 
 interface UseInvoiceItemProps {
     invoiceId: number;
@@ -20,11 +20,30 @@ export function useInvoiceItem({ invoiceId, item, isNew }: UseInvoiceItemProps) 
         unit_count: item?.unit_count || '',
         unit_price: item?.unit_price || '',
         unit: item?.unit || 'caisse',
+        box: item?.box || '',
     });
 
     const count = Number(data.unit_count) || 0;
+    
     const weight = data.unit === 'kg' ? count : count * 21;
+    
     const amount = count * Number(data.unit_price);
+
+    // Derived Logic for Box (Computed based on unit)
+    const displayBox = data.unit === 'caisse' ? data.unit_count : data.box;
+
+    const handleDataChange = (updates: Partial<typeof data>) => {
+        setData((prev) => {
+            const newData = { ...prev, ...updates };
+
+            // Logic: if unit is caisse, boxes = unit_count
+            if (newData.unit === 'caisse') {
+                newData.box = newData.unit_count;
+            }
+
+            return newData;
+        });
+    };
 
     const isReadyToSave = (currentData = data) => {
         if (isNew) {
@@ -41,7 +60,9 @@ export function useInvoiceItem({ invoiceId, item, isNew }: UseInvoiceItemProps) 
 
     const submitSave = (currentData = data) => {
         if (!isReadyToSave(currentData) || loading) {
-            return;
+            {
+                return;
+            }
         }
 
         setLoading(true);
@@ -50,28 +71,36 @@ export function useInvoiceItem({ invoiceId, item, isNew }: UseInvoiceItemProps) 
             ? store(invoiceId)
             : update({ invoice: invoiceId, item: item!.id });
 
+        const payload = {
+            ...currentData,
+            box: currentData.unit === 'caisse' ? currentData.unit_count : currentData.box,
+            weight: weight.toString(),
+            _method: isNew ? 'POST' : 'PATCH',
+        };
+
         router.post(
             url,
-            { 
-                ...currentData, 
-                weight: weight.toString(), 
-                _method: isNew ? 'POST' : 'PATCH' 
-            },
+            payload,
             {
                 preserveScroll: true,
                 onSuccess: () => {
                     if (isNew) {
-                        setData({
-                            boat_id: '',
-                            item_id: '',
-                            unit_count: '',
-                            unit_price: '',
-                            unit: 'caisse',
-                        });
+                        {
+                            setData({
+                                boat_id: '',
+                                item_id: '',
+                                unit_count: '',
+                                unit_price: '',
+                                unit: 'caisse',
+                                box: '',
+                            });
+                        }
                     }
                 },
                 onFinish: () => {
-                    setLoading(false);
+                    {
+                        setLoading(false);
+                    }
                 },
             },
         );
@@ -82,71 +111,95 @@ export function useInvoiceItem({ invoiceId, item, isNew }: UseInvoiceItemProps) 
         type?: 'boat' | 'item',
     ) => {
         if (openBoat || openItem) {
-            return;
+            {
+                return;
+            }
         }
 
         if (type && !openBoat && !openItem) {
             const isCharacter = e.key.length === 1 && e.key.match(/[a-z0-9\u0600-\u06FF]/i);
 
             if (isCharacter) {
-                type === 'boat' ? setOpenBoat(true) : setOpenItem(true);
-                
-                return;
+                {
+                    type === 'boat' ? setOpenBoat(true) : setOpenItem(true);
+                    
+                    return;
+                }
             }
         }
 
         if (e.key === 'Enter') {
-            e.preventDefault();
+            {
+                e.preventDefault();
 
-            if (isReadyToSave(data)) {
-                submitSave(data);
+                if (isReadyToSave(data)) {
+                    {
+                        submitSave(data);
+                    }
+                }
             }
         }
 
         const isMovementKey = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key);
 
         if (isMovementKey) {
-            e.preventDefault();
+            {
+                e.preventDefault();
 
-            const currentCell = (e.target as HTMLElement).closest('td');
+                const currentCell = (e.target as HTMLElement).closest('td');
 
-            if (!currentCell) {
-                return;
-            }
-
-            const focusElement = (el: Element | null) => {
-                const target = el?.querySelector('input, button, select') as HTMLElement;
-
-                if (target) {
-                    target.focus();
-
-                    if (target instanceof HTMLInputElement) {
-                        target.select();
+                if (!currentCell) {
+                    {
+                        return;
                     }
                 }
-            };
 
-            if (e.key === 'ArrowRight') {
-                focusElement(currentCell.nextElementSibling);
-            }
+                const focusElement = (el: Element | null) => {
+                    const target = el?.querySelector('input, button, select') as HTMLElement;
 
-            if (e.key === 'ArrowLeft') {
-                focusElement(currentCell.previousElementSibling);
-            }
+                    if (target) {
+                        {
+                            target.focus();
 
-            if (e.key === 'ArrowDown') {
-                focusElement(currentCell.parentElement?.nextElementSibling?.children[currentCell.cellIndex] || null);
-            }
+                            if (target instanceof HTMLInputElement) {
+                                {
+                                    target.select();
+                                }
+                            }
+                        }
+                    }
+                };
 
-            if (e.key === 'ArrowUp') {
-                focusElement(currentCell.parentElement?.previousElementSibling?.children[currentCell.cellIndex] || null);
+                if (e.key === 'ArrowRight') {
+                    {
+                        focusElement(currentCell.nextElementSibling);
+                    }
+                }
+
+                if (e.key === 'ArrowLeft') {
+                    {
+                        focusElement(currentCell.previousElementSibling);
+                    }
+                }
+
+                if (e.key === 'ArrowDown') {
+                    {
+                        focusElement(currentCell.parentElement?.nextElementSibling?.children[currentCell.cellIndex] || null);
+                    }
+                }
+
+                if (e.key === 'ArrowUp') {
+                    {
+                        focusElement(currentCell.parentElement?.previousElementSibling?.children[currentCell.cellIndex] || null);
+                    }
+                }
             }
         }
     };
 
     return {
         data,
-        setData,
+        handleDataChange,
         loading,
         openBoat,
         setOpenBoat,
@@ -154,6 +207,7 @@ export function useInvoiceItem({ invoiceId, item, isNew }: UseInvoiceItemProps) 
         setOpenItem,
         weight,
         amount,
+        displayBox,
         isReadyToSave,
         submitSave,
         handleKeyDown,

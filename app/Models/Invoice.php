@@ -71,7 +71,7 @@ class Invoice extends Model
         $totalWeight = $items->sum('weight');
 
         // 3. Calcul des Boxes (Unité != 'kg')
-        $totalBoxes = $items->where('unit', '!=', 'kg')->sum('unit_count');
+        $totalBoxes = $items->sum('box');
 
         // 4. Calcul TVA (3%)
         $tvaAmount = $totalHT * 0.03;

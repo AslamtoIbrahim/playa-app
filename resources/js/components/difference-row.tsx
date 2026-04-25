@@ -5,12 +5,14 @@ import { useDifferenceRow } from '@/hooks/use-difference-row';
 import { cn } from '@/lib/utils';
 import { Customer } from '@/types/customers';
 import { Difference } from '@/types/difference';
+import { Item } from '@/types/item';
 import { Loader2, Plus, Trash2 } from 'lucide-react';
 import { SearchSelect } from './search-select';
 
 interface RowProps {
     diff?: Difference;
     customers: Customer[];
+    items: Item[];
     maxAvailable: number;
     isNew?: boolean;
     invoiceItemId?: number;
@@ -21,163 +23,243 @@ interface RowProps {
 export function DifferenceRow({
     diff,
     customers,
+    items,
     maxAvailable,
     isNew,
     invoiceItemId,
     onSuccess,
-    onDelete
+    onDelete,
 }: RowProps) {
     const {
-        localData,
-        setLocalData,
+        data,
+        handleDataChange,
         loading,
         openCustomer,
         setOpenCustomer,
-        handleUpdate,
+        openItem,
+        setOpenItem,
         handleDelete,
         handleKeyDown,
-        countRef,
-        priceRef
+        submitSave,
     } = useDifferenceRow({
         diff,
         maxAvailable,
         isNew,
         invoiceItemId,
         onSuccess,
-        onDelete
+        onDelete,
     });
 
-    const inputClass = "h-10 border-none bg-transparent text-center focus-visible:ring-0 focus-visible:bg-slate-100 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
+    const inputClass =
+        "h-10 border-none bg-transparent text-center focus-visible:ring-0 focus-visible:bg-slate-100 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
 
     return (
-        <TableRow className={cn(
-            "group transition-colors",
-            isNew ? "bg-blue-50/30 border-t-2 border-blue-100" : "hover:bg-slate-50/50"
-        )}>
+        <TableRow
+            className={cn(
+                "group transition-colors h-10 min-h-10",
+                isNew ? "bg-blue-50/30 border-t-2 border-blue-100" : "hover:bg-slate-50/50"
+            )}
+        >
+            {/* عمود الكليان */}
             <TableCell
-                className={cn("p-0 border-r", isNew ? "border-blue-100/50" : "border-slate-100")}
-                onKeyDown={(e) => {
-                    handleKeyDown(e, 'customer');
-                }}
-                data-new-row={isNew ? "true" : "false"}
+                className={cn(
+                    "p-0 border-r w-[25%]",
+                    isNew ? "border-blue-100/50" : "border-slate-100"
+                )}
             >
                 <SearchSelect
-                    value={localData.customer_id}
+                    value={data.customer_id}
                     options={customers}
-                    placeholder={isNew ? "Sélectionner client..." : (diff?.customer?.name || "Client...")}
+                    placeholder={isNew ? "Client..." : diff?.customer?.name || "Client..."}
                     open={openCustomer}
                     onOpenChange={setOpenCustomer}
+                    onKeyDown={(e) => {
+                        {
+                            handleKeyDown(e, "customer");
+                        }
+                    }}
                     onSelect={(id) => {
-                        const newId = id.toString();
+                        {
+                            handleDataChange({ customer_id: id.toString() });
 
-                        setLocalData(prev => ({ ...prev, customer_id: newId }));
-                        setOpenCustomer(false);
+                            setOpenCustomer(false);
 
-                        if (isNew) {
-                            const currentCount = countRef.current?.value || '';
-                            const currentPrice = priceRef.current?.value || '';
-
-                            if (currentCount !== '' && currentPrice !== '') {
-                                handleUpdate({
-                                    customer_id: newId,
-                                    unit_count: currentCount,
-                                    real_price: currentPrice
-                                }, true);
-
-                                return;
+                            if (!isNew) {
+                                {
+                                    submitSave({ ...data, customer_id: id.toString() });
+                                }
                             }
-
-                            setTimeout(() => {
-                                countRef.current?.focus();
-                                countRef.current?.select();
-                            }, 10);
-                        } else {
-                            handleUpdate({ customer_id: newId });
                         }
                     }}
                     className="border-none bg-transparent shadow-none w-full justify-start font-medium"
                 />
             </TableCell>
 
-            <TableCell className={cn("p-0 border-r", isNew ? "border-blue-100/50" : "border-slate-100")}>
+            {/* عمود السلعة (Article) */}
+            <TableCell
+                className={cn(
+                    "p-0 border-r w-[25%]",
+                    isNew ? "border-blue-100/50" : "border-slate-100"
+                )}
+            >
+                <SearchSelect
+                    value={data.item_id}
+                    options={items}
+                    placeholder={isNew ? "Article..." : diff?.item?.name || "Article..."}
+                    open={openItem}
+                    onOpenChange={setOpenItem}
+                    onKeyDown={(e) => {
+                        {
+                            handleKeyDown(e, "item");
+                        }
+                    }}
+                    onSelect={(id) => {
+                        {
+                            handleDataChange({ item_id: id.toString() });
+
+                            setOpenItem(false);
+
+                            if (!isNew) {
+                                {
+                                    submitSave({ ...data, item_id: id.toString() });
+                                }
+                            }
+                        }
+                    }}
+                    className="border-none bg-transparent shadow-none w-full justify-start font-medium"
+                />
+            </TableCell>
+
+            {/* عمود الكمية */}
+            <TableCell
+                className={cn(
+                    "p-0 border-r",
+                    isNew ? "border-blue-100/50" : "border-slate-100"
+                )}
+            >
                 <Input
-                    ref={countRef}
-                    value={localData.unit_count}
-                    placeholder={isNew ? "0.00" : ""}
+                    value={data.unit_count}
+                    placeholder="0"
                     onChange={(e) => {
-                        setLocalData(prev => ({ ...prev, unit_count: e.target.value }));
+                        {
+                            handleDataChange({ unit_count: e.target.value });
+                        }
                     }}
                     onBlur={() => {
-                        if (!isNew && diff) {
-                            handleUpdate();
+                        {
+                            if (!isNew && diff) {
+                                {
+                                    submitSave();
+                                }
+                            }
                         }
                     }}
                     onKeyDown={(e) => {
-                        handleKeyDown(e, 'count');
+                        {
+                            handleKeyDown(e);
+                        }
                     }}
                     className={inputClass}
                     type="number"
                 />
             </TableCell>
 
-            <TableCell className={cn("p-0 border-r", isNew ? "border-blue-100/50" : "border-slate-100")}>
+            {/* عمود الثمن */}
+            <TableCell
+                className={cn(
+                    "p-0 border-r",
+                    isNew ? "border-blue-100/50" : "border-slate-100"
+                )}
+            >
                 <Input
-                    ref={priceRef}
-                    value={localData.real_price}
-                    placeholder={isNew ? "0.00" : ""}
+                    value={data.real_price}
+                    placeholder="0.00"
                     onChange={(e) => {
-                        setLocalData(prev => ({ ...prev, real_price: e.target.value }));
+                        {
+                            handleDataChange({ real_price: e.target.value });
+                        }
                     }}
                     onBlur={() => {
-                        if (!isNew && diff) {
-                            handleUpdate();
+                        {
+                            if (!isNew && diff) {
+                                {
+                                    submitSave();
+                                }
+                            }
                         }
                     }}
                     onKeyDown={(e) => {
-                        handleKeyDown(e, 'price');
+                        {
+                            handleKeyDown(e);
+                        }
                     }}
                     className={inputClass}
                     type="number"
                 />
             </TableCell>
 
-            <TableCell className={cn(
-                "text-right pr-6 font-bold",
-                isNew ? "text-slate-300 italic text-xs" : (() => {
-                    const value = Number(diff?.total_diff);
+            {/* عمود الفرق */}
+            <TableCell
+                className={cn(
+                    "text-right pr-6 font-bold",
+                    isNew
+                        ? "text-slate-300 italic text-xs"
+                        : (() => {
+                              const value = Number(diff?.total_diff);
 
-                    if (value < 0) {
-                        return "text-red-500";
-                    }
+                              if (value < 0) {
+                                  {
+                                      return "text-red-500";
+                                  }
+                              }
 
-                    if (value > 0) {
-                        return "text-green-600";
-                    }
+                              if (value > 0) {
+                                  {
+                                      return "text-green-600";
+                                  }
+                              }
 
-                    return "text-slate-600";
-                })()
-            )}>
-                {isNew ? "Auto" : (Number(diff?.total_diff) > 0 ? '+' : '') + Number(diff?.total_diff).toLocaleString()}
+                              {
+                                  return "text-slate-600";
+                              }
+                          })()
+                )}
+            >
+                {isNew
+                    ? "Auto"
+                    : (Number(diff?.total_diff) > 0 ? "+" : "") +
+                      Number(diff?.total_diff).toLocaleString()}
             </TableCell>
 
-            <TableCell className="p-0 text-center">
-                <div className={cn("flex justify-center h-10 items-center", !isNew && "opacity-0 group-hover:opacity-100")}>
+            {/* عمود الأكشن */}
+            <TableCell className="p-0 text-center w-15 min-w-15">
+                <div
+                    className={cn(
+                        "flex justify-center h-10 items-center",
+                        !isNew && "opacity-0 group-hover:opacity-100"
+                    )}
+                >
                     {loading ? (
-                        <Loader2 className={cn("h-4 w-4 animate-spin", isNew ? "text-blue-600" : "text-slate-400")} />
+                        <Loader2
+                            className={cn(
+                                "h-4 w-4 animate-spin",
+                                isNew ? "text-blue-600" : "text-slate-400"
+                            )}
+                        />
                     ) : (
                         <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => {
-                                if (isNew) {
-                                    handleUpdate({}, true);
-                                } else {
-                                    handleDelete();
+                                {
+                                    isNew ? submitSave() : handleDelete();
                                 }
                             }}
                             className={cn(
                                 "h-10 w-full rounded-none",
-                                isNew ? "text-blue-600 hover:bg-blue-100" : "text-slate-400 hover:text-red-600"
+                                isNew
+                                    ? "text-blue-600 hover:bg-blue-100"
+                                    : "text-slate-400 hover:text-red-600"
                             )}
                         >
                             {isNew ? <Plus className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />}

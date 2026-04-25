@@ -21,6 +21,7 @@ class InvoiceItem extends Model
         'item_id',
         'boat_id',
         'unit',
+        'box',
         'unit_count',
         'unit_price',
         'weight',
@@ -70,14 +71,27 @@ class InvoiceItem extends Model
             $item->amount = $item->unit_count * $item->unit_price;
         });
 
-        // 2. إعطاء آخر ترتيب للسطر الجديد تلقائياً
+        // 2. تحديث جميع الفروقات (Differences) فور تغيير الثمن الرئيسي
+        static::updated(function ($item) {
+            // نتحقق أولاً هل تغير الثمن فعلاً لتجنب الحلقات اللانهائية
+            if ($item->wasChanged('unit_price')) {
+                foreach ($item->differences as $diff) {
+                    // إعادة حساب الفرق بناءً على الثمن الجديد
+                    // total_diff = (الثمن الحقيقي - الثمن الجديد في الفاتورة) * الكمية
+                    $diff->total_diff = ($diff->real_price - $item->unit_price) * $diff->unit_count;
+                    $diff->save();
+                }
+            }
+        });
+
+        // 3. إعطاء آخر ترتيب للسطر الجديد تلقائياً
         static::creating(function ($item) {
             if (is_null($item->position)) {
                 $item->position = static::where('invoice_id', $item->invoice_id)->max('position') + 1;
             }
         });
 
-        // 3. Global Scope باش ديما يرجعوا السطور مرتبين بـ position
+        // 4. Global Scope باش ديما يرجعوا السطور مرتبين
         static::addGlobalScope('order', function (Builder $builder) {
             $builder->orderBy('position', 'asc');
         });

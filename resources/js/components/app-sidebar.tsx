@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { Banknote, BookOpen, Building2, CalendarClock, DoorOpen, FileText, FolderGit2, LayoutGrid, Package, Scale, Ship, Tags, User } from 'lucide-react';
+import { Banknote, BookOpen, Building2, CalendarClock, DoorOpen, FileText, FolderGit2, LayoutGrid, Package, Receipt, Scale, Ship, Tags, User } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -13,7 +13,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { customers, boats, categories, dashboard, invoices, items, officeRooms, payments, companies, sessions, differences } from '@/routes';
+import { customers, boats, categories, dashboard, invoices, items, officeRooms, payments, companies, sessions, differences, receipts } from '@/routes';
 import type { NavItem } from '@/types';
 
 const mainNavItems: NavItem[] = [
@@ -36,6 +36,11 @@ const mainNavItems: NavItem[] = [
         title: 'Clients',
         href: customers(),
         icon: User,
+    },
+    {
+        title: 'Bons de Réception',
+        href: receipts(),
+        icon: Receipt,
     },
     {
         title: 'Écarts de Prix',
@@ -90,7 +95,7 @@ const footerNavItems: NavItem[] = [
 export function AppSidebar() {
     return (
         <Sidebar collapsible="icon" variant="inset">
-            <SidebarHeader>
+            <SidebarHeader >
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>

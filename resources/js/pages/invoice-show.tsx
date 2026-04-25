@@ -1,17 +1,17 @@
-import { useState } from 'react';
-import { Head, router } from '@inertiajs/react';
-import { UniqueIdentifier, DragStartEvent, DragEndEvent, closestCenter, DndContext, DragOverlay, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { closestCenter, DndContext, DragEndEvent, DragOverlay, DragStartEvent, KeyboardSensor, PointerSensor, UniqueIdentifier, useSensor, useSensors } from '@dnd-kit/core';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
-import { Trash2, Copy, X, Printer, Camera } from 'lucide-react';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { Head, router } from '@inertiajs/react';
+import { Camera, Copy, Printer, Trash2, X } from 'lucide-react';
+import { useState } from 'react';
 
 // UI Components
-import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DeleteManyItemsDialog } from '@/components/delete-many-items';
+import InvoiceItemDragOverlay from '@/components/invoice-item-drag-overlay';
+import InvoiceItemRow from '@/components/invoice-item-row';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { DeleteManyItemsDialog } from '@/components/delete-many-items';
-import InvoiceItemRow from '@/components/invoice-item-row';
-import InvoiceItemDragOverlay from '@/components/invoice-item-drag-overlay';
+import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 // New Extracted Components & Hooks
 import { InvoiceHeader } from '@/components/invoice-header';
@@ -19,20 +19,21 @@ import { InvoiceStatsGrid } from '@/components/invoice-stats-grid';
 import { useInvoiceCalculations } from '@/hooks/use-invoice-calculations';
 
 // Types & Routes
-import { Invoice } from '@/types/invoice';
-import { Boat } from '@/types/boat';
-import { Item } from '@/types/item';
-import { InvoiceItem } from '@/types/invoice-item';
-import { bulkStore, destroyMany, duplicateMany, reorder } from '@/routes/invoices/items';
+import { DifferenceDialog } from '@/components/difference-dialog';
+import { ImportItemsDialog } from '@/components/import-items-dialog';
+import { ExportDropdown } from '@/components/export-dropdown';
 import { InvoicePrintFooter } from '@/components/print-invoice-footer';
 import { useInvoiceExport } from '@/hooks/use-invoice-export';
-import { InvoiceExportDropdown } from '@/components/invoice-export-dropdown';
-import { useInvoiceScreenshot } from '@/hooks/use-invoice-screenshot';
 import { useInvoiceImport } from '@/hooks/use-invoice-import';
-import { toast } from 'sonner';
-import { ImportItemsDialog } from '@/components/import-items-dialog';
-import { DifferenceDialog } from '@/components/difference-dialog';
+import AppLayout from '@/layouts/app-layout';
+import { bulkStore, destroyMany, duplicateMany, reorder } from '@/routes/invoices/items';
+import { Boat } from '@/types/boat';
 import { Customer } from '@/types/customers';
+import { Invoice } from '@/types/invoice';
+import { InvoiceItem } from '@/types/invoice-item';
+import { Item } from '@/types/item';
+import { toast } from 'sonner';
+import { useScreenshot } from '@/hooks/use-screenshot';
 
 interface Props {
     invoice: Invoice & { items: InvoiceItem[] };
@@ -41,13 +42,13 @@ interface Props {
     customers: Customer[];
 }
 
-export default function Show({ invoice, boats, items, customers }: Props) {
+export default function InvoiceShow({ invoice, boats, items, customers }: Props) {
     // --- State Management (Manual Synchronization) ---
     const [localItems, setLocalItems] = useState<InvoiceItem[]>(invoice.items || []);
     const [prevItems, setPrevItems] = useState(invoice.items);
 
     const { exportToExcel, exportToCSV, exportToPDF } = useInvoiceExport();
-    const { copyToClipboard } = useInvoiceScreenshot();
+    const { copyToClipboard } = useScreenshot();
 
     // State لـ Difference Dialog
     const [diffItem, setDiffItem] = useState<InvoiceItem | null>(null);
@@ -160,7 +161,7 @@ export default function Show({ invoice, boats, items, customers }: Props) {
     };
 
     const handleScreenshot = () => {
-        copyToClipboard();
+        copyToClipboard('invoice-content');
     };
 
     const { parsePasteData } = useInvoiceImport(boats, items);
@@ -233,7 +234,7 @@ export default function Show({ invoice, boats, items, customers }: Props) {
 
                 <ImportItemsDialog onImport={handleImport} />
 
-                <InvoiceExportDropdown
+                <ExportDropdown
                     onExport={handleExport}
                 />
             </div>
@@ -304,6 +305,7 @@ export default function Show({ invoice, boats, items, customers }: Props) {
                                 <TableHead className="text-right text-[10px] font-black uppercase tracking-tight text-slate-500">Prix Unitaire</TableHead>
                                 <TableHead className="text-center text-[10px] font-black uppercase tracking-tight text-slate-500">Unité</TableHead>
                                 <TableHead className="text-center text-[10px] font-black uppercase tracking-tight text-slate-500">Poids</TableHead>
+                                <TableHead className="text-center text-[10px] font-black uppercase tracking-tight text-slate-500">Caisses</TableHead>
                                 <TableHead className="text-right px-6 text-[10px] font-black uppercase tracking-tight text-slate-500">Valeur DH</TableHead>
                                 <TableHead className="w-12 print:hidden"></TableHead>
                             </TableRow>
@@ -370,8 +372,21 @@ export default function Show({ invoice, boats, items, customers }: Props) {
                     onOpenChange={setIsDiffOpen}
                     item={diffItem}
                     customers={customers}
+                    items={items}
                 />
             )}
         </div>
     );
 }
+
+
+InvoiceShow.layout = (page: React.ReactNode) => (
+    <AppLayout 
+        breadcrumbs={[
+            { title: 'Factures', href: '/invoices' },
+            { title: 'Détails de la Facture', href: '#' }, // هادي هي الـ Current Page
+        ]}
+    >
+        {page}
+    </AppLayout>
+);

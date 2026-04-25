@@ -17,7 +17,7 @@ export function InvoiceHeader({ invoice }: Props) {
                 </p>
             </div>
             <div className="text-right">
-                <p className="text-sm font-bold">{invoice.account?.name}</p>
+                <p className="text-sm font-bold">{invoice.billable?.name}</p>
                 <p className="text-[10px] text-slate-400 font-medium">
                     {formatDateDisplay(invoice.date)}
                 </p>

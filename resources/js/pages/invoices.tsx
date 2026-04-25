@@ -211,7 +211,7 @@ export default function Invoices({ invoices, billables, officeRooms, sessions }:
                                         colSpan={9}
                                         className="py-24 text-center font-medium text-muted-foreground italic"
                                     >
-                                        Aucune facture enregistrée pour le moment.
+                                        Aucun bon enregistré pour le moment.
                                     </TableCell>
                                 </TableRow>
                             )}
@@ -221,7 +221,7 @@ export default function Invoices({ invoices, billables, officeRooms, sessions }:
                     {/* Pagination */}
                     <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50/50 px-6 py-4">
                         <div className="text-xs font-bold tracking-widest text-slate-500 uppercase">
-                            {invoices.total} Factures au total
+                            {invoices.total} Bons au total
                         </div>
 
                         <div className="flex gap-2">

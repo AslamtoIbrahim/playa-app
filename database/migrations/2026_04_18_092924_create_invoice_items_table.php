@@ -21,6 +21,7 @@ return new class extends Migration
             $table->foreignId('boat_id')->nullable()->constrained('boats')->restrictOnDelete();
 
             $table->string('unit')->nullable();           // مثلا: صندوق، كيلو، وحدة
+            $table->integer('box')->default(0);
             $table->integer('position')->default(0);
             $table->integer('unit_count')->default(0);    // عدد الوحدات (مثلا 10 صنادق)
             $table->decimal('unit_price', 15, 2)->default(0); // ثمن الوحدة

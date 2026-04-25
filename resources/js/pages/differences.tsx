@@ -94,3 +94,12 @@ export default function Differences({ reports }: Props) {
         </div>
     );
 }
+
+Differences.layout = {
+    breadcrumbs: [
+        {
+            title: 'Differences',
+            href: '/differences',
+        },
+    ],
+};

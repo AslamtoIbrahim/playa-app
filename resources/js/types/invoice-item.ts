@@ -8,6 +8,7 @@ export interface InvoiceItem {
     item_id: number;
     boat_id: number;
     unit: string;
+    box: number;
     unit_count: number;
     unit_price: number;
     weight: number;
@@ -28,4 +29,5 @@ export interface InvoiceItemFormData {
     unit_price: number | string;
     weight: number | string;
     unit: string;
+    box: number | string;
 }

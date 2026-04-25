@@ -10,14 +10,14 @@ import { InvoiceItem } from "@/types/invoice-item";
 import { router } from "@inertiajs/react";
 import { ArrowDownToLine, ArrowUpToLine, Copy, MoreVertical, Scale, Trash2 } from "lucide-react";
 
-interface RowActionsProps {
+interface InvoiceRowActionsProps {
     invoiceId: number;
     item: InvoiceItem;
     data: any;
     onOpenDifference: (item: InvoiceItem) => void; // إضافة prop لفتح الـ Dialog
 }
 
-export function RowActions({ invoiceId, item, data, onOpenDifference }: RowActionsProps) {
+export function InvoiceRowActions({ invoiceId, item, data, onOpenDifference }: InvoiceRowActionsProps) {
 
     const handleAddRow = (direction: 'above' | 'below', duplicate: boolean = false) => {
         router.post(store(invoiceId), {

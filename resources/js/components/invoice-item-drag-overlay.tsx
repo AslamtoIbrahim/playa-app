@@ -23,11 +23,6 @@ const InvoiceItemDragOverlay = ({ items }: Props) => {
                                 <GripVertical className="h-4 w-4 mx-auto" />
                             </TableCell>
 
-                            {/* Real Shadcn Checkbox (Checked by default since it's being dragged) */}
-                            {/* <TableCell className="w-10 px-2 text-center">
-                                <Checkbox checked={true} className="pointer-events-none" />
-                            </TableCell> */}
-
                             {/* Bateau */}
                             <TableCell className="text-xs font-medium py-2 min-w-[120px]">
                                 {item.boat?.name || '-'}

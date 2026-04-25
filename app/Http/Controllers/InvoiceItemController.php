@@ -21,19 +21,22 @@ class InvoiceItemController extends Controller
             'unit_price' => 'nullable|numeric',
             'weight'     => 'nullable|numeric',
             'unit'       => 'nullable|string',
+            'box'        => 'nullable|integer', // Field jdid
             'target_id'  => 'nullable|exists:invoice_items,id',
             'direction'  => 'nullable|in:above,below',
         ]);
 
         $unitCount = floatval($validated['unit_count'] ?? 0);
+
         $unitPrice = floatval($validated['unit_price'] ?? 0);
+
         $rowAmount = $unitCount * $unitPrice;
 
         DB::transaction(function () use ($request, $invoice, $validated, $rowAmount, $unitCount, $unitPrice) {
             $position = 0;
 
             if ($request->filled('target_id') && $request->filled('direction')) {
-                $targetItem = \App\Models\InvoiceItem::findOrFail($validated['target_id']);
+                $targetItem = InvoiceItem::findOrFail($validated['target_id']);
 
                 if ($validated['direction'] === 'above') {
                     $position = $targetItem->position;
@@ -43,11 +46,7 @@ class InvoiceItemController extends Controller
                     $invoice->items()->where('position', '>=', $position)->increment('position');
                 }
             } else {
-                // --- التعديل هنا ---
-                // السطر الجديد غاياخد Position 0 (يعني لفوق كاع)
                 $position = 0;
-
-                // دفع كاع السطور اللي كاينين حالياً بـ +1 لتحت باش نخويو رقم 0 للسطر الجديد
                 $invoice->items()->increment('position');
             }
 
@@ -55,6 +54,7 @@ class InvoiceItemController extends Controller
                 'boat_id'    => $validated['boat_id'] ?? null,
                 'item_id'    => $validated['item_id'] ?? null,
                 'unit'       => $validated['unit'] ?? 'caisse',
+                'box'        => $validated['box'] ?? 0, // Added here
                 'unit_count' => $unitCount,
                 'unit_price' => $unitPrice,
                 'weight'     => floatval($validated['weight'] ?? 0),
@@ -63,12 +63,105 @@ class InvoiceItemController extends Controller
             ]);
 
             $invoice->refresh();
+
             $invoice->calculateTotals();
         });
 
         return back();
     }
 
+    /**
+     * تحديث سطر موجود
+     */
+    public function update(Request $request, Invoice $invoice, InvoiceItem $item)
+    {
+        $validated = $request->validate([
+            'item_id'    => 'nullable|exists:items,id',
+            'boat_id'    => 'nullable|exists:boats,id',
+            'unit_count' => 'nullable|numeric',
+            'unit_price' => 'nullable|numeric',
+            'weight'     => 'nullable|numeric',
+            'unit'       => 'nullable|string',
+            'box'        => 'nullable|integer', // Field jdid
+            'position'   => 'nullable|integer',
+        ]);
+
+        $unitCount = floatval($validated['unit_count'] ?? $item->unit_count ?? 0);
+
+        $unitPrice = floatval($validated['unit_price'] ?? $item->unit_price ?? 0);
+
+        $rowAmount = $unitCount * $unitPrice;
+
+        DB::transaction(function () use ($item, $invoice, $validated, $rowAmount) {
+            $item->update([
+                'item_id'    => $validated['item_id'] ?? $item->item_id,
+                'boat_id'    => $validated['boat_id'] ?? $item->boat_id,
+                'unit'       => $validated['unit'] ?? $item->unit ?? 'caisse',
+                'box'        => $validated['box'] ?? $item->box ?? 0, // Added here
+                'unit_count' => $validated['unit_count'] ?? $item->unit_count ?? 0,
+                'unit_price' => $validated['unit_price'] ?? $item->unit_price ?? 0,
+                'weight'     => $validated['weight'] ?? $item->weight ?? 0,
+                'amount'     => $rowAmount,
+                'position'   => $validated['position'] ?? $item->position,
+            ]);
+
+            $invoice->refresh();
+
+            $invoice->calculateTotals();
+        });
+
+        return back();
+    }
+
+    /**
+     * إضافة مجموعة سطور
+     */
+    public function bulkStore(Request $request, Invoice $invoice)
+    {
+        $validated = $request->validate([
+            'items' => 'required|array',
+            'items.*.boat_id' => 'nullable|exists:boats,id',
+            'items.*.item_id' => 'nullable|exists:items,id',
+            'items.*.unit_count' => 'required|numeric',
+            'items.*.unit_price' => 'required|numeric',
+            'items.*.unit' => 'required|string',
+            'items.*.box' => 'nullable|integer', // Field jdid
+            'items.*.weight' => 'nullable|numeric',
+        ]);
+
+        try {
+            DB::transaction(function () use ($invoice, $validated) {
+                $lastPosition = $invoice->items()->max('position') ?? -1;
+
+                $itemsData = collect($validated['items'])->map(function ($item, $index) use ($invoice, $lastPosition) {
+                    return [
+                        'invoice_id' => $invoice->id,
+                        'boat_id'    => $item['boat_id'] ?? null,
+                        'item_id'    => $item['item_id'] ?? null,
+                        'unit'       => $item['unit'] ?? 'caisse',
+                        'box'        => $item['box'] ?? 0, // Added here
+                        'unit_count' => $item['unit_count'],
+                        'unit_price' => $item['unit_price'],
+                        'weight'     => $item['weight'] ?? 0,
+                        'amount'     => $item['unit_count'] * $item['unit_price'],
+                        'position'   => $lastPosition + ($index + 1),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                })->toArray();
+
+                InvoiceItem::insert($itemsData);
+
+                $invoice->refresh();
+
+                $invoice->calculateTotals();
+            });
+
+            return back()->with('success', count($validated['items']) . ' articles importés.');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Erreur lors de l\'importation.');
+        }
+    }
 
     /**
      * تكرار عدة سطور مختارة
@@ -82,127 +175,39 @@ class InvoiceItemController extends Controller
 
         try {
             DB::transaction(function () use ($invoice, $validated) {
-                // 1. جيب السطور اللي بغينا نذوبلو مرتبين حسب البوزيسيون ديالهم
                 $itemsToDuplicate = $invoice->items()
                     ->whereIn('id', $validated['ids'])
                     ->orderBy('position', 'asc')
                     ->get();
 
-                if ($itemsToDuplicate->isEmpty()) return;
+                if ($itemsToDuplicate->isEmpty()) {
+                    return;
+                }
 
-                // 2. حدد أكبر بوزيسيون في السطور المختارة (باش نحطو تحتها)
                 $lastSelectedPosition = $itemsToDuplicate->max('position');
+
                 $count = $itemsToDuplicate->count();
 
-                // 3. "دفع" كاع السطور اللي كاينين تحت هاد البوزيسيون بـ $count
-                // باش نخويو بلاصة للنسخ الجداد
                 $invoice->items()
                     ->where('position', '>', $lastSelectedPosition)
                     ->increment('position', $count);
 
-                // 4. كريي النسخ الجداد في البلاصة اللي خوينا
                 foreach ($itemsToDuplicate as $index => $item) {
                     $newItem = $item->replicate();
-                    // كياخد البوزيسيون اللي مباشرة تحت آخر واحد سيلكتينا
+                    
                     $newItem->position = $lastSelectedPosition + ($index + 1);
+                    
                     $newItem->save();
                 }
 
                 $invoice->refresh();
+
                 $invoice->calculateTotals();
             });
 
-            return back()->with('success', 'Lignes dupliquées avec succès.');
+            return back()->with('success', 'Lignes dupliquées.');
         } catch (\Exception $e) {
-            return back()->with('error', 'Erreur lors de la duplication.');
-        }
-    }
-
-    /**
-     * تحديث سطر موجود
-     */
-    public function update(Request $request, Invoice $invoice, InvoiceItem $item)
-    {
-        // 1. ردينا كلشي nullable باش يقبل التعديلات الجزئية
-        $validated = $request->validate([
-            'item_id'    => 'nullable|exists:items,id',
-            'boat_id'    => 'nullable|exists:boats,id',
-            'unit_count' => 'nullable|numeric',
-            'unit_price' => 'nullable|numeric',
-            'weight'     => 'nullable|numeric',
-            'unit'       => 'nullable|string',
-            'position'   => 'nullable|integer',
-        ]);
-
-        // 2. حساب الـ Amount مع معالجة القيم الفارغة (حيت يقدر يكون واحد فيهم null)
-        $unitCount = floatval($validated['unit_count'] ?? $item->unit_count ?? 0);
-        $unitPrice = floatval($validated['unit_price'] ?? $item->unit_price ?? 0);
-        $rowAmount = $unitCount * $unitPrice;
-
-        DB::transaction(function () use ($item, $invoice, $validated, $rowAmount) {
-            $item->update([
-                'item_id'    => $validated['item_id'] ?? $item->item_id,
-                'boat_id'    => $validated['boat_id'] ?? $item->boat_id,
-                'unit'       => $validated['unit'] ?? $item->unit ?? 'caisse',
-                'unit_count' => $validated['unit_count'] ?? $item->unit_count ?? 0,
-                'unit_price' => $validated['unit_price'] ?? $item->unit_price ?? 0,
-                'weight'     => $validated['weight'] ?? $item->weight ?? 0,
-                'amount'     => $rowAmount,
-                'position'   => $validated['position'] ?? $item->position,
-            ]);
-
-            $invoice->refresh();
-            $invoice->calculateTotals();
-        });
-
-        return back();
-    }
-
-
-    public function bulkStore(Request $request, Invoice $invoice)
-    {
-        $validated = $request->validate([
-            'items' => 'required|array',
-            'items.*.boat_id' => 'nullable|exists:boats,id',
-            'items.*.item_id' => 'nullable|exists:items,id',
-            'items.*.unit_count' => 'required|numeric',
-            'items.*.unit_price' => 'required|numeric',
-            'items.*.unit' => 'required|string',
-            'items.*.weight' => 'nullable|numeric',
-        ]);
-
-        try {
-            DB::transaction(function () use ($invoice, $validated) {
-                // 1. نعرفو آخر Position كاين دابا باش نزيدو تحت منه
-                $lastPosition = $invoice->items()->max('position') ?? -1;
-
-                $itemsData = collect($validated['items'])->map(function ($item, $index) use ($invoice, $lastPosition) {
-                    return [
-                        'invoice_id' => $invoice->id,
-                        'boat_id'    => $item['boat_id'] ?? null,
-                        'item_id'    => $item['item_id'] ?? null,
-                        'unit'       => $item['unit'] ?? 'caisse',
-                        'unit_count' => $item['unit_count'],
-                        'unit_price' => $item['unit_price'],
-                        'weight'     => $item['weight'] ?? 0,
-                        'amount'     => $item['unit_count'] * $item['unit_price'],
-                        'position'   => $lastPosition + ($index + 1), // ترتيبهم تحت السطور اللي كاينين
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ];
-                })->toArray();
-
-                // 2. Insert Bulk
-                InvoiceItem::insert($itemsData);
-
-                // 3. تحديث حسابات الفاتورة ضروري جداً
-                $invoice->refresh();
-                $invoice->calculateTotals();
-            });
-
-            return back()->with('success', count($validated['items']) . ' articles importés avec succès !');
-        } catch (\Exception $e) {
-            return back()->with('error', 'Erreur lors de l\'importation groupée.');
+            return back()->with('error', 'Erreur duplication.');
         }
     }
 
@@ -228,28 +233,27 @@ class InvoiceItemController extends Controller
     }
 
     /**
-     * حذف سطر من الفاتورة
+     * حذف سطر
      */
     public function destroy(Invoice $invoice, InvoiceItem $item)
     {
         try {
             DB::transaction(function () use ($invoice, $item) {
                 $item->delete();
+
                 $invoice->refresh();
+
                 $invoice->calculateTotals();
             });
 
-            return back()->with('success', 'La ligne a été supprimée. ✅');
+            return back()->with('success', 'Supprimé. ✅');
         } catch (\Exception $e) {
-            return back()->with('error', 'Erreur lors de la suppression.');
+            return back()->with('error', 'Erreur suppression.');
         }
     }
 
-
-
-
     /**
-     * حذف عدة سطور دفعة واحدة
+     * حذف عدة سطور
      */
     public function destroyMany(Request $request, Invoice $invoice)
     {
@@ -260,17 +264,16 @@ class InvoiceItemController extends Controller
 
         try {
             DB::transaction(function () use ($invoice, $validated) {
-                // حذف السطور المختارة المرتبطة حصراً بهاد الفاتورة (أمان إضافي)
                 $invoice->items()->whereIn('id', $validated['ids'])->delete();
 
-                // تحديث الحسابات الإجمالية للفاتورة
                 $invoice->refresh();
+
                 $invoice->calculateTotals();
             });
 
-            return back()->with('success', count($validated['ids']) . ' lignes supprimées. ✅');
+            return back()->with('success', count($validated['ids']) . ' supprimés. ✅');
         } catch (\Exception $e) {
-            return back()->with('error', 'Erreur lors de la suppression groupée.');
+            return back()->with('error', 'Erreur suppression.');
         }
     }
 }

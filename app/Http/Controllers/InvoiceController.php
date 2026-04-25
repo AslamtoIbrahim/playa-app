@@ -134,7 +134,7 @@ class InvoiceController extends Controller
     {
         $invoice->load(['billable', 'officeRoom', 'items.item', 'items.boat', 'items.differences.customer', 'session']);
 
-        return Inertia::render('show', [
+        return Inertia::render('invoice-show', [
             'invoice'   => $invoice,
             'boats'     => Boat::all(['id', 'name']),
             'items'     => Item::all(['id', 'name']),

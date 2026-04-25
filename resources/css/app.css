@@ -142,6 +142,20 @@
     }
 }
 
+
+/* .screenshot-mode {
+    overflow: hidden !important;
+}
+
+.screenshot-mode *::-webkit-scrollbar {
+    display: none !important;  
+} */
+
+.screenshot-mode * {
+    scrollbar-width: none !important;  
+    -ms-overflow-style: none !important;  
+}
+
 @layer components {
     /* هادي هي النسخة ديال Tailwind */
     .screenshot-mode {
