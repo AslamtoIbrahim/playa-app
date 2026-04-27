@@ -7,9 +7,10 @@ import { Head, router } from '@inertiajs/react';
 interface Report {
     customer_id: number;
     invoice_date: string;
+    boat_id: number;
     total_diff_amount: number;
     items_count: number;
-    boat_name?: string;  
+    boat_name?: string;
     customer?: Customer;
 }
 
@@ -19,8 +20,9 @@ interface Props {
 
 export default function Differences({ reports }: Props) {
 
-    const viewReport = (customerId: number, date: string): void => {
-        router.visit(`/differences/report?customer_id=${customerId}&date=${date}`);
+    const viewReport = (customerId: number, date: string, boatId: number): void => {
+        // زدنا boat_id هنا
+        router.visit(`/differences/report?customer_id=${customerId}&date=${date}&boat_id=${boatId}`);
     };
 
     return (
@@ -44,7 +46,7 @@ export default function Differences({ reports }: Props) {
                             <TableRow className="hover:bg-transparent">
                                 <TableHead className="font-bold">Date Facture</TableHead>
                                 <TableHead className="font-bold">Client</TableHead>
-                                <TableHead className="font-bold text-center">Bateau</TableHead>  
+                                <TableHead className="font-bold text-center">Bateau</TableHead>
                                 <TableHead className="text-right font-bold">Total Écart</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -58,11 +60,10 @@ export default function Differences({ reports }: Props) {
                             )}
 
                             {reports.map((item) => (
-                                <TableRow 
-                                    key={`${item.customer_id}-${item.invoice_date}`} 
+                                <TableRow
+                                    key={`${item.customer_id}-${item.invoice_date}`}
                                     className="group cursor-pointer hover:bg-slate-50 transition-colors"
-                                    onClick={() => viewReport(item.customer_id, item.invoice_date)}
-                                >
+                                    onClick={() => viewReport(item.customer_id, item.invoice_date, item.boat_id)}                                >
                                     <TableCell className="font-medium text-slate-600">
                                         {formatDateDisplay(item.invoice_date)}
                                     </TableCell>
@@ -78,9 +79,8 @@ export default function Differences({ reports }: Props) {
                                     </TableCell>
 
                                     <TableCell className="text-right">
-                                        <span className={`font-black text-sm ${
-                                            Number(item.total_diff_amount) >= 0 ? 'text-slate-900' : 'text-rose-600'
-                                        }`}>
+                                        <span className={`font-black text-sm ${Number(item.total_diff_amount) >= 0 ? 'text-slate-900' : 'text-rose-600'
+                                            }`}>
                                             {Number(item.total_diff_amount) > 0 ? '+' : ''}
                                             {Number(item.total_diff_amount).toLocaleString()} DH
                                         </span>

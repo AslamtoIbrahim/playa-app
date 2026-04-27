@@ -20,8 +20,8 @@ export function useReceiptExport() {
      */
     const prepareData = (items: ReceiptItem[]) => {
         return items.map((row) => ({
-            item: row.item?.name || '',
             boxes: row.box || 0,
+            item: row.item?.name || '',
             qty: row.unit_count || 0,
             price: Number(row.real_price).toFixed(2),
             total: (row.unit_count * row.real_price).toFixed(2),
@@ -39,8 +39,8 @@ export function useReceiptExport() {
         const data = prepareData(receipt.items);
 
         const excelData = data.map((d) => ({
-            ARTICLE: d.item,
             CAISSES: Number(d.boxes),
+            ARTICLE: d.item,
             QUANTITÉ: Number(d.qty),
             'PRIX UNITAIRE': Number(d.price),
             'TOTAL DH': Number(d.total),

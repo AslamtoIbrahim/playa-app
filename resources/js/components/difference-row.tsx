@@ -18,6 +18,7 @@ interface RowProps {
     invoiceItemId?: number;
     onSuccess?: (newDiff: Difference) => void;
     onDelete?: (id: number) => void;
+    defaultCustomerId?: number;
 }
 
 export function DifferenceRow({
@@ -29,6 +30,7 @@ export function DifferenceRow({
     invoiceItemId,
     onSuccess,
     onDelete,
+    defaultCustomerId,
 }: RowProps) {
     const {
         data,
@@ -48,6 +50,7 @@ export function DifferenceRow({
         invoiceItemId,
         onSuccess,
         onDelete,
+        defaultCustomerId,
     });
 
     const inputClass =
@@ -63,14 +66,15 @@ export function DifferenceRow({
             {/* عمود الكليان */}
             <TableCell
                 className={cn(
-                    "p-0 border-r w-[25%]",
+                    "p-0 border-r w-[20%]",
                     isNew ? "border-blue-100/50" : "border-slate-100"
                 )}
             >
                 <SearchSelect
                     value={data.customer_id}
                     options={customers}
-                    placeholder={isNew ? "Client..." : diff?.customer?.name || "Client..."}
+                    // placeholder={isNew ? "Client..." : diff?.customer?.name || "Client..."}
+                    placeholder="Client..."
                     open={openCustomer}
                     onOpenChange={setOpenCustomer}
                     onKeyDown={(e) => {
@@ -91,14 +95,14 @@ export function DifferenceRow({
                             }
                         }
                     }}
-                    className="border-none bg-transparent shadow-none w-full justify-start font-medium"
+                    className="border-none bg-transparent shadow-none w-full justify-between capitalize font-medium"
                 />
             </TableCell>
 
             {/* عمود السلعة (Article) */}
             <TableCell
                 className={cn(
-                    "p-0 border-r w-[25%]",
+                    "p-0 border-r  ",
                     isNew ? "border-blue-100/50" : "border-slate-100"
                 )}
             >
@@ -126,7 +130,7 @@ export function DifferenceRow({
                             }
                         }
                     }}
-                    className="border-none bg-transparent shadow-none w-full justify-start font-medium"
+                    className="border-none bg-transparent shadow-none capitalize font-medium"
                 />
             </TableCell>
 
@@ -167,7 +171,7 @@ export function DifferenceRow({
             {/* عمود الثمن */}
             <TableCell
                 className={cn(
-                    "p-0 border-r",
+                    "p-0 border-r w-[25%]",
                     isNew ? "border-blue-100/50" : "border-slate-100"
                 )}
             >
@@ -201,7 +205,7 @@ export function DifferenceRow({
             {/* عمود الفرق */}
             <TableCell
                 className={cn(
-                    "text-right pr-6 font-bold",
+                    "text-right pr-6 font-bold w-[15%]",
                     isNew
                         ? "text-slate-300 italic text-xs"
                         : (() => {

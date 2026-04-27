@@ -1,6 +1,7 @@
 import { Boat } from './boat';
 import { Item } from './item';
 import { Difference } from './difference';
+import { Invoice } from './invoice';
 
 export interface InvoiceItem {
     id: number;

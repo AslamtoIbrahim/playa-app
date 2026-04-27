@@ -82,6 +82,8 @@ export default function ReceiptShow({ receipt, items }: Props) {
     const handleImport = (text: string) => {
         const rawData = parsePasteData(text);
 
+        console.log('msg',rawData);
+
         if (rawData.length === 0) {
             toast.error("Aucune donnée valide trouvée.");
 
@@ -134,7 +136,9 @@ export default function ReceiptShow({ receipt, items }: Props) {
     };
 
     const handleBulkDuplicate = () => {
-        if (selectedIds.length === 0) return;
+        if (selectedIds.length === 0) {
+            return;
+        }
 
         router.post(duplicateMany(receipt.id), { ids: selectedIds }, {
             onSuccess: () => {
@@ -285,11 +289,13 @@ export default function ReceiptShow({ receipt, items }: Props) {
                                             onCheckedChange={(checked) => setSelectedIds(checked ? localItems.map(i => i.id) : [])}
                                         />
                                     </TableHead>
-                                    <TableHead className="text-center text-[10px] font-bold uppercase tracking-widest text-slate-500 w-24 italic">Caisses</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase tracking-widest text-slate-500 italic">Espèces</TableHead>
-                                    <TableHead className="text-center text-[10px] font-bold uppercase tracking-widest text-slate-500 w-32 italic">Quantité</TableHead>
-                                    <TableHead className="text-right text-[10px] font-bold uppercase tracking-widest text-slate-500 w-32 italic">Prix Unitaire</TableHead>
-                                    <TableHead className="text-right px-8 text-[10px] font-bold uppercase tracking-widest text-slate-500 w-40 italic">Total DH</TableHead>
+                                    <TableHead className="text-center font-bold text-foreground">Caisses</TableHead>
+
+                                    <TableHead className="w-[30%] font-bold text-foreground">Article</TableHead>
+                                    <TableHead className="text-center font-bold text-foreground">Quantité</TableHead>
+                                    <TableHead className="text-center font-bold text-foreground">Prix Unitaire</TableHead>
+                                    <TableHead className="text-center font-bold text-foreground">Montant</TableHead>
+
                                     <TableHead className="w-12 print:hidden"></TableHead>
                                 </TableRow>
                             </TableHeader>

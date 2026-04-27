@@ -11,6 +11,7 @@ interface UseDifferenceRowProps {
     invoiceItemId?: number;
     onSuccess?: (newDiff: Difference) => void;
     onDelete?: (id: number) => void;
+    defaultCustomerId?: number;
 }
 
 export function useDifferenceRow({
@@ -20,6 +21,7 @@ export function useDifferenceRow({
     invoiceItemId,
     onSuccess,
     onDelete,
+    defaultCustomerId
 }: UseDifferenceRowProps) {
     const [loading, setLoading] = useState<boolean>(false);
 
@@ -27,8 +29,10 @@ export function useDifferenceRow({
 
     const [openItem, setOpenItem] = useState<boolean>(false);
 
+    console.log('msg',diff?.customer_id.toString(), defaultCustomerId?.toString());
+
     const [data, setData] = useState({
-        customer_id: diff?.customer_id.toString() || '',
+        customer_id: diff?.customer_id.toString() || defaultCustomerId?.toString() || '',
         item_id: diff?.item_id?.toString() || '',
         unit_count: diff?.unit_count.toString() || '',
         real_price: diff?.real_price.toString() || '',

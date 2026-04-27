@@ -3,39 +3,43 @@ import { ReceiptItem } from '@/types/receipt-item';
 
 export function useReceiptImport(items: Item[]) {
     const parsePasteData = (text: string): Partial<ReceiptItem>[] => {
-        // 1. تقسيم النص لأسطر وتنظيف الفراغات
+        // 1. تقسيم النص وتنظيف الأسطر
         const lines = text.trim().split('\n').filter((line) => {
             return line.trim() !== '';
         });
 
-        // 2. معالجة كل سطر وتحويله لـ Object
+        // 2. معالجة كل سطر (الترتيب: Caisses -> Espèce -> Quantité -> Prix)
         const parsedRows = lines.map((line): Partial<ReceiptItem> | null => {
-            const columns = line.split(/\t|,/).map((c) => {
-                return c.trim();
-            });
+            const columns = line.split(/\t/).map(c => c.trim());
 
-            // الترتيب المتوقع حسب الجدول: 0:Caisses, 1:Espèce, 2:Quantité, 3:Prix Unitaire
+            // الترتيب حسب الـ Export اللي صيفطتي في الصورة
             const [caisses, itemName, qte, prix] = columns;
 
-            // البحث عن النوع (Espèce) في قائمة السلع
-            const item = items.find((i) => {
-                return i.name.toLowerCase() === itemName?.toLowerCase();
-            });
+            // البحث عن السلعة
+            const item = items.find(i => i.name.toLowerCase() === itemName?.toLowerCase());
 
-            // إذا مالقاش النوع (غالباً سطر العناوين)، كنرجعو null
+            // إذا مالقاش السلعة (مثلاً سطر العناوين)، كنرجعو null
             if (!item) {
+                console.warn(`Item non trouvé: "${itemName}"`);
+
                 return null;
             }
 
+            /**
+             * هنا السر: كنستعملو المسميات اللي كيتسناها الـ Backend Controller
+             * unit_count = qte
+             * real_price = prix
+             * box = caisses
+             */
             return {
                 item_id: item.id,
-                boxes: parseInt(caisses) || 0,
-                qty: parseFloat(qte?.replace(',', '.')) || 0,
-                price: parseFloat(prix?.replace(',', '.')) || 0,
+                box: parseInt(caisses) || 0,
+                unit_count: parseFloat(qte?.replace(',', '.')) || 0,
+                real_price: parseFloat(prix?.replace(/\s/g, '').replace(/\./g, '').replace(',', '.')) || 0,
             } as Partial<ReceiptItem>;
         });
 
-        // 3. الفلترة النهائية لإزالة السطور الفارغة أو غير المتطابقة
+        // 3. الفلترة
         return parsedRows.filter((row): row is Partial<ReceiptItem> => {
             return row !== null;
         });

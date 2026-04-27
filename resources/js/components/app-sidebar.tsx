@@ -43,7 +43,7 @@ const mainNavItems: NavItem[] = [
         icon: Receipt,
     },
     {
-        title: 'Écarts de Prix',
+        title: 'Differences',
         href: differences(),
         icon: Scale,
     },

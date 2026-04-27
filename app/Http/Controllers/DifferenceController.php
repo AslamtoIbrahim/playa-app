@@ -13,24 +13,53 @@ class DifferenceController extends Controller
 {
     public function index()
     {
-        $reports = Difference::leftJoin('invoice_items', 'differences.invoice_item_id', '=', 'invoice_items.id')
+        // 1. نجبدو الـ Differences هوما الأولين (هادو هوما الأساس)
+        $differencesQuery = DB::table('differences')
+            ->leftJoin('invoice_items', 'differences.invoice_item_id', '=', 'invoice_items.id')
             ->leftJoin('invoices', 'invoice_items.invoice_id', '=', 'invoices.id')
-            ->leftJoin('boats', 'invoice_items.boat_id', '=', 'boats.id')
             ->select(
                 'differences.customer_id',
-                // استخراج التاريخ بشكل صريح لضمان ظهوره في الفرونت إند
+                'invoice_items.boat_id',
                 DB::raw('COALESCE(invoices.date, DATE(differences.created_at)) as invoice_date'),
-                DB::raw('SUM(differences.total_diff) as total_diff_amount'),
-                DB::raw('COUNT(differences.id) as items_count'),
-                DB::raw('GROUP_CONCAT(DISTINCT boats.name) as boat_name')
+                DB::raw('SUM(differences.total_diff) as diff_amount'),
+                DB::raw('COUNT(differences.id) as diff_count')
             )
-            ->with(['customer'])
-            ->groupBy('differences.customer_id', 'invoice_date') // التجميع بالـ Alias الموحد
-            ->orderBy('invoice_date', 'desc')
-            ->get();
+            ->groupBy('differences.customer_id', 'invoice_items.boat_id', 'invoice_date');
+
+        // 2. نجيبو النتائج ديال الـ Differences هي الأولى
+        $diffResults = $differencesQuery->get();
+
+        // 3. دابا نتمشاو على كل Difference ونشوفو واش كاين شي Receipt مطابق ليها
+        $reports = $diffResults->map(function ($diff) {
+            // كنقلبو على الـ Receipts اللي عندهم نفس الكليان، الباطو، والتاريخ
+            $receiptAmount = DB::table('receipt_items')
+                ->join('receipts', 'receipt_items.receipt_id', '=', 'receipts.id')
+                ->where('receipts.customer_id', $diff->customer_id)
+                ->where('receipts.boat_id', $diff->boat_id)
+                ->whereDate('receipts.date', $diff->invoice_date)
+                ->select(
+                    DB::raw('SUM(receipt_items.unit_count * receipt_items.real_price) as total_receipt'),
+                    DB::raw('COUNT(receipt_items.id) as receipt_count')
+                )
+                ->first();
+
+            // كنجمعو الحساب: Diff + Receipt (إلا لقى شي حاجة)
+            $totalAmount = (float)$diff->diff_amount + (float)($receiptAmount->total_receipt ?? 0);
+            $totalItems = $diff->diff_count + ($receiptAmount->receipt_count ?? 0);
+
+            return (object)[
+                'customer_id' => $diff->customer_id,
+                'boat_id' => $diff->boat_id,
+                'invoice_date' => $diff->invoice_date,
+                'total_diff_amount' => $totalAmount,
+                'items_count' => $totalItems,
+                'customer' => \App\Models\Customer::find($diff->customer_id),
+                'boat_name' => \App\Models\Boat::find($diff->boat_id)?->name,
+            ];
+        });
 
         return Inertia::render('differences', [
-            'reports' => $reports
+            'reports' => $reports->values() // values() باش ترجع Array نقية لـ Inertia
         ]);
     }
 
@@ -38,37 +67,73 @@ class DifferenceController extends Controller
     {
         $customerId = $request->query('customer_id');
         $date = $request->query('date');
+        $boatId = $request->query('boat_id');
 
-        $rawDetails = Difference::where('customer_id', $customerId)
-            ->where(function ($query) use ($date) {
-                $query->whereHas('invoiceItem.invoice', function ($q) use ($date) {
-                    $q->whereDate('date', $date);
-                })
-                    ->orWhere(function ($q) use ($date) {
-                        $q->whereNull('invoice_item_id')
-                            ->whereDate('created_at', $date);
-                    });
+        // 1. جلب الـ Differences (الفرق فـ الثمن/الوزن)
+        $rawDifferences = Difference::where('customer_id', $customerId)
+            ->where(function ($query) use ($date, $boatId) {
+                $query->whereHas('invoiceItem', function ($q) use ($date, $boatId) {
+                    $q->whereHas('invoice', function ($invQ) use ($date) {
+                        $invQ->whereDate('date', $date);
+                    })->where('boat_id', $boatId);
+                });
             })
             ->with(['item', 'invoiceItem.invoice', 'invoiceItem.boat', 'customer'])
             ->get();
 
-        if ($rawDetails->isEmpty()) {
+        // 2. جلب الـ ReceiptItems (السلع الحرة / FreeTax)
+        // هنا كنفترضو أن الموديل ReceiptItem مرتبط بـ Receipt فيه التاريخ والباطو
+        $rawReceipts = \App\Models\ReceiptItem::whereHas('receipt', function ($q) use ($customerId, $date, $boatId) {
+            $q->where('customer_id', $customerId)
+                ->whereDate('date', $date)
+                ->where('boat_id', $boatId);
+        })
+            ->with(['item', 'receipt'])
+            ->get();
+
+        // 3. تحويل الـ Receipts لـ Format كيشبه الـ Differences
+        $mappedReceipts = $rawReceipts->map(function ($ri) {
+            return (object)[
+                'id' => 'r' . $ri->id, // حرف r باش نميزو الـ IDs
+                'is_extra' => true,    // سلع إضافية ماشي فرق
+                'item' => $ri->item,
+                'customer' => $ri->receipt->customer ?? null,
+                'boxes' => $ri->box,
+                'unit_count' => $ri->unit_count,
+                'real_price' => $ri->real_price,
+                'total_diff' => $ri->unit_count * $ri->real_price,
+                'invoiceItem' => (object)[
+                    'unit_price' => 0, // السلعة الحرة ما عندهاش prix d'achat فـ الفاتورة
+                    'boat' => $ri->receipt->boat ?? null,
+                    'invoice' => null
+                ]
+            ];
+        });
+
+        // 4. دمج الـ Differences الأصلية مع الـ Receipts
+        // الـ Differences غنعطيوهم is_extra = false
+        $allDetails = $rawDifferences->map(function ($d) {
+            $d->is_extra = false;
+            return $d;
+        })->concat($mappedReceipts);
+
+        if ($allDetails->isEmpty()) {
             return redirect()->route('differences')->with('error', 'Aucun détail trouvé.');
         }
 
-        // حساب إجمالي الصناديق (بما في ذلك حقل boxes الجديد)
-        $totalBoxesOverall = $rawDetails->sum('boxes');
+        // الحسابات الإجمالية
+        $totalBoxesOverall = $allDetails->sum('boxes');
+        $totalAmount = $allDetails->sum('total_diff');
 
-        $totalDiffAmount = $rawDetails->sum('total_diff');
-
-        $groupedDetails = $rawDetails->groupBy(function ($diff) {
-            $priceKey = $diff->invoiceItem ? $diff->invoiceItem->unit_price : 'hortax';
-            return $diff->item_id . '-' . $diff->real_price . '-' . $priceKey;
+        // 5. التجميع (Grouping) باش السلعة اللي كتشابه تجمع
+        $groupedDetails = $allDetails->groupBy(function ($detail) {
+            $priceKey = isset($detail->invoiceItem) && $detail->invoiceItem->unit_price ? $detail->invoiceItem->unit_price : 'extra';
+            return $detail->item->id . '-' . $detail->real_price . '-' . $priceKey . '-' . ($detail->is_extra ? 'e' : 'd');
         })->map(function ($group) {
             $first = $group->first();
-
             return [
                 'id' => $first->id,
+                'is_extra' => $first->is_extra,
                 'customer' => $first->customer,
                 'invoice_item' => [
                     'unit_price' => $first->invoiceItem->unit_price ?? 0,
@@ -85,22 +150,17 @@ class DifferenceController extends Controller
 
         $sortedDetails = $groupedDetails->sortBy(function ($item) {
             $name = strtolower($item['invoice_item']['item']['name'] ?? '');
-            if (str_contains($name, 'poulpe')) {
-                return 1;
-            }
-            if (str_contains($name, 'calam')) {
-                return 2;
-            }
-            if (str_contains($name, 'seiche')) {
-                return 3;
-            }
+            if (str_contains($name, 'poulpe')) return 1;
+            if (str_contains($name, 'calam')) return 2;
+            if (str_contains($name, 'seiche')) return 3;
             return 4;
         })->values();
 
         return Inertia::render('differences-show', [
             'details' => $sortedDetails,
             'total_boxes' => $totalBoxesOverall,
-            'total_amount' => $totalDiffAmount
+            'total_amount' => $totalAmount,
+            'current_boat' => $allDetails->first()->invoiceItem->boat ?? null
         ]);
     }
 

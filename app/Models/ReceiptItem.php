@@ -15,7 +15,7 @@ class ReceiptItem extends Model
         'real_price',
         'box',
         'total_diff',
-        'position' // ضروري نزيدوه هنا
+        'position' 
     ];
 
     public function receipt(): BelongsTo
