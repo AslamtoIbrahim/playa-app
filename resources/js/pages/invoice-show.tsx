@@ -373,6 +373,8 @@ export default function InvoiceShow({ invoice, boats, items, customers }: Props)
                     item={diffItem}
                     customers={customers}
                     items={items}
+                    sessionId={invoice.session_id}
+                    date={invoice.date}
                 />
             )}
         </div>
@@ -381,7 +383,7 @@ export default function InvoiceShow({ invoice, boats, items, customers }: Props)
 
 
 InvoiceShow.layout = (page: React.ReactNode) => (
-    <AppLayout 
+    <AppLayout
         breadcrumbs={[
             { title: 'Factures', href: '/invoices' },
             { title: 'Détails de la Facture', href: '#' }, // هادي هي الـ Current Page

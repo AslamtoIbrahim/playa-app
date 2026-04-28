@@ -1,7 +1,7 @@
 import { Boat } from './boat';
-import { Item } from './item';
 import { Difference } from './difference';
-import { Invoice } from './invoice';
+import { Item } from './item';
+import { ReceiptItem } from './receipt-item';
 
 export interface InvoiceItem {
     id: number;
@@ -20,6 +20,7 @@ export interface InvoiceItem {
     item?: Item;
 
     differences?: Difference[];
+    receipt_items?: ReceiptItem[];
 }
 
 

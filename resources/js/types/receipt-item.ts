@@ -1,5 +1,7 @@
 import { Item } from "./item";
 import { Boat } from "./boat";
+import { Customer } from "./customers";
+
 
 export interface ReceiptItem {
     id: number;
@@ -20,6 +22,11 @@ export interface ReceiptItem {
     // العلاقات (Optional - كيجيو مع الـ Eager Loading فـ Laravel)
     item?: Item;
     boat?: Boat;
+
+    type: 'item' | 'commission' | 'freetax';
+    receipt?: {
+        customer?: Customer;
+    };
 }
 
 // هاد النوع كينفع ملي كنكونو كنصاوبو Item جديد (قبل ما يتكريا فـ الداتابيز)

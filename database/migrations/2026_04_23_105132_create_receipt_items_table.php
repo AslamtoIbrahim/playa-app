@@ -26,6 +26,12 @@ return new class extends Migration
 
             $table->integer('position')->default(0)->index();
 
+             // 1. الربط مع السلعة الأصلية (باش نعرفو هاد الكوميسيون ديال أي باطو)
+            $table->foreignId('invoice_item_id')->nullable()->constrained()->nullOnDelete();
+
+            // 2. نوع السطر (item للبيع العادي، commission للعمولة، freetax للـ FreeTax)
+            $table->string('type')->default('item');
+
             $table->timestamps();
             $table->softDeletes();
         });

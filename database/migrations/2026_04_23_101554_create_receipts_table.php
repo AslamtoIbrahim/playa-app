@@ -13,9 +13,9 @@ return new class extends Migration
     {
         Schema::create('receipts', function (Blueprint $table) {
             $table->id();
-            
+
             $table->date('date');
-            
+
             // الربط مع الكليان والجلسة اليومية
             $table->foreignId('customer_id')->constrained('customers')->restrictOnDelete();
             $table->foreignId('session_id')->constrained('daily_sessions')->restrictOnDelete();

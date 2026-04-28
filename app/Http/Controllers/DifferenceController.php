@@ -69,7 +69,7 @@ class DifferenceController extends Controller
         $date = $request->query('date');
         $boatId = $request->query('boat_id');
 
-        // 1. جلب الـ Differences (الفرق فـ الثمن/الوزن)
+        // 1. جلب الـ Differences
         $rawDifferences = Difference::where('customer_id', $customerId)
             ->where(function ($query) use ($date, $boatId) {
                 $query->whereHas('invoiceItem', function ($q) use ($date, $boatId) {
@@ -81,39 +81,39 @@ class DifferenceController extends Controller
             ->with(['item', 'invoiceItem.invoice', 'invoiceItem.boat', 'customer'])
             ->get();
 
-        // 2. جلب الـ ReceiptItems (السلع الحرة / FreeTax)
-        // هنا كنفترضو أن الموديل ReceiptItem مرتبط بـ Receipt فيه التاريخ والباطو
+        // 2. جلب الـ ReceiptItems
         $rawReceipts = \App\Models\ReceiptItem::whereHas('receipt', function ($q) use ($customerId, $date, $boatId) {
             $q->where('customer_id', $customerId)
                 ->whereDate('date', $date)
                 ->where('boat_id', $boatId);
         })
-            ->with(['item', 'receipt'])
+            ->with(['item', 'receipt.customer', 'receipt.boat'])
             ->get();
 
-        // 3. تحويل الـ Receipts لـ Format كيشبه الـ Differences
+        // 3. تحويل الـ Receipts لـ Format موحد (Objects)
         $mappedReceipts = $rawReceipts->map(function ($ri) {
             return (object)[
-                'id' => 'r' . $ri->id, // حرف r باش نميزو الـ IDs
-                'is_extra' => true,    // سلع إضافية ماشي فرق
-                'item' => $ri->item,
+                'id' => 'r' . $ri->id,
+                'is_extra' => true,
+                'type' => $ri->type,
+                'item' => $ri->item ?? (object)['id' => 0, 'name' => 'COMMISSION'],
                 'customer' => $ri->receipt->customer ?? null,
-                'boxes' => $ri->box,
+                'boxes' => $ri->box ?? 0,
                 'unit_count' => $ri->unit_count,
                 'real_price' => $ri->real_price,
                 'total_diff' => $ri->unit_count * $ri->real_price,
                 'invoiceItem' => (object)[
-                    'unit_price' => 0, // السلعة الحرة ما عندهاش prix d'achat فـ الفاتورة
+                    'unit_price' => 0,
                     'boat' => $ri->receipt->boat ?? null,
                     'invoice' => null
                 ]
             ];
         });
 
-        // 4. دمج الـ Differences الأصلية مع الـ Receipts
-        // الـ Differences غنعطيوهم is_extra = false
+        // 4. الدمج
         $allDetails = $rawDifferences->map(function ($d) {
             $d->is_extra = false;
+            $d->type = $d->type ?? 'diff';
             return $d;
         })->concat($mappedReceipts);
 
@@ -121,21 +121,26 @@ class DifferenceController extends Controller
             return redirect()->route('differences')->with('error', 'Aucun détail trouvé.');
         }
 
-        // الحسابات الإجمالية
         $totalBoxesOverall = $allDetails->sum('boxes');
         $totalAmount = $allDetails->sum('total_diff');
 
-        // 5. التجميع (Grouping) باش السلعة اللي كتشابه تجمع
+        // 5. التجميع (Grouping)
         $groupedDetails = $allDetails->groupBy(function ($detail) {
-            $priceKey = isset($detail->invoiceItem) && $detail->invoiceItem->unit_price ? $detail->invoiceItem->unit_price : 'extra';
-            return $detail->item->id . '-' . $detail->real_price . '-' . $priceKey . '-' . ($detail->is_extra ? 'e' : 'd');
+            $itemId = $detail->item->id ?? 0;
+            $priceKey = (isset($detail->invoiceItem) && isset($detail->invoiceItem->unit_price) && $detail->invoiceItem->unit_price)
+                ? $detail->invoiceItem->unit_price
+                : 'extra';
+            $type = $detail->type ?? 'diff';
+            return $itemId . '-' . $detail->real_price . '-' . $priceKey . '-' . ($detail->is_extra ? 'e' : 'd') . '-' . $type;
         })->map(function ($group) {
             $first = $group->first();
-            return [
+            // رجعنا كلشي Object باش السورتينغ يخدم بلا مشاكل
+            return (object)[
                 'id' => $first->id,
                 'is_extra' => $first->is_extra,
+                'type' => $first->type ?? 'diff',
                 'customer' => $first->customer,
-                'invoice_item' => [
+                'invoice_item' => (object)[
                     'unit_price' => $first->invoiceItem->unit_price ?? 0,
                     'item' => $first->item,
                     'boat' => $first->invoiceItem->boat ?? null,
@@ -148,11 +153,13 @@ class DifferenceController extends Controller
             ];
         });
 
+        // 6. الترتيب (تم التصحيح هنا: كنخدمو بـ Object Syntax -> )
         $sortedDetails = $groupedDetails->sortBy(function ($item) {
-            $name = strtolower($item['invoice_item']['item']['name'] ?? '');
+            $name = strtolower($item->invoice_item->item->name ?? 'zzz');
             if (str_contains($name, 'poulpe')) return 1;
             if (str_contains($name, 'calam')) return 2;
             if (str_contains($name, 'seiche')) return 3;
+            if (str_contains($name, 'commission')) return 5;
             return 4;
         })->values();
 

@@ -232,7 +232,7 @@ export function DifferenceRow({
                 {isNew
                     ? "Auto"
                     : (Number(diff?.total_diff) > 0 ? "+" : "") +
-                      Number(diff?.total_diff).toLocaleString()}
+                      Number(diff?.total_diff)}
             </TableCell>
 
             {/* عمود الأكشن */}

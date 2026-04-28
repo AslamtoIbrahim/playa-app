@@ -11,11 +11,13 @@ class ReceiptItem extends Model
     protected $fillable = [
         'receipt_id',
         'item_id',
+        'invoice_item_id',
         'unit_count',
         'real_price',
         'box',
         'total_diff',
-        'position' 
+        'position',
+        'type' // 'item', 'commission', 'freetax'
     ];
 
     public function receipt(): BelongsTo

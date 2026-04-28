@@ -29,8 +29,6 @@ export function useDifferenceRow({
 
     const [openItem, setOpenItem] = useState<boolean>(false);
 
-    console.log('msg',diff?.customer_id.toString(), defaultCustomerId?.toString());
-
     const [data, setData] = useState({
         customer_id: diff?.customer_id.toString() || defaultCustomerId?.toString() || '',
         item_id: diff?.item_id?.toString() || '',

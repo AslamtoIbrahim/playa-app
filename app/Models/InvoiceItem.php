@@ -46,6 +46,14 @@ class InvoiceItem extends Model
     }
 
     /**
+     * تعريف العلاقة مع الـ ReceiptItems
+     */
+    public function receiptItems(): HasMany
+    {
+        return $this->hasMany(ReceiptItem::class, 'invoice_item_id');
+    }
+
+    /**
      * العلاقة مع المركب
      */
     public function boat()

@@ -132,7 +132,20 @@ class InvoiceController extends Controller
      */
     public function show(Invoice $invoice)
     {
-        $invoice->load(['billable', 'officeRoom', 'items.item', 'items.boat', 'items.differences.customer', 'session']);
+        $invoice->load([
+            'billable',
+            'officeRoom',
+            'items.item',
+            'items.boat',
+            'items.differences.customer',
+            'session',
+            'items.receiptItems' => function ($q) { {
+                    $q->where('type', 'commission')
+                        ->where('real_price', '>', 0)
+                        ->with('receipt.customer');
+                }
+            }
+        ]);
 
         return Inertia::render('invoice-show', [
             'invoice'   => $invoice,
