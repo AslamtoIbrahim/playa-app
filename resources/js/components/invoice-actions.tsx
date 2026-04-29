@@ -17,14 +17,18 @@ import EditInvoiceDialog from './edit-invoice-dialog';
 import DeleteInvoiceDialog from './delete-invoice-dialog';
 import AddPaymentDialog from './add-payment-dialog';
 import { DailySession } from "@/types/daily-session";
+import { Caution } from "@/types/caution";
+import { OfficeRoom } from "@/types/office-room";
 
 interface Props {
     invoice: Invoice;
     billables: Billable[];
     sessions: DailySession[];
+    officeRooms: OfficeRoom[];
+    cautions: Caution[];
 }
 
-export default function InvoiceActions({ invoice, billables, sessions }: Props) {
+export default function InvoiceActions({ invoice, billables, sessions, officeRooms, cautions }: Props) {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -68,7 +72,7 @@ export default function InvoiceActions({ invoice, billables, sessions }: Props) 
                 <div onClick={(e) => {
                     e.stopPropagation();
                 }}>
-                    <EditInvoiceDialog sessions={sessions} invoice={invoice} billables={billables} trigger={
+                    <EditInvoiceDialog  sessions={sessions} invoice={invoice} billables={billables} cautions={cautions} officeRooms={officeRooms} trigger={
                         <DropdownMenuItem onSelect={(e) => {
                             e.preventDefault();
                         }} className="cursor-pointer gap-2 text-slate-600">

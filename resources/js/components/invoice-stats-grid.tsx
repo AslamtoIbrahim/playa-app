@@ -1,5 +1,6 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Stats } from '@/types/stats';
+import { Package } from 'lucide-react';
 
 export function InvoiceStatsGrid({ stats }: { stats: Stats }) {
     return (
@@ -7,7 +8,10 @@ export function InvoiceStatsGrid({ stats }: { stats: Stats }) {
             <Card className="shadow-none border-slate-100 h-24 flex flex-col justify-center">
                 <CardContent className="p-4 py-0">
                     <p className="text-[9px] uppercase font-bold text-slate-400 mb-1 tracking-wider">Total Caisses</p>
-                    <p className="text-xl font-bold text-slate-700">{stats.totalBoxes} <span className="text-xs font-normal opacity-50">U</span></p>
+                    <div className='flex items-center gap-2'>
+                        <p className="text-xl font-bold text-slate-700">{stats.totalBoxes}</p>
+                        <Package className="h-4 w-4 text-slate-400" />
+                    </div>
                 </CardContent>
             </Card>
 

@@ -8,8 +8,10 @@ import {
     ChevronsUpDown,
     Clock,
     Pencil,
+    ShieldCheck,
+    Building2,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { toast } from 'sonner';
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -43,11 +45,16 @@ import { cn, commandItemClass } from '@/lib/utils';
 import { update } from '@/routes/invoices';
 import type { Invoice, Billable } from '@/types/invoice';
 import type { DailySession } from '@/types/daily-session';
+import { Caution } from '@/types/caution';
+import { OfficeRoom } from '@/types/office-room';
+ 
 
 interface Props {
     invoice: Invoice;
     billables: Billable[];
     sessions: DailySession[];
+    cautions: Caution[];
+    officeRooms: OfficeRoom[];
     trigger?: React.ReactNode;
 }
 
@@ -55,11 +62,15 @@ export default function EditInvoiceDialog({
     invoice,
     billables,
     sessions,
+    cautions,
+    officeRooms,
     trigger,
 }: Props) {
     const [open, setOpen] = useState<boolean>(false);
     const [comboOpen, setComboOpen] = useState<boolean>(false);
     const [sessionComboOpen, setSessionComboOpen] = useState<boolean>(false);
+    const [cautionComboOpen, setCautionComboOpen] = useState<boolean>(false);
+    const [officeComboOpen, setOfficeComboOpen] = useState<boolean>(false);
 
     const [selectedBillable, setSelectedBillable] = useState<Billable | null>(
         billables.find(
@@ -71,7 +82,34 @@ export default function EditInvoiceDialog({
         sessions.find((s) => Number(s.id) === Number(invoice.session_id)) || null
     );
 
+    const [selectedCaution, setSelectedCaution] = useState<Caution | null>(
+        cautions.find((c) => Number(c.id) === Number(invoice.caution_id)) || null
+    );
+
+    const [selectedOfficeId, setSelectedOfficeId] = useState<string>(
+        invoice.office_room_id?.toString() || ""
+    );
+
     const [date, setDate] = useState<Date>(parseISO(invoice.date));
+
+    const filteredCautions = useMemo(() => {
+        if (!selectedBillable) {
+            return [];
+        }
+
+        return cautions.filter((c) => {
+            const isSameId = Number(c.owner_id) === Number(selectedBillable.id);
+
+            const isSameType = c.owner_type === selectedBillable.type ||
+                c.owner_type.includes(selectedBillable.type!.replace(/\\/g, '\\\\'));
+
+            if (isSameId && isSameType) {
+                return true;
+            }
+
+            return false;
+        });
+    }, [selectedBillable, cautions]);
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -148,7 +186,6 @@ export default function EditInvoiceDialog({
 
                         return (
                             <>
-                                {/* --- حقول مخفية لإرسال البيانات لـ Laravel --- */}
                                 <input
                                     type="hidden"
                                     name="billable_id"
@@ -161,6 +198,16 @@ export default function EditInvoiceDialog({
                                 />
                                 <input
                                     type="hidden"
+                                    name="caution_id"
+                                    value={selectedCaution?.id || ''}
+                                />
+                                <input
+                                    type="hidden"
+                                    name="office_room_id"
+                                    value={selectedOfficeId}
+                                />
+                                <input
+                                    type="hidden"
                                     name="status"
                                     value={invoice.status}
                                 />
@@ -169,7 +216,6 @@ export default function EditInvoiceDialog({
                                     name="date"
                                     value={date ? format(date, 'yyyy-MM-dd') : ''}
                                 />
-                                {/* الحقل المهم للـ Session */}
                                 <input
                                     type="hidden"
                                     name="session_id"
@@ -233,11 +279,6 @@ export default function EditInvoiceDialog({
                                             </Command>
                                         </PopoverContent>
                                     </Popover>
-                                    {errors.daily_session_id && (
-                                        <p className="text-sm font-medium text-red-500">
-                                            {errors.daily_session_id}
-                                        </p>
-                                    )}
                                 </div>
 
                                 {/* Billable Selector */}
@@ -279,6 +320,7 @@ export default function EditInvoiceDialog({
                                                                     value={item.name}
                                                                     onSelect={() => {
                                                                         setSelectedBillable(item);
+                                                                        setSelectedCaution(null);
                                                                         setComboOpen(false);
                                                                     }}
                                                                 >
@@ -297,11 +339,116 @@ export default function EditInvoiceDialog({
                                             </Command>
                                         </PopoverContent>
                                     </Popover>
-                                    {errors.billable_id && (
-                                        <p className="text-sm font-medium text-red-500">
-                                            {errors.billable_id}
-                                        </p>
-                                    )}
+                                </div>
+
+                                {/* Caution Selector */}
+                                <div className="grid gap-2">
+                                    <Label className="text-xs font-bold text-slate-500 uppercase">
+                                        Caution
+                                    </Label>
+                                    <Popover
+                                        open={cautionComboOpen}
+                                        onOpenChange={setCautionComboOpen}
+                                    >
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                role="combobox"
+                                                disabled={!selectedBillable}
+                                                className={cn(
+                                                    "w-full justify-between font-medium",
+                                                    !selectedCaution && "text-muted-foreground"
+                                                )}
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <ShieldCheck className="h-4 w-4 opacity-50" />
+                                                    {selectedCaution
+                                                        ? selectedCaution.name
+                                                        : 'Sélectionner une caution...'}
+                                                </div>
+                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                            <Command>
+                                                <SearchInput placeholder="Rechercher une caution..." />
+                                                <CommandList>
+                                                    <CommandEmpty>Aucune caution trouvée.</CommandEmpty>
+                                                    <CommandGroup>
+                                                        {filteredCautions.map((caution) => (
+                                                            <CommandItem
+                                                                className={commandItemClass}
+                                                                key={caution.id}
+                                                                value={caution.name}
+                                                                onSelect={() => {
+                                                                    setSelectedCaution(caution);
+                                                                    setCautionComboOpen(false);
+                                                                }}
+                                                            >
+                                                                <Check
+                                                                    className={cn(
+                                                                        'mr-2 h-4 w-4',
+                                                                        selectedCaution?.id === caution.id ? 'opacity-100' : 'opacity-0'
+                                                                    )}
+                                                                />
+                                                                {caution.name}
+                                                            </CommandItem>
+                                                        ))}
+                                                    </CommandGroup>
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
+                                </div>
+
+                                {/* Office / Bureau Selector */}
+                                <div className="grid gap-2">
+                                    <Label className="text-xs font-bold uppercase text-slate-500">Bureau / Ville</Label>
+                                    <Popover open={officeComboOpen} onOpenChange={setOfficeComboOpen}>
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                role="combobox"
+                                                className={cn(
+                                                    "w-full justify-between font-medium",
+                                                    !selectedOfficeId && "text-muted-foreground",
+                                                    errors.office_room_id && "border-destructive"
+                                                )}
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <Building2 className="h-4 w-4 opacity-50" />
+                                                    {selectedOfficeId
+                                                        ? officeRooms.find((r) => r.id.toString() === selectedOfficeId)?.name
+                                                        : "Sélectionner un bureau..."}
+                                                </div>
+                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                            <Command>
+                                                <SearchInput placeholder="Rechercher un bureau..." />
+                                                <CommandList>
+                                                    <CommandEmpty>Aucun bureau trouvé.</CommandEmpty>
+                                                    <CommandGroup>
+                                                        {officeRooms.map((room) => (
+                                                            <CommandItem
+                                                                className={commandItemClass}
+                                                                key={room.id}
+                                                                value={room.name + " " + room.city}
+                                                                onSelect={() => {
+                                                                    setSelectedOfficeId(room.id.toString());
+                                                                    setOfficeComboOpen(false);
+                                                                }}
+                                                            >
+                                                                <Check className={cn("mr-2 h-4 w-4", selectedOfficeId === room.id.toString() ? "opacity-100" : "opacity-0")} />
+                                                                {room.name} ({room.city})
+                                                            </CommandItem>
+                                                        ))}
+                                                    </CommandGroup>
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
                                 </div>
 
                                 {/* Date Picker */}
@@ -336,11 +483,6 @@ export default function EditInvoiceDialog({
                                             />
                                         </PopoverContent>
                                     </Popover>
-                                    {errors.date && (
-                                        <p className="text-sm font-medium text-red-500">
-                                            {errors.date}
-                                        </p>
-                                    )}
                                 </div>
 
                                 {/* Summary Section */}

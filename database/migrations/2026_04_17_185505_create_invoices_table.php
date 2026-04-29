@@ -26,6 +26,7 @@ return new class extends Migration
             $table->enum('type', ['sale', 'purchase']);
             
             $table->foreignId('office_room_id')->nullable()->constrained('office_rooms')->restrictOnDelete();
+            $table->foreignId('caution_id')->nullable()->constrained('cautions')->restrictOnDelete();
             $table->foreignId('created_by')->nullable()->constrained('users');
 
             // Financial & Data Fields (الحسابات)

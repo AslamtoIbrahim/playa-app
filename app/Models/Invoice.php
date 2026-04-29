@@ -3,8 +3,9 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Invoice extends Model
 {
@@ -16,6 +17,7 @@ class Invoice extends Model
         'type',
         'billable_id',
         'billable_type',
+        'caution_id',
         'session_id',
         'office_room_id',
         'created_by',
@@ -32,6 +34,14 @@ class Invoice extends Model
     public function billable(): MorphTo
     {
         return $this->morphTo();
+    }
+
+    /**
+     * العلاقة مع الضمانة (Caution)
+     */
+    public function caution(): BelongsTo
+    {
+        return $this->belongsTo(Caution::class);
     }
 
     /**

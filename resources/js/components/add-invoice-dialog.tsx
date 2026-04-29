@@ -1,7 +1,7 @@
 import { Form, Link } from '@inertiajs/react';
 import { format } from "date-fns";
 import { Calendar as CalendarIcon, Check, ChevronsUpDown, Plus, ArrowRight } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { toast } from 'sonner';
 
 import InputError from '@/components/input-error';
@@ -31,25 +31,50 @@ import { store } from '@/routes/invoices';
 import { Billable } from '@/types/invoice';
 import { Calendar } from './ui/calendar';
 import { DailySession } from '@/types/daily-session';
+import { Caution } from '@/types/caution';
+import { OfficeRoom } from '@/types/office-room';
 
 interface Props {
     billables: Billable[];
-    officeRooms: { id: number; name: string; city: string }[];
+    officeRooms: OfficeRoom[];
     sessions: DailySession[];
+    cautions: Caution[];
 }
 
-export default function AddInvoiceDialog({ billables, officeRooms, sessions }: Props) {
+export default function AddInvoiceDialog({ billables, officeRooms, sessions, cautions }: Props) {
     const [open, setOpen] = useState<boolean>(false);
 
     const [billableComboOpen, setBillableComboOpen] = useState<boolean>(false);
     const [officeComboOpen, setOfficeComboOpen] = useState<boolean>(false);
     const [sessionComboOpen, setSessionComboOpen] = useState<boolean>(false);
+    const [cautionComboOpen, setCautionComboOpen] = useState<boolean>(false);
 
     const [selectedBillable, setSelectedBillable] = useState<Billable | null>(null);
     const [selectedOfficeId, setSelectedOfficeId] = useState<string>("");
     const [selectedSessionId, setSelectedSessionId] = useState<string>("");
+    const [selectedCautionId, setSelectedCautionId] = useState<string>("");
     const [invoiceType, setInvoiceType] = useState<string>("purchase");
     const [date, setDate] = useState<Date>(new Date());
+
+    const filteredCautions = useMemo(() => {
+        if (!selectedBillable) {
+            return [];
+        }
+
+        return cautions.filter((c) => {
+            const isSameId = Number(c.owner_id) === Number(selectedBillable.id);
+
+            // Gérer les backslashes pour la comparaison polymorphic
+            const isSameType = c.owner_type === selectedBillable.type || 
+                               c.owner_type.includes(selectedBillable.type!.replace(/\\/g, '\\\\'));
+
+            if (isSameId && isSameType) {
+                return true;
+            }
+
+            return false;
+        });
+    }, [selectedBillable, cautions]);
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -75,6 +100,7 @@ export default function AddInvoiceDialog({ billables, officeRooms, sessions }: P
                         setSelectedBillable(null);
                         setSelectedOfficeId("");
                         setSelectedSessionId("");
+                        setSelectedCautionId("");
                         setInvoiceType("purchase");
                         setDate(new Date());
                     }}
@@ -86,6 +112,7 @@ export default function AddInvoiceDialog({ billables, officeRooms, sessions }: P
                             <input type="hidden" name="billable_type" value={selectedBillable?.type || ""} />
                             <input type="hidden" name="office_room_id" value={selectedOfficeId} />
                             <input type="hidden" name="session_id" value={selectedSessionId} />
+                            <input type="hidden" name="caution_id" value={selectedCautionId} />
                             <input type="hidden" name="type" value={invoiceType} />
                             <input type="hidden" name="date" value={date ? format(date, "yyyy-MM-dd") : ""} />
 
@@ -120,7 +147,11 @@ export default function AddInvoiceDialog({ billables, officeRooms, sessions }: P
                                             <Calendar
                                                 mode="single"
                                                 selected={date}
-                                                onSelect={(d: Date | undefined) => d && setDate(d)}
+                                                onSelect={(d: Date | undefined) => {
+                                                    if (d) {
+                                                        setDate(d);
+                                                    }
+                                                }}
                                                 initialFocus
                                             />
                                         </PopoverContent>
@@ -209,6 +240,7 @@ export default function AddInvoiceDialog({ billables, officeRooms, sessions }: P
                                                             value={item.name}
                                                             onSelect={() => {
                                                                 setSelectedBillable(item);
+                                                                setSelectedCautionId("");
                                                                 setBillableComboOpen(false);
                                                             }}
                                                         >
@@ -225,13 +257,61 @@ export default function AddInvoiceDialog({ billables, officeRooms, sessions }: P
                             </div>
 
                             <div className="grid gap-2">
+                                <Label className="text-xs font-bold uppercase text-slate-500">Caution associée</Label>
+                                <Popover open={cautionComboOpen} onOpenChange={setCautionComboOpen}>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            role="combobox"
+                                            disabled={!selectedBillable}
+                                            className={cn(
+                                                "w-full justify-between font-medium",
+                                                !selectedCautionId && "text-muted-foreground",
+                                                errors.caution_id && "border-destructive"
+                                            )}
+                                        >
+                                            {selectedCautionId
+                                                ? filteredCautions.find((c) => c.id.toString() === selectedCautionId)?.name
+                                                : selectedBillable ? "Sélectionner une caution..." : "Sélectionnez d'abord un compte"}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                        <Command>
+                                            <CommandInput placeholder="Rechercher une caution..." />
+                                            <CommandList>
+                                                <CommandEmpty>Aucune caution trouvée.</CommandEmpty>
+                                                <CommandGroup>
+                                                    {filteredCautions.map((caution) => (
+                                                        <CommandItem
+                                                            className={commandItemClass}
+                                                            key={caution.id}
+                                                            value={caution.name}
+                                                            onSelect={() => {
+                                                                setSelectedCautionId(caution.id.toString());
+                                                                setCautionComboOpen(false);
+                                                            }}
+                                                        >
+                                                            <Check className={cn("mr-2 h-4 w-4", selectedCautionId === caution.id.toString() ? "opacity-100" : "opacity-0")} />
+                                                            {caution.name}
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                                <InputError message={errors.caution_id} />
+                            </div>
+
+                            <div className="grid gap-2">
                                 <Label className="text-xs font-bold uppercase text-slate-500">Bureau / Ville</Label>
                                 <Popover open={officeComboOpen} onOpenChange={setOfficeComboOpen}>
                                     <PopoverTrigger asChild>
                                         <Button
                                             variant="outline"
                                             role="combobox"
-                                            className={cn("w-full justify-between font-medium", !selectedOfficeId && "text-muted-foreground",errors.office_room_id && "border-destructive")}
+                                            className={cn("w-full justify-between font-medium", !selectedOfficeId && "text-muted-foreground", errors.office_room_id && "border-destructive")}
                                         >
                                             {selectedOfficeId
                                                 ? officeRooms.find((r) => r.id.toString() === selectedOfficeId)?.name

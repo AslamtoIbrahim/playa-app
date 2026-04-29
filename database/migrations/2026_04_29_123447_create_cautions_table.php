@@ -11,9 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('boats', function (Blueprint $table) {
+        Schema::create('cautions', function (Blueprint $table) {
             $table->id();
-            $table->string('name')->unique();
+
+            // سمية الضمانة (مثلا: "Caution CIH", "Dépôt Cash X")
+            $table->string('name');
+
+            // هادو هما اللي غايديرو الربط مع الـ Company والـ Customer
             $table->unsignedBigInteger('owner_id');
             $table->string('owner_type');
 
@@ -27,6 +31,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('boat');
+        Schema::dropIfExists('cautions');
     }
 };

@@ -21,12 +21,11 @@ export function useInvoiceItem({ invoiceId, item, isNew }: UseInvoiceItemProps) 
         unit_price: item?.unit_price || '',
         unit: item?.unit || 'caisse',
         box: item?.box || '',
+        weight: item?.weight || '',
     });
 
     const count = Number(data.unit_count) || 0;
-    
-    const weight = data.unit === 'kg' ? count : count * 21;
-    
+
     const amount = count * Number(data.unit_price);
 
     // Derived Logic for Box (Computed based on unit)
@@ -36,9 +35,33 @@ export function useInvoiceItem({ invoiceId, item, isNew }: UseInvoiceItemProps) 
         setData((prev) => {
             const newData = { ...prev, ...updates };
 
-            // Logic: if unit is caisse, boxes = unit_count
-            if (newData.unit === 'caisse') {
-                newData.box = newData.unit_count;
+            // Logic for unit_count change
+            if (Object.prototype.hasOwnProperty.call(updates, 'unit_count')) {
+                {
+                    const newCount = Number(updates.unit_count) || 0;
+
+                    if (newData.unit === 'caisse') {
+                        {
+                            newData.weight = (newCount * 21).toString();
+                            newData.box = newCount.toString();
+                        }
+                    } else {
+                        {
+                            newData.weight = newCount.toString();
+                        }
+                    }
+                }
+            }
+
+            // Logic for unit change
+            if (Object.prototype.hasOwnProperty.call(updates, 'unit')) {
+                {
+                    const currentCount = Number(newData.unit_count) || 0;
+
+                    newData.weight = newData.unit === 'caisse'
+                        ? (currentCount * 21).toString()
+                        : currentCount.toString();
+                }
             }
 
             return newData;
@@ -47,12 +70,14 @@ export function useInvoiceItem({ invoiceId, item, isNew }: UseInvoiceItemProps) 
 
     const isReadyToSave = (currentData = data) => {
         if (isNew) {
-            return (
-                currentData.boat_id !== '' &&
-                currentData.item_id !== '' &&
-                Number(currentData.unit_price) > 0 &&
-                Number(currentData.unit_count) > 0
-            );
+            {
+                return (
+                    currentData.boat_id !== '' &&
+                    currentData.item_id !== '' &&
+                    Number(currentData.unit_price) > 0 &&
+                    Number(currentData.unit_count) > 0
+                );
+            }
         }
 
         return true;
@@ -74,7 +99,7 @@ export function useInvoiceItem({ invoiceId, item, isNew }: UseInvoiceItemProps) 
         const payload = {
             ...currentData,
             box: currentData.unit === 'caisse' ? currentData.unit_count : currentData.box,
-            weight: weight.toString(),
+            weight: currentData.weight.toString(),
             _method: isNew ? 'POST' : 'PATCH',
         };
 
@@ -93,6 +118,7 @@ export function useInvoiceItem({ invoiceId, item, isNew }: UseInvoiceItemProps) 
                                 unit_price: '',
                                 unit: 'caisse',
                                 box: '',
+                                weight: '',
                             });
                         }
                     }
@@ -117,13 +143,15 @@ export function useInvoiceItem({ invoiceId, item, isNew }: UseInvoiceItemProps) 
         }
 
         if (type && !openBoat && !openItem) {
-            const isCharacter = e.key.length === 1 && e.key.match(/[a-z0-9\u0600-\u06FF]/i);
+            {
+                const isCharacter = e.key.length === 1 && e.key.match(/[a-z0-9\u0600-\u06FF]/i);
 
-            if (isCharacter) {
-                {
-                    type === 'boat' ? setOpenBoat(true) : setOpenItem(true);
-                    
-                    return;
+                if (isCharacter) {
+                    {
+                        type === 'boat' ? setOpenBoat(true) : setOpenItem(true);
+
+                        return;
+                    }
                 }
             }
         }
@@ -205,7 +233,7 @@ export function useInvoiceItem({ invoiceId, item, isNew }: UseInvoiceItemProps) 
         setOpenBoat,
         openItem,
         setOpenItem,
-        weight,
+        weight: data.weight,
         amount,
         displayBox,
         isReadyToSave,

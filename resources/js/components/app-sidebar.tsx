@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { Banknote, BookOpen, Building2, CalendarClock, DoorOpen, FileText, FolderGit2, LayoutGrid, Package, Receipt, Scale, Ship, Tags, User } from 'lucide-react';
+import { Banknote, BookOpen, Building2, CalendarClock, DoorOpen, FileText, FolderGit2, LayoutGrid, Package, Receipt, Scale, ShieldCheck, Ship, Tags, User } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -13,7 +13,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { customers, boats, categories, dashboard, invoices, items, officeRooms, payments, companies, sessions, differences, receipts } from '@/routes';
+import { customers, boats, categories, dashboard, invoices, items, officeRooms, payments, companies, sessions, differences, receipts, cautions } from '@/routes';
 import type { NavItem } from '@/types';
 
 const mainNavItems: NavItem[] = [
@@ -23,14 +23,14 @@ const mainNavItems: NavItem[] = [
         icon: LayoutGrid,
     },
     {
+        title: 'Bureaux',
+        href: officeRooms(),
+        icon: DoorOpen,
+    },
+    {
         title: 'Sociétés',
         href: companies(),
         icon: Building2,
-    },
-    {
-        title: 'Journées',
-        href: sessions(),
-        icon: CalendarClock,
     },
     {
         title: 'Clients',
@@ -38,24 +38,19 @@ const mainNavItems: NavItem[] = [
         icon: User,
     },
     {
-        title: 'Bons de Réception',
-        href: receipts(),
-        icon: Receipt,
-    },
-    {
-        title: 'Differences',
-        href: differences(),
-        icon: Scale,
-    },
-    {
         title: 'Bateaux',
         href: boats(),
         icon: Ship,
     },
     {
-        title: 'Bureaux',
-        href: officeRooms(),
-        icon: DoorOpen,
+        title: 'Cautions',
+        href: cautions(),
+        icon: ShieldCheck,
+    },
+    {
+        title: 'Journées',
+        href: sessions(),
+        icon: CalendarClock,
     },
     {
         title: 'Catégories',
@@ -71,6 +66,17 @@ const mainNavItems: NavItem[] = [
         title: 'Factures',
         href: invoices(),
         icon: FileText,
+    },
+
+    {
+        title: 'Bons de Réception',
+        href: receipts(),
+        icon: Receipt,
+    },
+    {
+        title: 'Differences',
+        href: differences(),
+        icon: Scale,
     },
     {
         title: 'Paiements',

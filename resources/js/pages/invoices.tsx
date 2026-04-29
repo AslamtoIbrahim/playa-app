@@ -1,6 +1,6 @@
 import { Head, router } from '@inertiajs/react';
 import { format } from 'date-fns';
-import { ArrowDownLeft, ArrowUpRight, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, ChevronLeft, ChevronRight, Clock, ShieldCheck } from 'lucide-react';
 
 // Components
 import AddInvoiceDialog from '@/components/add-invoice-dialog';
@@ -20,8 +20,9 @@ import { show } from '@/routes/invoices';
 // Types
 import type { Billable, Invoice } from '@/types/invoice';
 import type { OfficeRoom } from '@/types/office-room';
-import type { DailySession } from '@/types/daily-session'; // تأكد من المسار
+import type { DailySession } from '@/types/daily-session';
 import InvoiceActions from '@/components/invoice-actions';
+import { Caution } from '@/types/caution';
 
 interface Props {
     invoices: {
@@ -33,7 +34,8 @@ interface Props {
     };
     billables: Billable[];
     officeRooms: OfficeRoom[];
-    sessions: DailySession[]; // زدنا السيسيونات هنا
+    sessions: DailySession[];
+    cautions: Caution[];
 }
 
 const statusStyles: Record<string, string> = {
@@ -43,11 +45,13 @@ const statusStyles: Record<string, string> = {
     pending: 'bg-slate-50 text-slate-600 border-slate-200 border-dashed',
 };
 
-export default function Invoices({ invoices, billables, officeRooms, sessions }: Props) {
+export default function Invoices({ invoices, billables, officeRooms, sessions, cautions }: Props) {
     const handleRowClick = (invoiceId: number) => {
         router.visit(show.url(invoiceId));
     };
 
+    console.log('invoices: ',invoices);
+    console.log('cautions: ',cautions);
 
     return (
         <>
@@ -69,6 +73,7 @@ export default function Invoices({ invoices, billables, officeRooms, sessions }:
                         billables={billables}
                         officeRooms={officeRooms}
                         sessions={sessions}
+                        cautions={cautions}
                     />
                 </div>
 
@@ -82,18 +87,22 @@ export default function Invoices({ invoices, billables, officeRooms, sessions }:
                                 <TableHead className="font-bold text-slate-800">Date</TableHead>
                                 <TableHead className="font-bold text-slate-800">Session</TableHead>
                                 <TableHead className="font-bold text-slate-800">Bénéficiaire</TableHead>
+                                <TableHead className="font-bold text-slate-800">Caution</TableHead>
                                 <TableHead className="text-center font-bold text-slate-800">NC</TableHead>
                                 <TableHead className="text-right font-bold text-slate-800">Total (DH)</TableHead>
                                 <TableHead className="font-bold text-slate-800 text-center">Statut</TableHead>
                                 <TableHead className="w-12"></TableHead>
                             </TableRow>
                         </TableHeader>
+
                         <TableBody>
                             {invoices.data.length > 0 ? (
                                 invoices.data.map((invoice) => (
                                     <TableRow
                                         key={invoice.id}
-                                        onClick={() => handleRowClick(invoice.id)}
+                                        onClick={() => {
+                                            handleRowClick(invoice.id);
+                                        }}
                                         className="group cursor-pointer border-b border-slate-100 transition-all last:border-0 hover:bg-slate-50"
                                     >
                                         <TableCell className="font-mono text-sm font-bold text-blue-700">
@@ -117,7 +126,6 @@ export default function Invoices({ invoices, billables, officeRooms, sessions }:
                                         </TableCell>
 
                                         <TableCell>
-                                            {/* تسييق الـ Session كـ Badge ملون */}
                                             <div className="flex items-center gap-1.5">
                                                 {(invoice as any).session ? (
                                                     <Badge
@@ -125,8 +133,8 @@ export default function Invoices({ invoices, billables, officeRooms, sessions }:
                                                         className={cn(
                                                             "flex items-center gap-1 px-2 py-0.5 font-bold border",
                                                             (invoice as any).session.status === 'open'
-                                                                ? "bg-emerald-50 text-emerald-700 border-emerald-200" // أخضر يلا كانت محلولة
-                                                                : "bg-slate-50 text-slate-600 border-slate-200"      // رمادي يلا كانت مسدودة
+                                                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                                                : "bg-slate-50 text-slate-600 border-slate-200"
                                                         )}
                                                     >
                                                         <Clock className={cn(
@@ -137,12 +145,6 @@ export default function Invoices({ invoices, billables, officeRooms, sessions }:
                                                         <span className="text-[10px] uppercase tracking-wider">
                                                             {format(new Date((invoice as any).session.session_date), 'dd/MM/yy')}
                                                         </span>
-
-                                                        {/* نقطة صغيرة اختيارية لزيادة الوضوح */}
-                                                        <span className={cn(
-                                                            "size-2 rounded-full ml-0.5",
-                                                            (invoice as any).session.status === 'open' ? "bg-emerald-500 animate-pulse" : "bg-slate-300"
-                                                        )} />
                                                     </Badge>
                                                 ) : (
                                                     <span className="text-xs text-slate-400">-</span>
@@ -150,26 +152,39 @@ export default function Invoices({ invoices, billables, officeRooms, sessions }:
                                             </div>
                                         </TableCell>
 
-                                        <TableCell className="max-w-45 truncate text-sm font-semibold text-slate-700">
-                                            <div className="flex flex-col gap-1">
-                                                <span>{invoice.billable?.name || '---'}</span>
+                                        {/* Bénéficiaire Column */}
+                                        <TableCell className="max-w-50">
+                                            <div className="flex items-center gap-2">
+                                                <span className="truncate text-sm font-semibold text-slate-700">
+                                                    {invoice.billable?.name || '---'}
+                                                </span>
 
-                                                <div className="flex">
-                                                    {invoice.billable_type && (
-                                                        <Badge
-                                                            variant="secondary"
-                                                            className={cn(
-                                                                "text-[10px] px-1.5 py-0 font-medium uppercase tracking-wider",
-                                                                invoice.billable_type.includes('Customer')
-                                                                    ? "bg-blue-50 text-blue-600 hover:bg-blue-50 border-blue-100"
-                                                                    : "bg-amber-50 text-amber-600 hover:bg-amber-50 border-amber-100"
-                                                            )}
-                                                        >
-                                                            {invoice.billable_type.split('\\').pop() === 'Customer' ? 'Client' : 'Société'}
-                                                        </Badge>
-                                                    )}
-                                                </div>
+                                                {invoice.billable_type && (
+                                                    <Badge
+                                                        variant="secondary"
+                                                        className={cn(
+                                                            "text-[9px] px-1.5 py-0 font-medium uppercase tracking-wider shrink-0",
+                                                            invoice.billable_type.includes('Customer')
+                                                                ? "bg-blue-50 text-blue-600 border-blue-100"
+                                                                : "bg-amber-50 text-amber-600 border-amber-100"
+                                                        )}
+                                                    >
+                                                        {invoice.billable_type.split('\\').pop() === 'Customer' ? 'Client' : 'Société'}
+                                                    </Badge>
+                                                )}
                                             </div>
+                                        </TableCell>
+
+                                        {/* Caution Column */}
+                                        <TableCell>
+                                            {invoice.caution ? (
+                                                <div className="flex items-center gap-1.5 text-[11px] font-bold text-indigo-700 bg-indigo-50/50 w-fit px-2 py-0.5 rounded-md border border-indigo-100">
+                                                    <ShieldCheck className="h-3 w-3 text-indigo-500" />
+                                                    <span className="truncate max-w-30">{invoice.caution.name}</span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-xs text-slate-300">Aucune</span>
+                                            )}
                                         </TableCell>
 
                                         <TableCell className="text-center font-bold text-slate-700">
@@ -195,12 +210,16 @@ export default function Invoices({ invoices, billables, officeRooms, sessions }:
 
                                         <TableCell
                                             className="text-right"
-                                            onClick={(e) => e.stopPropagation()}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                            }}
                                         >
                                             <InvoiceActions
                                                 invoice={invoice}
                                                 billables={billables}
                                                 sessions={sessions}
+                                                cautions={cautions}
+                                                officeRooms={officeRooms}
                                             />
                                         </TableCell>
                                     </TableRow>
@@ -208,7 +227,7 @@ export default function Invoices({ invoices, billables, officeRooms, sessions }:
                             ) : (
                                 <TableRow>
                                     <TableCell
-                                        colSpan={9}
+                                        colSpan={10}
                                         className="py-24 text-center font-medium text-muted-foreground italic"
                                     >
                                         Aucun bon enregistré pour le moment.
@@ -229,8 +248,8 @@ export default function Invoices({ invoices, billables, officeRooms, sessions }:
                                 const isPrevious = link.label.includes('Previous');
                                 const isNext = link.label.includes('Next');
 
-
                                 if (!link.url && !link.active) {
+                                    { /* Empty check for link visibility */ }
                                     return null;
                                 }
 
@@ -270,7 +289,9 @@ export default function Invoices({ invoices, billables, officeRooms, sessions }:
     );
 }
 
-Invoices.layout = (page: any) => ({
-    children: page,
-    breadcrumbs: [{ title: 'Factures', href: '/invoices' }],
-});
+Invoices.layout = (page: any) => {
+    return {
+        children: page,
+        breadcrumbs: [{ title: 'Factures', href: '/invoices' }],
+    };
+};

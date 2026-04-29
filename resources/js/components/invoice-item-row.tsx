@@ -225,12 +225,34 @@ export default function InvoiceItemRow({
                 </Select>
             </TableCell>
 
-            <TableCell className="w-24 border-r bg-slate-50/20 p-0">
+            {/* <TableCell className="w-24 border-r bg-slate-50/20 p-0">
                 <Input
                     type="number"
                     value={weight}
                     readOnly
                     className={cn(inputBaseClass, 'text-center text-slate-400 italic')}
+                />
+            </TableCell> */}
+
+            {/* 7. POIDS (Editable) */}
+            {/* 7. POIDS (Editable) */}
+            <TableCell className={cn('w-24 border-r p-0', cellFocusClass)}>
+                <Input
+                    type="number"
+                    value={weight}
+                    onChange={(e) => {
+                        {
+                            handleDataChange({ weight: e.target.value });
+                        }
+                    }}
+                    onKeyDown={handleKeyDown}
+                    className={cn(
+                        inputBaseClass,
+                        'text-center font-medium',
+                        data.unit === 'caisse' && Number(weight) !== (Number(data.unit_count) * 21)
+                            ? 'text-blue-600 font-bold'
+                            : 'text-slate-500'
+                    )}
                 />
             </TableCell>
 

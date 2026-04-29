@@ -39,6 +39,15 @@ export default function AddItemDialog({ categories }: Props) {
     const [open, setOpen] = useState(false);
     const [popoverOpen, setPopoverOpen] = useState(false);
     const [selectedCategoryId, setSelectedCategoryId] = useState("");
+    
+    const handleNameKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === 'ArrowDown') {
+            {
+                e.preventDefault();  
+                setPopoverOpen(true);  
+            }
+        }
+    };
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -76,15 +85,16 @@ export default function AddItemDialog({ categories }: Props) {
                                     id="name"
                                     name="name"
                                     required
-                                    placeholder="ex: Fournitures de bureau..."
+                                    placeholder="ex: poulpe g, calamar m..."
                                     autoFocus
+                                    onKeyDown={handleNameKeyDown}
                                 />
                                 <InputError message={errors.name} />
                             </div>
 
-                            <div className="grid gap-2">
+                            <div className="grid gap-2" >
                                 <Label>Catégorie</Label>
-                                <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+                                <Popover open={popoverOpen} onOpenChange={setPopoverOpen} >
                                     <PopoverTrigger asChild>
                                         <Button
                                             variant="outline"
@@ -93,6 +103,7 @@ export default function AddItemDialog({ categories }: Props) {
                                                 "w-full justify-between font-normal",
                                                 !selectedCategoryId && "text-muted-foreground"
                                             )}
+                                            
                                         >
                                             {selectedCategoryId
                                                 ? categories.find((c) => c.id.toString() === selectedCategoryId)?.name
@@ -100,7 +111,7 @@ export default function AddItemDialog({ categories }: Props) {
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
                                     </PopoverTrigger>
-                                    <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                                    <PopoverContent className="w-(--radix-popover-trigger-width) p-0" align="start">
                                         <Command>
                                             <CommandInput placeholder="Rechercher..." />
                                             <CommandList>
@@ -145,7 +156,7 @@ export default function AddItemDialog({ categories }: Props) {
                                 <Button
                                     type="submit"
                                     disabled={processing}
-                                    className="min-w-[100px]"
+                                    className="min-w-25"
                                 >
                                     {processing ? (
                                         <>

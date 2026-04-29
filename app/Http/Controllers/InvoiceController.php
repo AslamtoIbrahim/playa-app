@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Boat;
+use App\Models\Caution;
 use App\Models\Company;
 use App\Models\Customer;
 use App\Models\DailySession;
@@ -10,8 +11,8 @@ use App\Models\Invoice;
 use App\Models\Item;
 use App\Models\OfficeRoom;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
 
 class InvoiceController extends Controller
 {
@@ -20,7 +21,7 @@ class InvoiceController extends Controller
      */
     public function index()
     {
-        $invoices = Invoice::with(['billable', 'officeRoom', 'session'])
+        $invoices = Invoice::with(['billable', 'officeRoom', 'session', 'caution'])
             ->latest()
             ->paginate(10);
 
@@ -36,11 +37,13 @@ class InvoiceController extends Controller
             'type' => Company::class,
         ]);
 
+
         return Inertia::render('invoices', [
             'invoices'    => $invoices,
             'billables'   => $customers->concat($companies),
             'officeRooms' => OfficeRoom::all(['id', 'name', 'city']),
             'sessions'    => DailySession::where('status', 'open')->latest()->get(['id', 'session_date']),
+            'cautions' => Caution::select('id', 'name', 'owner_id', 'owner_type')->get(),
         ]);
     }
 
@@ -56,9 +59,11 @@ class InvoiceController extends Controller
             'billable_type'  => 'required|string|in:App\Models\Customer,App\Models\Company',
             'session_id'     => 'required|exists:daily_sessions,id',
             'office_room_id' => 'required|exists:office_rooms,id',
+            'caution_id'     => 'required|exists:cautions,id',
         ]);
 
         $session = DailySession::findOrFail($validated['session_id']);
+
         if ($session->status === 'closed') {
             return back()->withErrors(['session_id' => "Action impossible : La session est clôturée."]);
         }
@@ -66,16 +71,15 @@ class InvoiceController extends Controller
         return DB::transaction(function () use ($validated, $request) {
             $year = now()->year;
 
-            // التعديل هنا: كنحولوا invoice_number لـ Integer باش SQLite ما يتلفش
-            $lastInvoice = Invoice::withTrashed() // كيشوف حتى الممسوحين
+            $lastInvoice = Invoice::withTrashed()
                 ->where('invoice_number', 'like', $year . '%')
                 ->selectRaw('MAX(CAST(invoice_number AS INTEGER)) as max_val')
                 ->first();
 
             $maxNumber = $lastInvoice ? $lastInvoice->max_val : null;
+
             $nextNumber = $maxNumber ? ($maxNumber + 1) : ($year . '00001');
 
-            // صمام أمان كيقلب بـ withTrashed
             while (Invoice::withTrashed()->where('invoice_number', $nextNumber)->exists()) {
                 $nextNumber++;
             }
@@ -87,7 +91,8 @@ class InvoiceController extends Controller
                 'billable_type'  => $validated['billable_type'],
                 'session_id'     => $validated['session_id'],
                 'office_room_id' => $validated['office_room_id'],
-                'invoice_number' => (int)$nextNumber, // فرض الرقم كـ Integer
+                'caution_id'     => $validated['caution_id'] ?? null,
+                'invoice_number' => (int)$nextNumber,
                 'created_by'     => $request->user()->id,
                 'status'         => 'pending',
                 'amount'         => 0,
@@ -110,14 +115,14 @@ class InvoiceController extends Controller
             'date'           => 'required|date',
             'billable_id'    => 'required|integer',
             'billable_type'  => 'required|string|in:App\Models\Customer,App\Models\Company',
-            'office_room_id' => 'nullable|exists:office_rooms,id',
+            'office_room_id' => 'required|exists:office_rooms,id',
             'session_id'     => 'required|exists:daily_sessions,id',
+            'caution_id'     => 'required|exists:cautions,id',
             'status'         => 'required|string',
         ]);
 
         $session = DailySession::findOrFail($validated['session_id']);
 
-        // Empêcher le déplacement vers une session clôturée
         if ($session->status === 'closed' && $invoice->session_id !== (int)$validated['session_id']) {
             return back()->withErrors(['session_id' => "Transfert impossible : La session cible est clôturée."]);
         }
@@ -135,6 +140,7 @@ class InvoiceController extends Controller
         $invoice->load([
             'billable',
             'officeRoom',
+            'caution',
             'items.item',
             'items.boat',
             'items.differences.customer',

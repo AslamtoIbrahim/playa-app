@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\BoatController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\CautionController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DailySessionController;
@@ -99,6 +100,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('boats/{boat}', [BoatController::class, 'update'])->name('boats.update');
     Route::delete('boats/{boat}', [BoatController::class, 'destroy'])->name('boats.destroy');
 
+    // Cautions Routes
+    Route::get('cautions', [CautionController::class, 'index'])->name('cautions');
+    Route::post('cautions', [CautionController::class, 'store'])->name('cautions.store');
+    Route::patch('cautions/{caution}', [CautionController::class, 'update'])->name('cautions.update');
+    Route::delete('cautions/{caution}', [CautionController::class, 'destroy'])->name('cautions.destroy');
+
     // Office Rooms Routes
     Route::get('office-rooms', [OfficeRoomController::class, 'index'])->name('office-rooms');
     Route::post('office-rooms', [OfficeRoomController::class, 'store'])->name('office-rooms.store');
@@ -125,23 +132,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('receipts/{receipt}', [ReceiptController::class, 'update'])->name('receipts.update');
     Route::delete('receipts/{receipt}', [ReceiptController::class, 'destroy'])->name('receipts.destroy');
 
-    // --- Receipt Items (Details) Routes
-    // Route::prefix('receipts/{receipt}/items')->group(function () {
-    //     Route::post('/bulk', [ReceiptItemController::class, 'bulkStore'])->name('receipts.items.bulkStore');
-    //     // Bulk & UX Actions
-    //     Route::post('/reorder', [ReceiptItemController::class, 'reorder'])->name('receipts.items.reorder');
-
-    //     Route::post('/bulk-duplicate', [ReceiptItemController::class, 'duplicateMany'])->name('receipts.items.duplicateMany');
-
-    //     Route::delete('/bulk-delete', [ReceiptItemController::class, 'destroyMany'])->name('receipts.items.destroyMany');
-
-    //     Route::post('/', [ReceiptItemController::class, 'store'])->name('receipts.items.store');
-    //     Route::patch('/{item}', [ReceiptItemController::class, 'update'])->name('receipts.items.update');
-    //     Route::delete('/{item}', [ReceiptItemController::class, 'destroy'])->name('receipts.items.destroy');
-
-    // });
-
-
     // import { store, update } from '@/routes/receipts/items';
     // --- Receipt Items (Details) Routes
     Route::prefix('receipts')->group(function () {
@@ -158,7 +148,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             // katsift liha id dyal l-receipt o id dyal l-item (beneficiary row)
             Route::put('/{item}/commission', [ReceiptItemController::class, 'updateCommission'])
                 ->name('receipts.items.updateCommission');
-                
+
             Route::post('/bulk', [ReceiptItemController::class, 'bulkStore'])->name('receipts.items.bulkStore');
             Route::post('/reorder', [ReceiptItemController::class, 'reorder'])->name('receipts.items.reorder');
             Route::post('/bulk-duplicate', [ReceiptItemController::class, 'duplicateMany'])->name('receipts.items.duplicateMany');

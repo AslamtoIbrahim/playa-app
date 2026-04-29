@@ -1,3 +1,4 @@
+import { Caution } from './caution';
 import type { InvoiceItem } from './invoice-item';
 import type { OfficeRoom } from './office-room';
 
@@ -26,6 +27,9 @@ export interface Invoice {
     session_id: number;
     office_room_id: number | null;
     office_room?: OfficeRoom;
+
+    caution_id: number | null; // Zid hada
+    caution?: Caution;       // O hada bach n-affichiw smya
     
     // الحسابات المالية
     amount: number;
