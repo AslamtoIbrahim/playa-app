@@ -47,6 +47,8 @@ class CustomerController extends Controller
             // إيلا وصل هنا يعني السجل ممسوح (trashed) -> نديرو ليه Restore
             $existingCustomer->restore();
 
+            $existingCustomer->refresh();
+
             return redirect()->back()->with('success', 'Le client a été récupéré de l\'archive avec succès ! ♻️');
         }
 

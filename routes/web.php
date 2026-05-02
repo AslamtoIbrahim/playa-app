@@ -14,6 +14,8 @@ use App\Http\Controllers\OfficeRoomController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ReceiptController;
 use App\Http\Controllers\ReceiptItemController;
+use App\Http\Controllers\SaleController;
+use App\Http\Controllers\SaleItemController;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 
@@ -46,6 +48,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/', [DailySessionController::class, 'index'])->name('sessions');
         Route::post('/', [DailySessionController::class, 'store'])->name('sessions.store');
 
+        Route::get('/{session}', [DailySessionController::class, 'show'])->name('sessions.show');
         // التعديل (مثلا تصحيح التاريخ)
         Route::patch('/{session}', [DailySessionController::class, 'update'])->name('sessions.update');
         Route::delete('/{session}', [DailySessionController::class, 'destroy'])->name('sessions.destroy');
@@ -159,6 +162,25 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::delete('/{item}', [ReceiptItemController::class, 'destroy'])->name('receipts.items.destroy');
         });
     });
+
+    // --- Sales Routes (Header) ---
+    Route::get('sales', [SaleController::class, 'index'])->name('sales');
+    Route::post('sales', [SaleController::class, 'store'])->name('sales.store');
+    Route::get('sales/{sale}', [SaleController::class, 'show'])->name('sales.show');
+    Route::patch('sales/{sale}', [SaleController::class, 'update'])->name('sales.update');
+    Route::delete('sales/{sale}', [SaleController::class, 'destroy'])->name('sales.destroy');
+
+    // --- Sale Items (Details) Routes ---
+    // 1. Bulk Operations (Store, Duplicate, Delete)
+    Route::post('sales/{sale}/items/bulk', [SaleItemController::class, 'bulkStore'])->name('sales.items.bulkStore');
+    Route::post('sales/{sale}/items/bulk-duplicate', [SaleItemController::class, 'duplicateMany'])->name('sales.items.duplicateMany');
+    Route::delete('sales/{sale}/items/bulk-delete', [SaleItemController::class, 'destroyMany'])->name('sales.items.destroyMany');
+
+    // 2. Standard CRUD & Reorder
+    Route::post('sales/{sale}/items', [SaleItemController::class, 'store'])->name('sales.items.store');
+    Route::patch('sales/{sale}/items/{item}', [SaleItemController::class, 'update'])->name('sales.items.update');
+    Route::delete('sales/{sale}/items/{item}', [SaleItemController::class, 'destroy'])->name('sales.items.destroy');
+    Route::post('sales/{sale}/items/reorder', [SaleItemController::class, 'reorder'])->name('sales.items.reorder');
 });
 
 require __DIR__ . '/settings.php';

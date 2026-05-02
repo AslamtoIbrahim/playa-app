@@ -18,36 +18,34 @@ import { CSS } from '@dnd-kit/utilities';
 // Types & Logic
 import { Boat } from '@/types/boat';
 import { Item } from '@/types/item';
-import { InvoiceItem } from '@/types/invoice-item';
+import { SaleItem } from '@/types/sale-item';
 import { Checkbox } from './ui/checkbox';
-import { InvoiceRowActions } from './invoice-row-actions';
-import { useInvoiceItem } from '@/hooks/use-invoice-item';
+import { SaleRowActions } from './sale-row-actions';
+import { useSaleItem } from '@/hooks/use-sale-item';
 import { SearchSelect } from './search-select';
 
 interface Props {
-    invoiceId: number;
-    item?: InvoiceItem;
+    saleId: number;
+    item?: SaleItem;
     boats: Boat[];
     items: Item[];
     isNew?: boolean;
     selected?: boolean;
     onSelectChange?: (checked: boolean) => void;
-    onOpenDifference: (item: InvoiceItem) => void;
 }
 
-export default function InvoiceItemRow({
-    invoiceId,
+export default function SaleItemRow({
+    saleId,
     item,
     boats,
     items,
     isNew,
     selected,
     onSelectChange,
-    onOpenDifference,
 }: Props) {
     const {
         data,
-        handleDataChange, // استعملنا هادي عوض setData
+        handleDataChange,
         loading,
         openBoat,
         setOpenBoat,
@@ -55,11 +53,11 @@ export default function InvoiceItemRow({
         setOpenItem,
         weight,
         amount,
-        displayBox, // هادي هي القيمة اللي غتبان في الـ Input ديال الـ Box
+        displayBox,
         isReadyToSave,
         submitSave,
         handleKeyDown,
-    } = useInvoiceItem({ invoiceId, item, isNew });
+    } = useSaleItem({ saleId, item, isNew });
 
     const {
         attributes,
@@ -124,11 +122,12 @@ export default function InvoiceItemRow({
                 )}
             </TableCell>
 
+            {/* BOAT SELECT */}
             <TableCell className={cn('w-45 border-r p-0', cellFocusClass)}>
                 <SearchSelect
                     value={data.boat_id}
                     options={boats}
-                    placeholder="Choisir bateau..."
+                    placeholder="Bateau..."
                     open={openBoat}
                     onOpenChange={setOpenBoat}
                     onKeyDown={(e) => {
@@ -145,11 +144,12 @@ export default function InvoiceItemRow({
                 />
             </TableCell>
 
+            {/* ITEM SELECT */}
             <TableCell className={cn('w-45 border-r p-0', cellFocusClass)}>
                 <SearchSelect
                     value={data.item_id}
                     options={items}
-                    placeholder="Saisir espèce..."
+                    placeholder="Espèce..."
                     open={openItem}
                     onOpenChange={setOpenItem}
                     onKeyDown={(e) => {
@@ -159,7 +159,7 @@ export default function InvoiceItemRow({
                     }}
                     onSelect={(id) => {
                         {
-                            const selectedItem = items.find(i => String(i.id) === String(id));
+                            const selectedItem = items.find((i) => { return String(i.id) === String(id); });
                             const isPoulpe = selectedItem?.name?.toLowerCase().includes('poulpe') || selectedItem?.name?.toLowerCase().includes('بولبو');
 
                             handleDataChange({
@@ -173,9 +173,8 @@ export default function InvoiceItemRow({
                 />
             </TableCell>
 
-
-
-            <TableCell className={cn('w-24 border-r p-0', cellFocusClass)}>
+            {/* UNIT COUNT */}
+            <TableCell className={cn('w-20 border-r p-0', cellFocusClass)}>
                 <Input
                     type="number"
                     value={data.unit_count}
@@ -185,10 +184,11 @@ export default function InvoiceItemRow({
                         }
                     }}
                     onKeyDown={handleKeyDown}
-                    className={cn(inputBaseClass, 'text-center')}
+                    className={cn(inputBaseClass, 'text-center font-bold')}
                 />
             </TableCell>
 
+            {/* UNIT PRICE */}
             <TableCell className={cn('w-28 border-r p-0', cellFocusClass)}>
                 <Input
                     type="number"
@@ -199,11 +199,14 @@ export default function InvoiceItemRow({
                         }
                     }}
                     onKeyDown={handleKeyDown}
-                    className={cn(inputBaseClass, 'pr-4 text-right')}
+                    className={cn(inputBaseClass, 'pr-4 text-right font-medium')}
                 />
             </TableCell>
 
-            <TableCell className={cn('w-28 border-r p-0', cellFocusClass)}>
+
+
+            {/* UNIT SELECT */}
+            <TableCell className={cn('w-24 border-r p-0', cellFocusClass)}>
                 <Select
                     value={data.unit}
                     onValueChange={(val) => {
@@ -218,6 +221,7 @@ export default function InvoiceItemRow({
                     >
                         <SelectValue />
                     </SelectTrigger>
+
                     <SelectContent>
                         <SelectItem value="caisse" className="text-[10px] uppercase">Caisse</SelectItem>
                         <SelectItem value="kg" className="text-[10px] uppercase">Kg</SelectItem>
@@ -225,16 +229,7 @@ export default function InvoiceItemRow({
                 </Select>
             </TableCell>
 
-            {/* <TableCell className="w-24 border-r bg-slate-50/20 p-0">
-                <Input
-                    type="number"
-                    value={weight}
-                    readOnly
-                    className={cn(inputBaseClass, 'text-center text-slate-400 italic')}
-                />
-            </TableCell> */}
-
-            {/* 7. POIDS (Editable) */}
+            {/* WEIGHT (Editable) */}
             <TableCell className={cn('w-24 border-r p-0', cellFocusClass)}>
                 <Input
                     type="number"
@@ -275,12 +270,14 @@ export default function InvoiceItemRow({
                 />
             </TableCell>
 
-            <TableCell className="w-32 bg-slate-50/10 px-6 text-right text-xs font-normal text-slate-900">
+            {/* TOTAL AMOUNT */}
+            <TableCell className="w-32 bg-slate-50/10 px-6 text-right text-xs font-bold text-slate-900">
                 {amount > 0
                     ? amount.toLocaleString('fr-FR', { minimumFractionDigits: 2 })
                     : '0.00'}
             </TableCell>
 
+            {/* ACTIONS */}
             <TableCell className="relative w-12 border-l p-0 text-center print:hidden">
                 {loading ? (
                     <div className="flex h-10 w-full items-center justify-center">
@@ -310,11 +307,10 @@ export default function InvoiceItemRow({
                             </Button>
                         ) : (
                             <div className="w-full opacity-0 transition-opacity group-hover:opacity-100">
-                                <InvoiceRowActions
-                                    invoiceId={invoiceId}
+                                <SaleRowActions
+                                    saleId={saleId}
                                     item={item!}
                                     data={data}
-                                    onOpenDifference={onOpenDifference}
                                 />
                             </div>
                         )}

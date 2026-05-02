@@ -1,6 +1,6 @@
 import { Item } from "./item";
 import { Boat } from "./boat";
-import { Customer } from "./customers";
+import { Customer } from "./customer";
 
 
 export interface ReceiptItem {

@@ -28,7 +28,7 @@ import { useInvoiceImport } from '@/hooks/use-invoice-import';
 import AppLayout from '@/layouts/app-layout';
 import { bulkStore, destroyMany, duplicateMany, reorder } from '@/routes/invoices/items';
 import { Boat } from '@/types/boat';
-import { Customer } from '@/types/customers';
+import { Customer } from '@/types/customer';
 import { Invoice } from '@/types/invoice';
 import { InvoiceItem } from '@/types/invoice-item';
 import { Item } from '@/types/item';

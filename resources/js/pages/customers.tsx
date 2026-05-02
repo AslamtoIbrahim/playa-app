@@ -9,7 +9,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import type { Customer } from '@/types/customers';
+import type { Customer } from '@/types/customer';
 import { Head } from '@inertiajs/react';
 
 interface Props {

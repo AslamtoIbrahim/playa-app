@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatDateDisplay } from '@/lib/date';
-import { Customer } from '@/types/customers';
+import { Customer } from '@/types/customer';
 import { Head, router } from '@inertiajs/react';
 
 interface Report {

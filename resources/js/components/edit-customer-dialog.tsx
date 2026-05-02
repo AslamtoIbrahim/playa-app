@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { update } from '@/routes/customers';
-import { Customer } from '@/types/customers';
+import { Customer } from '@/types/customer';
 import { Form } from '@inertiajs/react';
 import { Loader2, Pencil } from 'lucide-react';
 import { useState } from 'react';

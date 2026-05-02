@@ -50,9 +50,6 @@ export default function Invoices({ invoices, billables, officeRooms, sessions, c
         router.visit(show.url(invoiceId));
     };
 
-    console.log('invoices: ',invoices);
-    console.log('cautions: ',cautions);
-
     return (
         <>
             <Head title="Factures" />
@@ -249,7 +246,6 @@ export default function Invoices({ invoices, billables, officeRooms, sessions, c
                                 const isNext = link.label.includes('Next');
 
                                 if (!link.url && !link.active) {
-                                    { /* Empty check for link visibility */ }
                                     return null;
                                 }
 

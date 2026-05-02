@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/table';
 import { formatDateDisplay } from '@/lib/date';
 import type { DailySession } from '@/types/daily-session';
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { Lock, Unlock } from 'lucide-react';
 
 interface Props {
@@ -25,6 +25,10 @@ export default function Sessions({ sessions }: Props) {
     const calculateMargin = (sell: number, buy: number) => sell - buy;
     // كنخرجو غير التواريخ وكنصيفطوهم كـ Array ديال strings
     const existingDates = sessions.map(session => session.session_date);
+
+    const handleRowClick = (sessionId: number) => {
+        router.visit(`/sessions/${sessionId}`);
+    };
 
     return (
         <>
@@ -50,7 +54,12 @@ export default function Sessions({ sessions }: Props) {
 
                         <TableBody>
                             {sessions.map((session) => (
-                                <TableRow key={session.id}>
+                                <TableRow
+                                    className="cursor-pointer hover:bg-slate-50/80 transition-colors"
+                                    key={session.id}
+                                    onClick={() => {
+                                        handleRowClick(session.id);
+                                    }}>
                                     <TableCell className="font-medium">
                                         {formatDateDisplay(session.session_date)}
                                     </TableCell>

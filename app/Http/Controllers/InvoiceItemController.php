@@ -194,9 +194,9 @@ class InvoiceItemController extends Controller
 
                 foreach ($itemsToDuplicate as $index => $item) {
                     $newItem = $item->replicate();
-                    
+
                     $newItem->position = $lastSelectedPosition + ($index + 1);
-                    
+
                     $newItem->save();
                 }
 
@@ -233,27 +233,51 @@ class InvoiceItemController extends Controller
     }
 
     /**
-     * حذف سطر
+     * حذف سطر واحد مع تنظيف شامل للفروقات، العمولات، وصولات الاستلام
      */
     public function destroy(Invoice $invoice, InvoiceItem $item)
     {
         try {
             DB::transaction(function () use ($invoice, $item) {
+
+                // 1. كنقلبو على الـ ReceiptItems اللي مرتبطين بهاد السطر قبل ما نمسحوهم
+                $receiptItemIds = \App\Models\ReceiptItem::where('invoice_item_id', $item->id)->pluck('receipt_id');
+
+                // 2. مسح الفروقات
+                \App\Models\Difference::where('invoice_item_id', $item->id)->delete();
+
+                // 3. مسح سطر العمولة من وصولات الاستلام
+                \App\Models\ReceiptItem::where('invoice_item_id', $item->id)->delete();
+
+                // 4. تنظيف الـ Receipts: إذا بقاو خاويين نمسحوهم، وإلا نعاودو نحسبو الـ Total ديالهم
+                if ($receiptItemIds->isNotEmpty()) {
+                    foreach ($receiptItemIds->unique() as $receiptId) {
+                        $receipt = \App\Models\Receipt::find($receiptId);
+                        if ($receipt) {
+                            if ($receipt->items()->count() == 0) {
+                                $receipt->delete(); // مسح الـ Receipt كامل إذا رجع خاوي
+                            } else {
+                                $receipt->calculateTotals(); // تحديث الحساب إذا بقاو فيه سطور خرين
+                            }
+                        }
+                    }
+                }
+
+                // 5. مسح سطر الفاتورة
                 $item->delete();
 
                 $invoice->refresh();
-
                 $invoice->calculateTotals();
             });
 
-            return back()->with('success', 'Supprimé. ✅');
+            return back()->with('success', 'Suppression réussie et nettoyage effectué. ✅');
         } catch (\Exception $e) {
-            return back()->with('error', 'Erreur suppression.');
+            return back()->with('error', 'Erreur lors de la suppression.');
         }
     }
 
     /**
-     * حذف عدة سطور
+     * حذف مجموعة سطور مع تنظيف شامل
      */
     public function destroyMany(Request $request, Invoice $invoice)
     {
@@ -264,16 +288,37 @@ class InvoiceItemController extends Controller
 
         try {
             DB::transaction(function () use ($invoice, $validated) {
-                $invoice->items()->whereIn('id', $validated['ids'])->delete();
+                $ids = $validated['ids'];
+
+                // نجيبو كاع الـ Receipts اللي يقدروا يتأثروا
+                $receiptIds = \App\Models\ReceiptItem::whereIn('invoice_item_id', $ids)->pluck('receipt_id')->unique();
+
+                // مسح التوابع
+                \App\Models\Difference::whereIn('invoice_item_id', $ids)->delete();
+                \App\Models\ReceiptItem::whereIn('invoice_item_id', $ids)->delete();
+
+                // تنظيف الـ Receipts
+                foreach ($receiptIds as $receiptId) {
+                    $receipt = \App\Models\Receipt::find($receiptId);
+                    if ($receipt) {
+                        if ($receipt->items()->count() == 0) {
+                            $receipt->delete();
+                        } else {
+                            $receipt->calculateTotals();
+                        }
+                    }
+                }
+
+                // حذف الأسطر
+                $invoice->items()->whereIn('id', $ids)->delete();
 
                 $invoice->refresh();
-
                 $invoice->calculateTotals();
             });
 
-            return back()->with('success', count($validated['ids']) . ' supprimés. ✅');
+            return back()->with('success', count($validated['ids']) . ' supprimés avec nettoyage. ✅');
         } catch (\Exception $e) {
-            return back()->with('error', 'Erreur suppression.');
+            return back()->with('error', 'Erreur suppression groupée.');
         }
     }
 }

@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { Customer } from "@/types/customers";
+import { Customer } from "@/types/customer";
 import { Difference } from "@/types/difference";
 import { InvoiceItem } from "@/types/invoice-item";
 import { Item } from "@/types/item";

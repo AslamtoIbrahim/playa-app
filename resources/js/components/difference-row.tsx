@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { useDifferenceRow } from '@/hooks/use-difference-row';
 import { cn } from '@/lib/utils';
-import { Customer } from '@/types/customers';
+import { Customer } from '@/types/customer';
 import { Difference } from '@/types/difference';
 import { Item } from '@/types/item';
 import { Loader2, Plus, Trash2 } from 'lucide-react';

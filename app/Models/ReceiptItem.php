@@ -20,6 +20,11 @@ class ReceiptItem extends Model
         'type' // 'item', 'commission', 'freetax'
     ];
 
+    public function invoiceItem(): BelongsTo
+    {
+        return $this->belongsTo(InvoiceItem::class);
+    }
+
     public function receipt(): BelongsTo
     {
         return $this->belongsTo(Receipt::class);

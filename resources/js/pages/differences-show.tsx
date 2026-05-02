@@ -163,7 +163,7 @@ export default function DifferenceShow({ details, total_boxes, total_amount }: P
                                 {details.map((item) => (
                                     <TableRow key={item.id} className="hover:bg-transparent">
                                         <TableCell className="font-semibold capitalize text-slate-700">
-                                            {item.invoice_item?.item?.name}
+                                            {item.invoice_item?.item?.name.toLocaleLowerCase()}
                                         </TableCell>
                                         <TableCell className="text-center font-medium">
                                             {item.unit_count}

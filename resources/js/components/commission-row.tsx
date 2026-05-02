@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { cn } from '@/lib/utils';
-import { Customer } from '@/types/customers';
+import { Customer } from '@/types/customer';
 import { Loader2, Plus, Trash2 } from 'lucide-react';
 import { SearchSelect } from './search-select';
 import { useCommissionRow } from "@/hooks/use-commission-row";

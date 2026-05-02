@@ -13,53 +13,69 @@ class DifferenceController extends Controller
 {
     public function index()
     {
-        // 1. نجبدو الـ Differences هوما الأولين (هادو هوما الأساس)
-        $differencesQuery = DB::table('differences')
-            ->leftJoin('invoice_items', 'differences.invoice_item_id', '=', 'invoice_items.id')
-            ->leftJoin('invoices', 'invoice_items.invoice_id', '=', 'invoices.id')
+        // 1. Differences (li jayin men l-fawatir)
+        $diffs = DB::table('differences')
+            ->join('invoice_items', 'differences.invoice_item_id', '=', 'invoice_items.id')
+            ->join('invoices', 'invoice_items.invoice_id', '=', 'invoices.id')
             ->select(
                 'differences.customer_id',
                 'invoice_items.boat_id',
-                DB::raw('COALESCE(invoices.date, DATE(differences.created_at)) as invoice_date'),
-                DB::raw('SUM(differences.total_diff) as diff_amount'),
-                DB::raw('COUNT(differences.id) as diff_count')
+                DB::raw('DATE(invoices.date) as report_date'),
+                DB::raw('SUM(differences.total_diff) as amount'),
+                DB::raw('COUNT(differences.id) as items_count')
             )
-            ->groupBy('differences.customer_id', 'invoice_items.boat_id', 'invoice_date');
+            ->groupBy('differences.customer_id', 'invoice_items.boat_id', 'report_date');
 
-        // 2. نجيبو النتائج ديال الـ Differences هي الأولى
-        $diffResults = $differencesQuery->get();
+        // 2. Receipt Items (Extra lli m-liyyin b bateau o kelyan)
+        // Zdna "whereNotNull('receipts.boat_id')" bach n-haydou ay khidma dyal "DI" aw chi haja khra
+        $receipts = DB::table('receipt_items')
+            ->join('receipts', 'receipt_items.receipt_id', '=', 'receipts.id')
+            ->whereNotNull('receipts.boat_id')
+            ->whereNotNull('receipts.customer_id')
+            ->select(
+                'receipts.customer_id',
+                'receipts.boat_id',
+                DB::raw('DATE(receipts.date) as report_date'),
+                // Hna l-mochkil dyal 100 DH: t-aked anaka makhdamch b commission hna o f differences bjouj
+                DB::raw('SUM(receipt_items.unit_count * receipt_items.real_price) as amount'),
+                DB::raw('COUNT(receipt_items.id) as items_count')
+            )
+            ->groupBy('receipts.customer_id', 'receipts.boat_id', 'report_date');
 
-        // 3. دابا نتمشاو على كل Difference ونشوفو واش كاين شي Receipt مطابق ليها
-        $reports = $diffResults->map(function ($diff) {
-            // كنقلبو على الـ Receipts اللي عندهم نفس الكليان، الباطو، والتاريخ
-            $receiptAmount = DB::table('receipt_items')
-                ->join('receipts', 'receipt_items.receipt_id', '=', 'receipts.id')
-                ->where('receipts.customer_id', $diff->customer_id)
-                ->where('receipts.boat_id', $diff->boat_id)
-                ->whereDate('receipts.date', $diff->invoice_date)
-                ->select(
-                    DB::raw('SUM(receipt_items.unit_count * receipt_items.real_price) as total_receipt'),
-                    DB::raw('COUNT(receipt_items.id) as receipt_count')
-                )
-                ->first();
+        // 3. Union & Final Grouping
+        $combined = DB::query()->fromSub($diffs->unionAll($receipts), 'sub')
+            ->select(
+                'customer_id',
+                'boat_id',
+                'report_date as invoice_date',
+                DB::raw('SUM(amount) as total_diff_amount'),
+                DB::raw('SUM(items_count) as total_items')
+            )
+            ->groupBy('customer_id', 'boat_id', 'invoice_date')
+            // N-fawtou ay haja ma-fihach bateau (Safe check)
+            ->whereNotNull('boat_id')
+            ->get();
 
-            // كنجمعو الحساب: Diff + Receipt (إلا لقى شي حاجة)
-            $totalAmount = (float)$diff->diff_amount + (float)($receiptAmount->total_receipt ?? 0);
-            $totalItems = $diff->diff_count + ($receiptAmount->receipt_count ?? 0);
+        $reports = $combined->map(function ($row) {
+            $customer = \App\Models\Customer::find($row->customer_id);
+            $boat = \App\Models\Boat::find($row->boat_id);
+
+            // Ila mal9ach l-boat aw customer (data dyal tjerrib), may-affichihomch
+            if (!$customer || !$boat) return null;
 
             return (object)[
-                'customer_id' => $diff->customer_id,
-                'boat_id' => $diff->boat_id,
-                'invoice_date' => $diff->invoice_date,
-                'total_diff_amount' => $totalAmount,
-                'items_count' => $totalItems,
-                'customer' => \App\Models\Customer::find($diff->customer_id),
-                'boat_name' => \App\Models\Boat::find($diff->boat_id)?->name,
+                'customer_id' => $row->customer_id,
+                'boat_id' => $row->boat_id,
+                'invoice_date' => $row->invoice_date,
+                'total_diff_amount' => (float)$row->total_diff_amount,
+                'items_count' => (int)$row->total_items,
+                'customer' => $customer,
+                'boat_name' => $boat->name,
             ];
-        });
+        })->filter()->values(); // filter() bach n-haydou l-nulls
 
         return Inertia::render('differences', [
-            'reports' => $reports->values() // values() باش ترجع Array نقية لـ Inertia
+            'reports' => $reports
         ]);
     }
 

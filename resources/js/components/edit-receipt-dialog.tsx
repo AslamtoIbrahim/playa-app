@@ -41,7 +41,7 @@ import { cn, commandItemClass } from '@/lib/utils';
 
 import { update } from '@/routes/receipts'; 
 import { Receipt } from '@/types/receipt';
-import { Customer } from '@/types/customers';
+import { Customer } from '@/types/customer';
 import { DailySession } from '@/types/daily-session';
 import { Boat } from '@/types/boat';
 

@@ -1,7 +1,7 @@
 // types/receipt.ts
 
 import { Boat } from "./boat";
-import { Customer } from "./customers";
+import { Customer } from "./customer";
 import { DailySession } from "./daily-session";
 
 export interface Receipt {

@@ -37,6 +37,8 @@ class CategoryController extends Controller
 
             // إيلا كانت ممسوحة، كنرجعوها (Restore)
             $existingCategory->restore();
+            $existingCategory->refresh();
+
 
             return redirect()->back()->with('success', 'La catégorie a été récupérée de l\'archive ! ♻️');
         }

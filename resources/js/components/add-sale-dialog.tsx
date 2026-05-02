@@ -1,6 +1,6 @@
-import { Form } from '@inertiajs/react';
+import { Form, Link } from '@inertiajs/react';
 import { format } from "date-fns";
-import { Calendar as CalendarIcon, Check, ChevronsUpDown, Plus, Receipt, Ship, X } from 'lucide-react';
+import { ArrowRight, Calendar as CalendarIcon, Check, ChevronsUpDown, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -24,79 +24,97 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"; // Zdna hado
 import { Spinner } from '@/components/ui/spinner';
 import { cn, commandItemClass } from "@/lib/utils";
-import { store } from '@/routes/receipts'; 
-import { Calendar } from './ui/calendar';
-import { DailySession } from '@/types/daily-session';
+import { store } from '@/routes/sales';
 import { Customer } from '@/types/customer';
-import { Boat } from '@/types/boat';
+import { DailySession } from '@/types/daily-session';
+import { Calendar } from './ui/calendar';
 
 interface Props {
     customers: Customer[];
     sessions: DailySession[];
-    boats: Boat[];
 }
 
-export default function AddReceiptDialog({ customers, sessions, boats }: Props) {
+export default function AddSaleDialog({ customers, sessions }: Props) {
     const [open, setOpen] = useState<boolean>(false);
 
-    const [customerComboOpen, setCustomerComboOpen] = useState<boolean>(false);
+    const [clientComboOpen, setClientComboOpen] = useState<boolean>(false);
     const [sessionComboOpen, setSessionComboOpen] = useState<boolean>(false);
-    const [boatComboOpen, setBoatComboOpen] = useState<boolean>(false);
 
-    const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
+    const [selectedCustomerId, setSelectedCustomerId] = useState<string>(""); // Smiya s7i7a
     const [selectedSessionId, setSelectedSessionId] = useState<string>("");
-    const [selectedBoatId, setSelectedBoatId] = useState<string>("");
+    const [type, setType] = useState<string>("normal"); // Default "normal"
     const [date, setDate] = useState<Date>(new Date());
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 <Button size="sm" className="font-bold">
-                    <Plus className="mr-2 h-4 w-4" /> Nouveau Bon de Réception
+                    <Plus className="mr-2 h-4 w-4" /> Nouvelle Vente
                 </Button>
             </DialogTrigger>
 
             <DialogContent className="sm:max-w-106.25">
                 <DialogHeader>
-                    <DialogTitle className="uppercase font-black text-slate-900 flex items-center gap-2">
-                        <Receipt className="h-5 w-5 text-blue-600" /> Nouveau Bon
-                    </DialogTitle>
+                    <DialogTitle className="uppercase font-black text-slate-900">Nouvelle Vente</DialogTitle>
                     <DialogDescription>
-                        Créez l'entête du bon de réception. Vous pourrez ajouter les articles après validation.
+                        Créez l'entête de la vente. Vous pourrez ajouter les produits après.
                     </DialogDescription>
                 </DialogHeader>
 
                 <Form
                     {...store.form()}
                     onSuccess={() => {
-                        toast.success('Bon de réception créé avec succès !');
+                        toast.success('Vente initialisée avec succès ! ✨');
                         setOpen(false);
                         setSelectedCustomerId("");
                         setSelectedSessionId("");
-                        setSelectedBoatId("");
+                        setType("normal");
                         setDate(new Date());
                     }}
                     className="space-y-4 pt-4"
                 >
                     {({ processing, errors }) => (
                         <>
+                            {/* Hidden Inputs m-fixyin b smiyat li f le Backend */}
                             <input type="hidden" name="customer_id" value={selectedCustomerId} />
                             <input type="hidden" name="session_id" value={selectedSessionId} />
-                            <input type="hidden" name="boat_id" value={selectedBoatId} />
                             <input type="hidden" name="date" value={date ? format(date, "yyyy-MM-dd") : ""} />
+                            <input type="hidden" name="type" value={type} />
 
-                            {/* Date Field */}
+                            {/* Section Type de Vente */}
                             <div className="grid gap-2">
-                                <Label className="text-xs font-bold uppercase text-slate-500">Date de Réception</Label>
+                                <Label className="text-xs font-bold uppercase text-slate-500">Type de Vente</Label>
+                                <Select value={type} onValueChange={setType}>
+                                    <SelectTrigger className="w-full font-medium">
+                                        <SelectValue placeholder="Type de vente" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="normal">Vente Normale</SelectItem>
+                                        <SelectItem value="usine">Vente Usine</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <InputError message={errors.type} />
+                            </div>
+
+                            {/* Section Date */}
+                            <div className="grid gap-2">
+                                <Label className="text-xs font-bold uppercase text-slate-500">Date de Vente</Label>
                                 <Popover>
                                     <PopoverTrigger asChild>
                                         <Button
                                             variant="outline"
                                             className={cn("w-full justify-start text-left font-medium", !date && "text-muted-foreground")}
                                         >
-                                            <CalendarIcon className="mr-2 h-4 w-4 text-slate-400" />
+                                            <CalendarIcon className="mr-2 h-4 w-4" />
                                             {date ? format(date, "dd/MM/yyyy") : <span>Choisir une date</span>}
                                         </Button>
                                     </PopoverTrigger>
@@ -104,21 +122,22 @@ export default function AddReceiptDialog({ customers, sessions, boats }: Props) 
                                         <Calendar
                                             mode="single"
                                             selected={date}
-                                            onSelect={(d: Date | undefined) => {
-                                                if (d) {
-                                                    setDate(d);
-                                                }
-                                            }}
+                                            onSelect={(d) => d && setDate(d)}
                                             initialFocus
                                         />
                                     </PopoverContent>
                                 </Popover>
-                                <InputError message={errors.date} />
+                                <InputError message={errors.date} /> {/* Fix name here */}
                             </div>
 
-                            {/* Session Field */}
+                            {/* Section Session */}
                             <div className="grid gap-2">
-                                <Label className="text-xs font-bold uppercase text-slate-500">Journée d'exploitation</Label>
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-xs font-bold uppercase text-slate-500">Journée d'affectation</Label>
+                                    <Link href="/sessions" className="text-[12px] text-blue-600 hover:underline flex items-center gap-1">
+                                        Sessions <ArrowRight className="h-2 w-2" />
+                                    </Link>
+                                </div>
                                 <Popover open={sessionComboOpen} onOpenChange={setSessionComboOpen}>
                                     <PopoverTrigger asChild>
                                         <Button
@@ -128,15 +147,15 @@ export default function AddReceiptDialog({ customers, sessions, boats }: Props) 
                                         >
                                             {selectedSessionId
                                                 ? format(new Date(sessions.find((s) => s.id.toString() === selectedSessionId)?.session_date || ""), "dd MMMM yyyy")
-                                                : "Sélectionner la journée..."}
+                                                : "Choisir la session..."}
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                         <Command>
-                                            <CommandInput placeholder="Rechercher une journée..." />
+                                            <CommandInput placeholder="Rechercher une session..." />
                                             <CommandList>
-                                                <CommandEmpty>Aucune journée trouvée.</CommandEmpty>
+                                                <CommandEmpty>Aucune session trouvée.</CommandEmpty>
                                                 <CommandGroup>
                                                     {sessions.map((session) => (
                                                         <CommandItem
@@ -149,8 +168,7 @@ export default function AddReceiptDialog({ customers, sessions, boats }: Props) 
                                                             }}
                                                         >
                                                             <Check className={cn("mr-2 h-4 w-4", selectedSessionId === session.id.toString() ? "opacity-100" : "opacity-0")} />
-                                                            {format(new Date(session.session_date), "dd/MM/yyyy")}
-                                                            <span className="ml-auto text-[10px] bg-slate-100 px-1 rounded uppercase">{session.status}</span>
+                                                            Session du {format(new Date(session.session_date), "dd/MM/yyyy")}
                                                         </CommandItem>
                                                     ))}
                                                 </CommandGroup>
@@ -161,18 +179,18 @@ export default function AddReceiptDialog({ customers, sessions, boats }: Props) 
                                 <InputError message={errors.session_id} />
                             </div>
 
-                            {/* Customer Field */}
+                            {/* Section Client */}
                             <div className="grid gap-2">
-                                <Label className="text-xs font-bold uppercase text-slate-500">Client / Fournisseur</Label>
-                                <Popover open={customerComboOpen} onOpenChange={setCustomerComboOpen}>
+                                <Label className="text-xs font-bold uppercase text-slate-500">Client</Label>
+                                <Popover open={clientComboOpen} onOpenChange={setClientComboOpen}>
                                     <PopoverTrigger asChild>
                                         <Button
                                             variant="outline"
                                             role="combobox"
                                             className={cn("w-full justify-between font-medium", !selectedCustomerId && "text-muted-foreground", errors.customer_id && "border-destructive")}
                                         >
-                                            {selectedCustomerId 
-                                                ? customers.find(c => c.id.toString() === selectedCustomerId)?.name 
+                                            {selectedCustomerId
+                                                ? customers.find((c) => c.id.toString() === selectedCustomerId)?.name
                                                 : "Sélectionner un client..."}
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
@@ -190,7 +208,7 @@ export default function AddReceiptDialog({ customers, sessions, boats }: Props) 
                                                             value={customer.name}
                                                             onSelect={() => {
                                                                 setSelectedCustomerId(customer.id.toString());
-                                                                setCustomerComboOpen(false);
+                                                                setClientComboOpen(false);
                                                             }}
                                                         >
                                                             <Check className={cn("mr-2 h-4 w-4", selectedCustomerId === customer.id.toString() ? "opacity-100" : "opacity-0")} />
@@ -202,71 +220,13 @@ export default function AddReceiptDialog({ customers, sessions, boats }: Props) 
                                         </Command>
                                     </PopoverContent>
                                 </Popover>
-                                <InputError message={errors.customer_id} />
-                            </div>
-
-                            {/* Boat Field (Optional) */}
-                            <div className="grid gap-2">
-                                <Label className="text-xs font-bold uppercase text-slate-500 flex justify-between">
-                                    Bateau (Optionnel)
-                                    {selectedBoatId && (
-                                        <button 
-                                            type="button" 
-                                            onClick={() => setSelectedBoatId("")}
-                                            className="text-[10px] text-red-500 hover:underline flex items-center gap-1"
-                                        >
-                                            <X className="h-3 w-3" /> Effacer
-                                        </button>
-                                    )}
-                                </Label>
-                                <Popover open={boatComboOpen} onOpenChange={setBoatComboOpen}>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            variant="outline"
-                                            role="combobox"
-                                            className={cn("w-full justify-between font-medium bg-slate-50/50", !selectedBoatId && "text-muted-foreground")}
-                                        >
-                                            <div className="flex items-center">
-                                                <Ship className="mr-2 h-4 w-4 text-slate-400" />
-                                                {selectedBoatId 
-                                                    ? boats.find(b => b.id.toString() === selectedBoatId)?.name 
-                                                    : "Sans bateau (Client direct)"}
-                                            </div>
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                        <Command>
-                                            <CommandInput placeholder="Rechercher un bateau..." />
-                                            <CommandList>
-                                                <CommandEmpty>Aucun bateau trouvé.</CommandEmpty>
-                                                <CommandGroup>
-                                                    {boats.map((boat) => (
-                                                        <CommandItem
-                                                            className={commandItemClass}
-                                                            key={boat.id}
-                                                            value={boat.name}
-                                                            onSelect={() => {
-                                                                setSelectedBoatId(boat.id.toString());
-                                                                setBoatComboOpen(false);
-                                                            }}
-                                                        >
-                                                            <Check className={cn("mr-2 h-4 w-4", selectedBoatId === boat.id.toString() ? "opacity-100" : "opacity-0")} />
-                                                            {boat.name}
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
-                                <InputError message={errors.boat_id} />
+                                <InputError message={errors.customer_id} /> {/* Fix name here */}
                             </div>
 
                             <div className="flex justify-end gap-3 pt-4">
                                 <Button type="submit" disabled={processing} className="w-full font-bold uppercase tracking-wider bg-slate-900">
                                     {processing && <Spinner className="mr-2 h-4 w-4" />}
-                                    Enregistrer et continuer
+                                    Continuer vers les articles
                                 </Button>
                             </div>
                         </>

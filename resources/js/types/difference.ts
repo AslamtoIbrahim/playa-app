@@ -1,4 +1,4 @@
-import { Customer } from "./customers";
+import { Customer } from "./customer";
 import { InvoiceItem } from "./invoice-item";
 import { Item } from "./item"; // Matnsach t-importi Item ila kan 3ndek f file akhor
 
