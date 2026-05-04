@@ -1,9 +1,9 @@
-import { router, usePage } from "@inertiajs/react";
-import { Loader2, Trash2, AlertCircle } from "lucide-react";
-import { useState, useEffect } from "react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { destroy } from "@/routes/customers";
+import { router } from "@inertiajs/react";
+import { AlertCircle, Loader2, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 import {
     AlertDialog,
     AlertDialogAction,

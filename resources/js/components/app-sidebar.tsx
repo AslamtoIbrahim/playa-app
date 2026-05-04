@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { Banknote, BookOpen, Building2, CalendarClock, DoorOpen, FileText, FolderGit2, LayoutGrid, Package, Receipt, Scale, ShieldCheck, Ship, ShoppingBag, Tags, User } from 'lucide-react';
+import { Banknote, BookOpen, Building2, CalendarClock, DoorOpen, FileText, FolderGit2, LayoutGrid, Package, Receipt, Scale, ShieldCheck, Ship, ShoppingBag, Tags, User, UserCheck, Users } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -13,7 +13,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { customers, boats, categories, dashboard, invoices, items, officeRooms, payments, companies, sessions, differences, receipts, cautions, sales } from '@/routes';
+import { customers, boats, categories, dashboard, invoices, items, officeRooms, payments, companies, sessions, differences, receipts, cautions, sales, workers, attendances } from '@/routes';
 import type { NavItem } from '@/types';
 
 const mainNavItems: NavItem[] = [
@@ -68,9 +68,9 @@ const mainNavItems: NavItem[] = [
         icon: FileText,
     },
     {
-        title: 'Ventes',                             
+        title: 'Ventes',
         href: sales(),
-        icon: ShoppingBag,  
+        icon: ShoppingBag,
     },
 
     {
@@ -82,6 +82,16 @@ const mainNavItems: NavItem[] = [
         title: 'Differences',
         href: differences(),
         icon: Scale,
+    },
+    {
+        title: 'Ouvriers',
+        href: workers(),
+        icon: Users,
+    },
+    {
+        title: 'Pointages',
+        href: attendances(),
+        icon: UserCheck,
     },
     {
         title: 'Paiements',

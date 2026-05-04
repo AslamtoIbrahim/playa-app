@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\AttendanceItemController;
 use App\Http\Controllers\BoatController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CautionController;
@@ -16,6 +18,7 @@ use App\Http\Controllers\ReceiptController;
 use App\Http\Controllers\ReceiptItemController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SaleItemController;
+use App\Http\Controllers\WorkerController;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 
@@ -181,6 +184,34 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('sales/{sale}/items/{item}', [SaleItemController::class, 'update'])->name('sales.items.update');
     Route::delete('sales/{sale}/items/{item}', [SaleItemController::class, 'destroy'])->name('sales.items.destroy');
     Route::post('sales/{sale}/items/reorder', [SaleItemController::class, 'reorder'])->name('sales.items.reorder');
+
+    // --- Workers Routes ---
+    Route::get('workers', [WorkerController::class, 'index'])->name('workers');
+    Route::post('workers', [WorkerController::class, 'store'])->name('workers.store');
+    Route::patch('workers/{worker}', [WorkerController::class, 'update'])->name('workers.update');
+    Route::delete('workers/{worker}', [WorkerController::class, 'destroy'])->name('workers.destroy');
+
+
+    // --- Attendances Routes (Header) ---
+    Route::get('attendances', [AttendanceController::class, 'index'])->name('attendances');
+    Route::post('attendances', [AttendanceController::class, 'store'])->name('attendances.store');
+    Route::patch('attendances/{attendance}', [AttendanceController::class, 'update'])->name('attendances.update');
+    Route::get('attendances/{attendance}', [AttendanceController::class, 'show'])->name('attendances.show');
+    Route::delete('attendances/{attendance}', [AttendanceController::class, 'destroy'])->name('attendances.destroy');
+
+    // --- Attendance Items Routes (Details) ---
+    Route::prefix('attendances/{attendance}/items')->group(function () { {
+            // Bulk Operations
+            Route::post('bulk', [AttendanceItemController::class, 'bulkStore'])->name('attendances.items.bulkStore');
+            Route::delete('bulk', [AttendanceItemController::class, 'bulkDestroy'])->name('attendances.items.bulkDestroy');
+            // Single Store
+            Route::post('/', [AttendanceItemController::class, 'store'])->name('attendances.items.store');
+        }
+    });
+    // Individual Item Operations
+    Route::patch('attendance-items/{item}', [AttendanceItemController::class, 'update'])->name('attendances.items.update');
+    Route::delete('attendance-items/{item}', [AttendanceItemController::class, 'destroy'])->name('attendances.items.destroy');
+
 });
 
 require __DIR__ . '/settings.php';

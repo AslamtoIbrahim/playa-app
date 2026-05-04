@@ -13,3 +13,4 @@ export function toUrl(url: NonNullable<InertiaLinkProps['href']>): string {
 
 
 export const commandItemClass = 'text-xs !bg-white cursor-pointer flex items-center gap-2 px-3 py-2 rounded-sm outline-none data-[selected=true]:!bg-slate-200 data-[selected=true]:!text-black transition-colors';
+export const removeInputArraws = '[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none';

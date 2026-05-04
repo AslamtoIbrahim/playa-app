@@ -3,9 +3,6 @@ import { format } from 'date-fns';
 import {
     ChevronLeft,
     ChevronRight,
-    Clock,
-    Layers,
-    Scale
 } from 'lucide-react';
 
 // Components

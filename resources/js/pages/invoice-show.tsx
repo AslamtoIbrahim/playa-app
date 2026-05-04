@@ -34,6 +34,7 @@ import { InvoiceItem } from '@/types/invoice-item';
 import { Item } from '@/types/item';
 import { toast } from 'sonner';
 import { useScreenshot } from '@/hooks/use-screenshot';
+import { invoices } from '@/routes';
 
 interface Props {
     invoice: Invoice & { items: InvoiceItem[] };
@@ -385,8 +386,8 @@ export default function InvoiceShow({ invoice, boats, items, customers }: Props)
 InvoiceShow.layout = (page: React.ReactNode) => (
     <AppLayout
         breadcrumbs={[
-            { title: 'Factures', href: '/invoices' },
-            { title: 'Détails de la Facture', href: '#' }, // هادي هي الـ Current Page
+            { title: 'Factures', href: invoices() },
+            { title: 'Détails de la Facture', href: '#' },  
         ]}
     >
         {page}
