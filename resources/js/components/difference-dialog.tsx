@@ -18,8 +18,8 @@ interface Props {
     item: InvoiceItem;
     customers: Customer[];
     items: Item[];
-    sessionId: number; // ضرورية للكوميسيون
-    date: string;      // ضرورية للكوميسيون
+    sessionId: number;  
+    date: string;       
 }
 
 export function DifferenceDialog({ open, onOpenChange, item, customers, items, sessionId, date }: Props) {

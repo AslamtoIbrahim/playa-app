@@ -19,6 +19,7 @@ use App\Http\Controllers\ReceiptItemController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SaleItemController;
 use App\Http\Controllers\WorkerController;
+use App\Http\Controllers\ZoneController;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 
@@ -212,6 +213,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('attendance-items/{item}', [AttendanceItemController::class, 'update'])->name('attendances.items.update');
     Route::delete('attendance-items/{item}', [AttendanceItemController::class, 'destroy'])->name('attendances.items.destroy');
 
+    // --- Zones Routes ---
+    Route::prefix('zones')->group(function () {
+        Route::get('/', [ZoneController::class, 'index'])->name('zones');
+        Route::post('/', [ZoneController::class, 'store'])->name('zones.store');
+        Route::patch('/{zone}', [ZoneController::class, 'update'])->name('zones.update');
+        Route::delete('/{zone}', [ZoneController::class, 'destroy'])->name('zones.destroy');
+    });
 });
 
 require __DIR__ . '/settings.php';

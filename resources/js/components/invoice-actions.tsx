@@ -12,23 +12,23 @@ import { Button } from "@/components/ui/button";
 import { show } from '@/routes/invoices';
 import { Invoice, Billable } from '@/types/invoice';
 
-// استيراد الـ Dialogs ديالك
+// استيراد الـ Dialogs
 import EditInvoiceDialog from './edit-invoice-dialog';
 import DeleteInvoiceDialog from './delete-invoice-dialog';
 import AddPaymentDialog from './add-payment-dialog';
-import { DailySession } from "@/types/daily-session";
+import { SessionZone } from "@/types/session-zone"; // تأكد من المسار
 import { Caution } from "@/types/caution";
 import { OfficeRoom } from "@/types/office-room";
 
 interface Props {
     invoice: Invoice;
     billables: Billable[];
-    sessions: DailySession[];
+    sessionZones: SessionZone[]; // تبدلات من sessions لـ sessionZones
     officeRooms: OfficeRoom[];
     cautions: Caution[];
 }
 
-export default function InvoiceActions({ invoice, billables, sessions, officeRooms, cautions }: Props) {
+export default function InvoiceActions({ invoice, billables, sessionZones, officeRooms, cautions }: Props) {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -72,14 +72,21 @@ export default function InvoiceActions({ invoice, billables, sessions, officeRoo
                 <div onClick={(e) => {
                     e.stopPropagation();
                 }}>
-                    <EditInvoiceDialog  sessions={sessions} invoice={invoice} billables={billables} cautions={cautions} officeRooms={officeRooms} trigger={
-                        <DropdownMenuItem onSelect={(e) => {
-                            e.preventDefault();
-                        }} className="cursor-pointer gap-2 text-slate-600">
-                            <Pencil className="h-4 w-4" />
-                            <span className="font-medium">Modifier</span>
-                        </DropdownMenuItem>
-                    } />
+                    <EditInvoiceDialog 
+                        sessionZones={sessionZones} // تبدلات هنا كذالك
+                        invoice={invoice} 
+                        billables={billables} 
+                        cautions={cautions} 
+                        officeRooms={officeRooms} 
+                        trigger={
+                            <DropdownMenuItem onSelect={(e) => {
+                                e.preventDefault();
+                            }} className="cursor-pointer gap-2 text-slate-600">
+                                <Pencil className="h-4 w-4" />
+                                <span className="font-medium">Modifier</span>
+                            </DropdownMenuItem>
+                        } 
+                    />
                 </div>
 
                 <DropdownMenuSeparator />

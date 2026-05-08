@@ -22,7 +22,11 @@ return new class extends Migration
             $table->string('billable_type');
 
             // Foreign Keys (الارتباطات)
-            $table->foreignId('session_id')->constrained('daily_sessions')->restrictOnDelete();
+            // $table->foreignId('session_id')->constrained('daily_sessions')->restrictOnDelete();
+            $table->foreignId('session_zone_id')
+                  ->constrained('session_zones')
+                  ->restrictOnDelete();
+
             $table->enum('type', ['sale', 'purchase']);
             
             $table->foreignId('office_room_id')->nullable()->constrained('office_rooms')->restrictOnDelete();
@@ -42,6 +46,7 @@ return new class extends Migration
 
             // Index باش تكون السرعة فـ الـ Filtering
             $table->index(['billable_id', 'billable_type']);
+            $table->index('session_zone_id');
         });
     }
 

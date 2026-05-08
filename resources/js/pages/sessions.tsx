@@ -13,30 +13,43 @@ import {
 } from '@/components/ui/table';
 import { formatDateDisplay } from '@/lib/date';
 import type { DailySession } from '@/types/daily-session';
+import type { Zone } from '@/types/zone';
 import { Head, router } from '@inertiajs/react';
 import { Lock, Unlock } from 'lucide-react';
 
 interface Props {
     sessions: DailySession[];
+    zones: Zone[]; // نضفنا الـ zones هنا
+    existingDates: string[];
 }
 
-export default function Sessions({ sessions }: Props) {
-    // Helper باش نحسبو الربح (Margin)
-    const calculateMargin = (sell: number, buy: number) => sell - buy;
-    // كنخرجو غير التواريخ وكنصيفطوهم كـ Array ديال strings
-    const existingDates = sessions.map(session => session.session_date);
+export default function Sessions({ sessions, zones, existingDates }: Props) {
+    const calculateMargin = (sell: number, buy: number) => {
+        return sell - buy;
+    };
+
 
     const handleRowClick = (sessionId: number) => {
         router.visit(`/sessions/${sessionId}`);
     };
 
+    const formatCurrency = (amount: number) => {
+        return new Intl.NumberFormat('fr-FR', {
+            style: 'currency',
+            currency: 'MAD',
+        }).format(amount);
+    };
+
     return (
         <>
             <Head title="Sessions Journalières" />
+
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <div className="flex items-center justify-between px-2">
                     <h1 className="text-xl font-semibold">Sessions Journalières</h1>
-                    <AddSessionDialog existingDates={existingDates} />
+
+                    {/* تمرير الـ zones للـ Dialog */}
+                    <AddSessionDialog existingDates={existingDates} zones={zones} />
                 </div>
 
                 <div className="relative min-h-screen flex-1 overflow-hidden rounded-xl border border-sidebar-border/70 bg-white p-4 md:min-h-min dark:border-sidebar-border">
@@ -53,56 +66,85 @@ export default function Sessions({ sessions }: Props) {
                         </TableHeader>
 
                         <TableBody>
-                            {sessions.map((session) => (
-                                <TableRow
-                                    className="cursor-pointer hover:bg-slate-50/80 transition-colors"
-                                    key={session.id}
-                                    onClick={() => {
-                                        handleRowClick(session.id);
-                                    }}>
-                                    <TableCell className="font-medium">
-                                        {formatDateDisplay(session.session_date)}
-                                    </TableCell>
+                            {sessions.map((session) => {
+                                const margin = calculateMargin(session.total_sell, session.total_buy);
 
-                                    <TableCell>
-                                        {session.status === 'open' ? (
-                                            <Badge variant="outline" className="border-green-500 text-green-600 gap-1">
-                                                <Unlock className="h-3 w-3" /> Ouverte
-                                            </Badge>
-                                        ) : (
-                                            <Badge variant="secondary" className="gap-1">
-                                                <Lock className="h-3 w-3" /> Clôturée
-                                            </Badge>
-                                        )}
-                                    </TableCell>
+                                return (
+                                    <TableRow
+                                        className="cursor-pointer hover:bg-slate-50/80 transition-colors"
+                                        key={session.id}
+                                        onClick={() => {
+                                            handleRowClick(session.id);
+                                        }}
+                                    >
+                                        <TableCell className="font-medium">
+                                            {formatDateDisplay(session.session_date)}
+                                        </TableCell>
 
-                                    <TableCell className="text-right font-mono">
-                                        {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'MAD' }).format(session.total_buy)}
-                                    </TableCell>
-
-                                    <TableCell className="text-right font-mono text-blue-600 font-semibold">
-                                        {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'MAD' }).format(session.total_sell)}
-                                    </TableCell>
-
-                                    <TableCell className={`text-right font-mono font-bold ${calculateMargin(session.total_sell, session.total_buy) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                        {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'MAD' }).format(calculateMargin(session.total_sell, session.total_buy))}
-                                    </TableCell>
-
-                                    <TableCell className="text-center">
-                                        <div className="flex justify-center gap-2">
+                                        <TableCell>
                                             {session.status === 'open' ? (
-                                                <>
-                                                    <EditSessionDialog session={session} existingDates={existingDates} />
-                                                    <CloseSessionDialog session={session} />
-                                                    <DeleteSessionDialog sessionId={session.id} sessionDate={session.session_date} />
-                                                </>
+                                                <Badge
+                                                    variant="outline"
+                                                    className="border-green-500 text-green-600 gap-1"
+                                                >
+                                                    <Unlock className="h-3 w-3" /> Ouverte
+                                                </Badge>
                                             ) : (
-                                                <span className="text-xs text-muted-foreground italic">Aucune action</span>
+                                                <Badge variant="secondary" className="gap-1">
+                                                    <Lock className="h-3 w-3" /> Clôturée
+                                                </Badge>
                                             )}
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
+                                        </TableCell>
+
+                                        <TableCell className="text-right font-mono">
+                                            {formatCurrency(session.total_buy)}
+                                        </TableCell>
+
+                                        <TableCell className="text-right font-mono text-blue-600 font-semibold">
+                                            {formatCurrency(session.total_sell)}
+                                        </TableCell>
+
+                                        <TableCell
+                                            className={`text-right font-mono font-bold ${
+                                                margin >= 0 ? 'text-green-600' : 'text-red-600'
+                                            }`}
+                                        >
+                                            {formatCurrency(margin)}
+                                        </TableCell>
+
+                                        <TableCell
+                                            className="text-center"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                            }}
+                                        >
+                                            <div className="flex justify-center gap-2">
+                                                {session.status === 'open' ? (
+                                                    <>
+                                                        {/* تمرير الـ zones للـ Edit */}
+                                                        <EditSessionDialog
+                                                            session={session}
+                                                            existingDates={existingDates}
+                                                            zones={zones}
+                                                        />
+
+                                                        <CloseSessionDialog session={session} />
+
+                                                        <DeleteSessionDialog
+                                                            sessionId={session.id}
+                                                            sessionDate={session.session_date}
+                                                        />
+                                                    </>
+                                                ) : (
+                                                    <span className="text-xs text-muted-foreground italic">
+                                                        Aucune action
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })}
                         </TableBody>
                     </Table>
                 </div>
@@ -111,11 +153,14 @@ export default function Sessions({ sessions }: Props) {
     );
 }
 
-Sessions.layout = {
-    breadcrumbs: [
-        {
-            title: 'Journées',
-            href: '/sessions',
-        },
-    ],
+Sessions.layout = (page: any) => {
+    return {
+        breadcrumbs: [
+            {
+                title: 'Journées',
+                href: '/sessions',
+            },
+        ],
+        children: page,
+    };
 };

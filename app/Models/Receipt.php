@@ -4,7 +4,7 @@ namespace App\Models;
 
 use App\Models\Boat;
 use App\Models\Customer;
-use App\Models\DailySession;
+use App\Models\SessionZone; // Changed from DailySession
 use App\Models\ReceiptItem;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -19,7 +19,7 @@ class Receipt extends Model
         'date',
         'customer_id',
         'boat_id',
-        'session_id',
+        'session_zone_id', // Changed from session_id
         'quantity',
         'total_amount',
         'total_boxes',
@@ -42,11 +42,11 @@ class Receipt extends Model
     }
 
     /**
-     * Relationship with DailySession
+     * Relationship with SessionZone (Changed from DailySession)
      */
-    public function session(): BelongsTo
+    public function sessionZone(): BelongsTo // Changed method name from session to sessionZone
     {
-        return $this->belongsTo(DailySession::class, 'session_id');
+        return $this->belongsTo(SessionZone::class, 'session_zone_id');
     }
 
     /**

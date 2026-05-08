@@ -1,6 +1,7 @@
 import { Difference } from "./difference";
 import { Invoice } from "./invoice";
 import { Receipt } from "./receipt";
+import { Zone } from "./zone";
 
 export type SessionStatus = 'open' | 'closed';
 
@@ -8,6 +9,7 @@ export interface DailySession {
     id: number;
     session_date: string;
     status: SessionStatus;
+    zones?: Zone[];
     total_buy: number;
     total_sell: number;
     closed_at: string | null;

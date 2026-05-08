@@ -14,9 +14,9 @@ return new class extends Migration
         Schema::create('attendances', function (Blueprint $table) {
             $table->id();
 
-            // مربوطة مع الجلسة اليومية
-            $table->foreignId('daily_session_id')
-                ->constrained()
+            // مربوطة مع الجلسة اليومية via SessionZone
+            $table->foreignId('session_zone_id') // Changed from daily_session_id
+                ->constrained('session_zones') // Constrained to session_zones
                 ->restrictOnDelete();
 
             $table->decimal('total_wage', 15, 2)->default(0);

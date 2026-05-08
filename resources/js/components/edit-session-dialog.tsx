@@ -6,12 +6,14 @@ import {
     Loader2,
     Pencil,
     AlertCircle,
+    ScrollText,
 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
+import { Checkbox } from "@/components/ui/checkbox";
 import {
     Dialog,
     DialogContent,
@@ -26,43 +28,60 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from '@/lib/utils';
 
-import { update } from '@/routes/sessions'; 
+import { update } from '@/routes/sessions';
 import type { DailySession } from '@/types/daily-session';
+import type { Zone } from '@/types/zone';
 
 interface Props {
     session: DailySession;
-    existingDates?: string[]; // كنطلعو هاد الـ Prop باش نخدمو بـ disabledDays
+    existingDates?: string[];
+    zones: Zone[];
 }
 
-export default function EditSessionDialog({ session, existingDates = [] }: Props) {
+export default function EditSessionDialog({ session, existingDates = [], zones }: Props) {
     const [open, setOpen] = useState(false);
-    
+
     const [date, setDate] = useState<Date>(
-        typeof session.session_date === 'string' 
-            ? parseISO(session.session_date) 
+        typeof session.session_date === 'string'
+            ? parseISO(session.session_date)
             : session.session_date
     );
 
+    // كنعمروا الـ state بالـ IDs ديال الـ zones اللي كاينين ديجا في الـ session
+    const [selectedZones, setSelectedZones] = useState<number[]>(
+        session.zones?.map((z) => {
+            return z.id;
+        }) || []
+    );
+
+    const toggleZone = (zoneId: number) => {
+        if (selectedZones.includes(zoneId)) {
+            setSelectedZones(selectedZones.filter((id) => {
+                return id !== zoneId;
+            }));
+        } else {
+            setSelectedZones([...selectedZones, zoneId]);
+        }
+    };
+
     const disabledDays = (day: Date): boolean => {
         const formattedDay = format(day, "yyyy-MM-dd");
-        
-        // التاريخ الحالي ديال الـ session اللي كنموديفيو
+
         const currentSessionDate = format(
-            typeof session.session_date === 'string' 
-                ? parseISO(session.session_date) 
-                : session.session_date, 
+            new Date(session.session_date),
             "yyyy-MM-dd"
         );
 
-        // كنحيدو التاريخ ديال الـ session الحالية من الـ list ديال الـ disabled
-        // باش يقدر الـ user يختار نفس النهار يلا بغا يصحح شي حاجة أخرى
         return existingDates.some((d) => {
             const pureExistingDate = d.split(' ')[0].split('T')[0];
+
             return pureExistingDate === formattedDay && pureExistingDate !== currentSessionDate;
         });
     };
+
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -76,14 +95,14 @@ export default function EditSessionDialog({ session, existingDates = [] }: Props
                 </Button>
             </DialogTrigger>
 
-            <DialogContent className="sm:max-w-[400px]">
+            <DialogContent className="sm:max-w-[450px]">
                 <DialogHeader>
                     <DialogTitle className="font-black uppercase flex items-center gap-2">
                         <Pencil className="h-5 w-5 text-blue-600" />
                         Modifier la Journée
                     </DialogTitle>
                     <DialogDescription>
-                        Modifiez la date de la session journalière. Les totaux seront conservés.
+                        Modifiez la date ou les zones. Attention: désactiver une zone active peut être restreint.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -94,96 +113,100 @@ export default function EditSessionDialog({ session, existingDates = [] }: Props
                         setOpen(false);
                     }}
                 >
-                    {({ processing, errors }) => (
-                        <div className="space-y-6 pt-4">
-                            <input
-                                type="hidden"
-                                name="session_date"
-                                value={date ? format(date, 'yyyy-MM-dd') : ""}
-                            />
+                    {({ processing, errors }) => {
+                        return (
+                            <div className="space-y-6 pt-4">
+                                <input
+                                    type="hidden"
+                                    name="session_date"
+                                    value={date ? format(date, 'yyyy-MM-dd') : ""}
+                                />
 
-                            <div className="grid gap-2">
-                                <Label className="text-xs font-bold text-slate-500 uppercase">
-                                    Date de la session
-                                </Label>
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            variant="outline"
-                                            className={cn(
-                                                "w-full justify-start text-left font-medium py-6 border-2",
-                                                errors.session_date ? "border-destructive bg-destructive/5" : "border-slate-200",
-                                                !date && "text-muted-foreground"
-                                            )}
-                                        >
-                                            <CalendarIcon className="mr-2 h-4 w-4 text-blue-600" />
-                                            {date ? (
-                                                format(date, 'dd-MM-yyyy', { locale: fr })
-                                            ) : (
-                                                <span>Choisir une date</span>
-                                            )}
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0" align="start">
-                                        <Calendar
-                                            mode="single"
-                                            selected={date}
-                                            onSelect={(d) => d && setDate(d)}
-                                            disabled={disabledDays}
-                                            initialFocus
-                                            locale={fr}
-                                            className="rounded-md border shadow-lg"
-                                        />
-                                    </PopoverContent>
-                                </Popover>
-                                
-                                {errors.session_date && (
-                                    <p className="text-sm font-bold text-destructive mt-1 flex items-center gap-1">
-                                        <AlertCircle className="h-3 w-3" />
-                                        {errors.session_date}
-                                    </p>
-                                )}
-                            </div>
+                                {selectedZones.map((id) => {
+                                    return (
+                                        <input key={id} type="hidden" name="selected_zones[]" value={id} />
+                                    );
+                                })}
 
-                            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-3">
-                                <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">État actuel</p>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-slate-600 font-medium">Total Achat:</span>
-                                    <span className="font-bold text-slate-900">{session.total_buy} DH</span>
+                                <div className="grid gap-2">
+                                    <Label className="text-xs font-bold text-slate-500 uppercase">
+                                        Date de la session
+                                    </Label>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                className={cn(
+                                                    "w-full justify-start text-left font-medium py-6 border-2",
+                                                    errors.session_date ? "border-destructive bg-destructive/5" : "border-slate-200"
+                                                )}
+                                            >
+                                                <CalendarIcon className="mr-2 h-4 w-4 text-blue-600" />
+                                                {date ? format(date, 'dd-MM-yyyy', { locale: fr }) : <span>Choisir</span>}
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="start">
+                                            <Calendar
+                                                mode="single"
+                                                selected={date}
+                                                onSelect={(d) => {
+                                                    return d && setDate(d);
+                                                }}
+                                                disabled={disabledDays}
+                                                locale={fr}
+                                            />
+                                        </PopoverContent>
+                                    </Popover>
                                 </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-slate-600 font-medium">Total Vente:</span>
-                                    <span className="font-bold text-blue-600">{session.total_sell} DH</span>
-                                </div>
-                            </div>
 
-                            <div className="flex justify-end gap-3 pt-2">
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    onClick={() => setOpen(false)}
-                                    disabled={processing}
-                                    className="font-bold"
-                                >
-                                    Annuler
-                                </Button>
-                                <Button
-                                    type="submit"
-                                    disabled={processing}
-                                    className="min-w-[140px] font-bold uppercase tracking-wide shadow-md"
-                                >
-                                    {processing ? (
-                                        <>
-                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            Mise à jour...
-                                        </>
-                                    ) : (
-                                        'Mettre à jour'
+                                <div className="grid gap-3">
+                                    <Label className="text-xs font-bold uppercase text-slate-500">
+                                        Zones de travail
+                                    </Label>
+                                    <ScrollArea className="h-48 rounded-md border-2 border-slate-100 bg-slate-50/50 p-4">
+                                        <div className="space-y-2">
+                                            {zones.map((zone) => {
+                                                const isSelected = selectedZones.includes(zone.id);
+
+                                                return (
+                                                    <div
+                                                        key={zone.id}
+                                                        className={`group flex items-center space-x-3 p-3 rounded-lg border transition-all duration-200 ${isSelected ? 'border-blue-200 bg-blue-50/50 shadow-sm' : 'border-slate-200 bg-white hover:bg-slate-50'
+                                                            }`}
+                                                    >
+                                                        <Checkbox
+                                                            id={`edit-zone-${zone.id}`}
+                                                            checked={isSelected}
+                                                            onCheckedChange={() => {
+                                                                return toggleZone(zone.id);
+                                                            }}
+                                                        />
+                                                        <label htmlFor={`edit-zone-${zone.id}`} className={`flex-1 text-sm font-semibold cursor-pointer ${isSelected ? 'text-blue-700' : 'text-slate-700'}`}>
+                                                            {zone.name}
+                                                        </label>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </ScrollArea>
+                                    {errors.selected_zones && (
+                                        <p className="text-xs font-bold text-destructive">{errors.selected_zones}</p>
                                     )}
-                                </Button>
+                                </div>
+
+                                <div className="flex justify-end gap-3 pt-2">
+                                    <Button type="button" variant="ghost" onClick={() => {
+                                        return setOpen(false);
+                                    }} disabled={processing}>
+                                        Annuler
+                                    </Button>
+                                    <Button type="submit" disabled={processing || selectedZones.length === 0} className="min-w-[140px] font-bold uppercase">
+                                        {processing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Mettre à jour'}
+                                    </Button>
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        );
+                    }}
                 </Form>
             </DialogContent>
         </Dialog>

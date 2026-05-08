@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
-use App\Models\DailySession;
+use App\Models\SessionZone;
 use App\Models\Boat;
 use App\Models\Item;
 use App\Models\Receipt;
@@ -19,22 +19,30 @@ class ReceiptController extends Controller
      */
     public function index()
     {
-        $receipts = Receipt::with(['customer', 'session', 'boat'])
+        $receipts = Receipt::with(['customer', 'sessionZone', 'boat'])
             ->latest()
             ->paginate(10);
 
         $customers = Customer::all(['id', 'name']);
 
-        $sessions = DailySession::where('status', 'open')
+        $sessionZones = SessionZone::with('dailySession')
+            ->whereHas('dailySession', function ($query) {
+                $query->where('status', 'open');
+            })
             ->latest()
-            ->get(['id', 'session_date']);
-            
+            ->get(['id', 'zone_id', 'daily_session_id']);
+
         $boats = Boat::all(['id', 'name']);
 
         return Inertia::render('receipts', [
             'receipts'  => $receipts,
             'customers' => $customers,
-            'sessions'  => $sessions,
+            'sessionZones'  => $sessionZones->map(function ($sessionZone) {
+                return [
+                    'id' => $sessionZone->id,
+                    'name' => $sessionZone->dailySession->session_date->format('Y-m-d') . ' - Zone ' . $sessionZone->zone_id,
+                ];
+            }),
             'boats'     => $boats,
         ]);
     }
@@ -47,21 +55,21 @@ class ReceiptController extends Controller
         $validated = $request->validate([
             'date'        => 'required|date',
             'customer_id' => 'required|exists:customers,id',
-            'session_id'  => 'required|exists:daily_sessions,id',
+            'session_zone_id'  => 'required|exists:session_zones,id',
             'boat_id'     => 'nullable|exists:boats,id',
         ]);
 
-        $session = DailySession::findOrFail($validated['session_id']);
+        $sessionZone = SessionZone::with('dailySession')->findOrFail($validated['session_zone_id']);
 
-        if ($session->status === 'closed') {
-            return back()->withErrors(['session_id' => "Action impossible : La session est clôturée."]);
+        if ($sessionZone->dailySession->status === 'closed') {
+            return back()->withErrors(['session_zone_id' => "Action impossible : La session الرئيسية  مغلقة."]);
         }
 
         return DB::transaction(function () use ($validated) {
             $receipt = Receipt::create([
                 'date'         => $validated['date'],
                 'customer_id'  => $validated['customer_id'],
-                'session_id'   => $validated['session_id'],
+                'session_zone_id'   => $validated['session_zone_id'],
                 'boat_id'      => $validated['boat_id'] ?? null,
                 'quantity'     => 0,
                 'total_amount' => 0,
@@ -78,8 +86,7 @@ class ReceiptController extends Controller
      */
     public function show(Receipt $receipt)
     {
-        // كنحملو الـ boat هنا باش يبان فـ الـ Header ديال Show
-        $receipt->load(['customer', 'session', 'boat', 'items.item']);
+        $receipt->load(['customer', 'sessionZone.dailySession', 'boat', 'items.item']);
 
         return Inertia::render('receipts-show', [
             'receipt' => $receipt,
@@ -95,14 +102,14 @@ class ReceiptController extends Controller
         $validated = $request->validate([
             'date'        => 'required|date',
             'customer_id' => 'required|exists:customers,id',
-            'session_id'  => 'required|exists:daily_sessions,id',
+            'session_zone_id'  => 'required|exists:session_zones,id',
             'boat_id'     => 'nullable|exists:boats,id',
         ]);
 
-        $session = DailySession::findOrFail($validated['session_id']);
+        $sessionZone = SessionZone::with('dailySession')->findOrFail($validated['session_zone_id']);
 
-        if ($session->status === 'closed' && $receipt->session_id !== (int)$validated['session_id']) {
-            return back()->withErrors(['session_id' => "Transfert impossible : La session cible est clôturée."]);
+        if ($sessionZone->dailySession->status === 'closed' && $receipt->session_zone_id !== (int)$validated['session_zone_id']) {
+            return back()->withErrors(['session_zone_id' => "Transfert impossible : La session الرئيسية  المستهدفة مغلقة."]);
         }
 
         $receipt->update($validated);

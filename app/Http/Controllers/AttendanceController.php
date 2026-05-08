@@ -2,8 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Controller;
 use App\Models\Attendance;
-use App\Models\DailySession;
+use App\Models\SessionZone; // Add SessionZone import
 use App\Models\Worker;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,16 +17,22 @@ class AttendanceController extends Controller
      */
     public function index()
     {
-        // كنرتبو بـ created_at حيت التاريخ دابا كاين وسط الـ session
-        $attendances = Attendance::with(['session', 'items.worker'])
+        $attendances = Attendance::with(['sessionZone.dailySession', 'items.worker']) // Changed 'session' to 'sessionZone.dailySession'
             ->latest()
             ->paginate(10);
 
-        $sessions = DailySession::orderBy('session_date', 'desc')->get();
+        $sessionZones = SessionZone::with('dailySession')
+            ->orderBy('daily_session_id', 'desc')
+            ->get();
 
         return Inertia::render('attendances', [
             'attendances' => $attendances,
-            'sessions'    => $sessions
+            'sessionZones'    => $sessionZones->map(function ($sessionZone) {
+                return [
+                    'id' => $sessionZone->id,
+                    'name' => $sessionZone->dailySession->session_date->format('Y-m-d') . ' - Zone ' . $sessionZone->zone_id, // Format for display
+                ];
+            }),
         ]);
     }
 
@@ -34,7 +41,7 @@ class AttendanceController extends Controller
      */
     public function show(Attendance $attendance)
     {
-        $attendance->load(['session', 'items.worker']);
+        $attendance->load(['sessionZone.dailySession', 'items.worker']); // Changed 'session' to 'sessionZone.dailySession'
 
         $availableWorkers = Worker::orderBy('name')->get();
 
@@ -50,24 +57,21 @@ class AttendanceController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'daily_session_id' => 'required|exists:daily_sessions,id',
-            'items' => 'nullable|array', // رديتها nullable باش تقدّر تفتح ورقة خاوية
+            'session_zone_id' => 'required|exists:session_zones,id', // Changed from daily_session_id and daily_sessions
+            'items' => 'nullable|array',
             'items.*.worker_id' => 'required_with:items|exists:workers,id',
             'items.*.wage' => 'required_with:items|numeric|min:0',
         ]);
 
         DB::transaction(function () use ($validated) {
-            // 1. حساب الـ total_wage (إلا ما كاينش items كيكون 0)
             $items = $validated['items'] ?? [];
             $totalWage = collect($items)->sum('wage');
 
-            // 2. إنشاء الـ Attendance بلا Column ديال الـ date
             $attendance = Attendance::create([
-                'daily_session_id' => $validated['daily_session_id'],
+                'session_zone_id' => $validated['session_zone_id'], // Changed from daily_session_id
                 'total_wage' => $totalWage,
             ]);
 
-            // 3. إضافة الـ Items إلا تـصيفطو
             foreach ($items as $item) {
                 $attendance->items()->create([
                     'worker_id' => $item['worker_id'],
@@ -84,22 +88,18 @@ class AttendanceController extends Controller
      */
     public function update(Request $request, Attendance $attendance)
     {
-        // 1. تعديل الـ Validation باش يقبل الـ session ويكون الـ items اختياري إلا كنتي غاتبدل غير الـ session
         $validated = $request->validate([
-            'daily_session_id' => 'nullable|exists:daily_sessions,id',
-            'items'            => 'nullable|array', // رديناه nullable باش ما يعكسش
+            'session_zone_id' => 'nullable|exists:session_zones,id', // Changed from daily_session_id and daily_sessions
+            'items'            => 'nullable|array',
             'items.*.worker_id' => 'required_with:items|exists:workers,id',
             'items.*.wage'      => 'required_with:items|numeric|min:0',
         ]);
 
         DB::transaction(function () use ($validated, $attendance) {
-
-            // 2. تحديث الـ session_id إلا كانت مبعوتة
-            if (isset($validated['daily_session_id'])) {
-                $attendance->daily_session_id = $validated['daily_session_id'];
+            if (isset($validated['session_zone_id'])) {
+                $attendance->session_zone_id = $validated['session_zone_id']; // Changed from daily_session_id
             }
 
-            // 3. تحديث الـ items غير إلا كانوا مبعوتين في الـ request
             if (isset($validated['items'])) {
                 $attendance->items()->delete();
                 $totalWage = collect($validated['items'])->sum('wage');

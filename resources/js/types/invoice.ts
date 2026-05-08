@@ -1,6 +1,7 @@
 import { Caution } from './caution';
 import type { InvoiceItem } from './invoice-item';
 import type { OfficeRoom } from './office-room';
+import { SessionZone } from './session-zone';
 
 // هادي هي الواجهة اللي كتمثل الـ Polymorphic Relation (billable)
 export interface Billable {
@@ -24,7 +25,9 @@ export interface Invoice {
     billable?: Billable; // هنا فين كيرجع الـ Model المرتبط
 
     // الارتباطات الأخرى
-    session_id: number;
+    session_zone_id: number;
+    session_zone?: SessionZone; // Zid hada
+
     office_room_id: number | null;
     office_room?: OfficeRoom;
 

@@ -2,37 +2,34 @@
 
 namespace App\Models;
 
+use App\Models\AttendanceItem;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Attendance extends Model
 {
     use SoftDeletes;
 
     protected $fillable = [
-        'daily_session_id',
+        'session_zone_id', // Changed from daily_session_id
         'total_wage'
     ];
 
-    /**
-     * هاد الخاصية كاتخلي الـ date يبان ديما فـ الـ JSON 
-     * واخا هو أصلاً ما كاينش فـ الـ Database table ديال هاد الموديل
-     */
     protected $appends = ['date'];
 
     /**
-     * Accessor: كايجيب التاريخ من الموديل ديال الـ Session
+     * Accessor: كايجيب التاريخ من الموديل ديال الـ Session عبر SessionZone
      */
     public function getDateAttribute()
     {
-        return $this->session?->session_date;
+        return $this->sessionZone?->dailySession?->session_date; // Access via sessionZone and dailySession
     }
 
-    public function session(): BelongsTo
+    public function sessionZone(): BelongsTo // Renamed method from session to sessionZone
     {
-        return $this->belongsTo(DailySession::class, 'daily_session_id');
+        return $this->belongsTo(SessionZone::class, 'session_zone_id'); // Relates to SessionZone
     }
 
     public function items(): HasMany

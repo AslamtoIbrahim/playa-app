@@ -18,11 +18,11 @@ import { cn } from '@/lib/utils';
 import { show } from '@/routes/invoices';
 
 // Types
-import type { Billable, Invoice } from '@/types/invoice';
-import type { OfficeRoom } from '@/types/office-room';
-import type { DailySession } from '@/types/daily-session';
 import InvoiceActions from '@/components/invoice-actions';
 import { Caution } from '@/types/caution';
+import type { Billable, Invoice } from '@/types/invoice';
+import type { OfficeRoom } from '@/types/office-room';
+import { SessionZone } from '@/types/session-zone';
 
 interface Props {
     invoices: {
@@ -34,7 +34,7 @@ interface Props {
     };
     billables: Billable[];
     officeRooms: OfficeRoom[];
-    sessions: DailySession[];
+    sessionZones: SessionZone[];
     cautions: Caution[];
 }
 
@@ -45,9 +45,49 @@ const statusStyles: Record<string, string> = {
     pending: 'bg-slate-50 text-slate-600 border-slate-200 border-dashed',
 };
 
-export default function Invoices({ invoices, billables, officeRooms, sessions, cautions }: Props) {
-    const handleRowClick = (invoiceId: number) => {
+export default function Invoices({ invoices, billables, officeRooms, sessionZones, cautions }: Props) {
+    const handleRowClick = (invoiceId: number): void => {
         router.visit(show.url(invoiceId));
+    };
+
+
+    console.log('sessionZones',sessionZones);
+    const getSessionDisplay = (invoice: Invoice): React.ReactNode => {
+        const sessionZone = invoice.session_zone;
+
+        if (!sessionZone)
+        {
+            return <span className="text-xs text-slate-400">-</span>;
+        }
+
+        const sessionDate = sessionZone.daily_session?.session_date;
+        const sessionStatus = sessionZone.daily_session?.status;
+
+        if (!sessionDate)
+        {
+            return <span className="text-xs text-slate-400">-</span>;
+        }
+
+        return (
+            <Badge
+                variant="outline"
+                className={cn(
+                    "flex items-center gap-1 px-2 py-0.5 font-bold border",
+                    sessionStatus === 'open'
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        : "bg-slate-50 text-slate-600 border-slate-200"
+                )}
+            >
+                <Clock className={cn(
+                    "h-3 w-3",
+                    sessionStatus === 'open' ? "text-emerald-500" : "text-slate-400"
+                )} />
+
+                <span className="text-[10px] uppercase tracking-wider">
+                    {format(new Date(sessionDate), 'dd/MM/yy')}
+                </span>
+            </Badge>
+        );
     };
 
     return (
@@ -61,6 +101,7 @@ export default function Invoices({ invoices, billables, officeRooms, sessions, c
                         <h1 className="text-2xl font-black tracking-tight text-slate-900 uppercase">
                             Factures
                         </h1>
+
                         <p className="text-sm font-medium text-muted-foreground">
                             Gestion et suivi de la facturation (Ventes & Achats).
                         </p>
@@ -69,7 +110,7 @@ export default function Invoices({ invoices, billables, officeRooms, sessions, c
                     <AddInvoiceDialog
                         billables={billables}
                         officeRooms={officeRooms}
-                        sessions={sessions}
+                        sessionZones={sessionZones}
                         cautions={cautions}
                     />
                 </div>
@@ -123,30 +164,7 @@ export default function Invoices({ invoices, billables, officeRooms, sessions, c
                                         </TableCell>
 
                                         <TableCell>
-                                            <div className="flex items-center gap-1.5">
-                                                {(invoice as any).session ? (
-                                                    <Badge
-                                                        variant="outline"
-                                                        className={cn(
-                                                            "flex items-center gap-1 px-2 py-0.5 font-bold border",
-                                                            (invoice as any).session.status === 'open'
-                                                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                                                : "bg-slate-50 text-slate-600 border-slate-200"
-                                                        )}
-                                                    >
-                                                        <Clock className={cn(
-                                                            "h-3 w-3",
-                                                            (invoice as any).session.status === 'open' ? "text-emerald-500" : "text-slate-400"
-                                                        )} />
-
-                                                        <span className="text-[10px] uppercase tracking-wider">
-                                                            {format(new Date((invoice as any).session.session_date), 'dd/MM/yy')}
-                                                        </span>
-                                                    </Badge>
-                                                ) : (
-                                                    <span className="text-xs text-slate-400">-</span>
-                                                )}
-                                            </div>
+                                            {getSessionDisplay(invoice)}
                                         </TableCell>
 
                                         {/* Bénéficiaire Column */}
@@ -177,6 +195,7 @@ export default function Invoices({ invoices, billables, officeRooms, sessions, c
                                             {invoice.caution ? (
                                                 <div className="flex items-center gap-1.5 text-[11px] font-bold text-indigo-700 bg-indigo-50/50 w-fit px-2 py-0.5 rounded-md border border-indigo-100">
                                                     <ShieldCheck className="h-3 w-3 text-indigo-500" />
+
                                                     <span className="truncate max-w-30">{invoice.caution.name}</span>
                                                 </div>
                                             ) : (
@@ -214,7 +233,7 @@ export default function Invoices({ invoices, billables, officeRooms, sessions, c
                                             <InvoiceActions
                                                 invoice={invoice}
                                                 billables={billables}
-                                                sessions={sessions}
+                                                sessionZones={sessionZones}
                                                 cautions={cautions}
                                                 officeRooms={officeRooms}
                                             />
@@ -245,7 +264,8 @@ export default function Invoices({ invoices, billables, officeRooms, sessions, c
                                 const isPrevious = link.label.includes('Previous');
                                 const isNext = link.label.includes('Next');
 
-                                if (!link.url && !link.active) {
+                                if (!link.url && !link.active)
+                                {
                                     return null;
                                 }
 

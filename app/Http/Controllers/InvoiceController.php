@@ -6,10 +6,10 @@ use App\Models\Boat;
 use App\Models\Caution;
 use App\Models\Company;
 use App\Models\Customer;
-use App\Models\DailySession;
 use App\Models\Invoice;
 use App\Models\Item;
 use App\Models\OfficeRoom;
+use App\Models\SessionZone; // Changed from DailySession
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -21,7 +21,7 @@ class InvoiceController extends Controller
      */
     public function index()
     {
-        $invoices = Invoice::with(['billable', 'officeRoom', 'session', 'caution'])
+        $invoices = Invoice::with(['billable', 'officeRoom', 'sessionZone', 'caution']) // Changed 'session' to 'sessionZone'
             ->latest()
             ->paginate(10);
 
@@ -40,9 +40,21 @@ class InvoiceController extends Controller
 
         return Inertia::render('invoices', [
             'invoices'    => $invoices,
+
             'billables'   => $customers->concat($companies),
+
             'officeRooms' => OfficeRoom::all(['id', 'name', 'city']),
-            'sessions'    => DailySession::where('status', 'open')->latest()->get(['id', 'session_date']),
+
+            'sessionZones' => SessionZone::whereHas('dailySession', function ($query) {
+                $query->where('status', 'open');
+            })
+                ->with([
+                    'zone:id,name',           // كنطلعو لجدول المناطق ونجيبو غير السمية
+                    'dailySession:id,session_date'    // كنطلعو للحصة ونجيبو غير التاريخ
+                ])
+                ->latest()
+                ->get(), // خليه يجيب كاع السجلات (بما فيها الـ IDs ديال الربط)
+
             'cautions' => Caution::select('id', 'name', 'owner_id', 'owner_type')->get(),
         ]);
     }
@@ -57,15 +69,16 @@ class InvoiceController extends Controller
             'type'           => 'required|in:sale,purchase',
             'billable_id'    => 'required|integer',
             'billable_type'  => 'required|string|in:App\Models\Customer,App\Models\Company',
-            'session_id'     => 'required|exists:daily_sessions,id',
+            'session_zone_id'     => 'required|exists:session_zones,id', // Changed from session_id to session_zone_id and daily_sessions to session_zones
             'office_room_id' => 'required|exists:office_rooms,id',
             'caution_id'     => 'required|exists:cautions,id',
         ]);
 
-        $session = DailySession::findOrFail($validated['session_id']);
+        // hna status kayna f daily_session table
+        $sessionZone = SessionZone::with('dailySession')->findOrFail($validated['session_zone_id']); // Changed from DailySession and session_id
 
-        if ($session->status === 'closed') {
-            return back()->withErrors(['session_id' => "Action impossible : La session est clôturée."]);
+        if ($sessionZone->dailySession->status === 'closed') { // Changed $session to $sessionZone
+            return back()->withErrors(['session_zone_id' => "Action impossible : La session est clôturée."]); // Changed session_id to session_zone_id
         }
 
         return DB::transaction(function () use ($validated, $request) {
@@ -89,7 +102,7 @@ class InvoiceController extends Controller
                 'type'           => $validated['type'],
                 'billable_id'    => $validated['billable_id'],
                 'billable_type'  => $validated['billable_type'],
-                'session_id'     => $validated['session_id'],
+                'session_zone_id'     => $validated['session_zone_id'], // Changed from session_id to session_zone_id
                 'office_room_id' => $validated['office_room_id'],
                 'caution_id'     => $validated['caution_id'] ?? null,
                 'invoice_number' => (int)$nextNumber,
@@ -116,15 +129,15 @@ class InvoiceController extends Controller
             'billable_id'    => 'required|integer',
             'billable_type'  => 'required|string|in:App\Models\Customer,App\Models\Company',
             'office_room_id' => 'required|exists:office_rooms,id',
-            'session_id'     => 'required|exists:daily_sessions,id',
+            'session_zone_id'     => 'required|exists:session_zones,id', // Changed from session_id to session_zone_id and daily_sessions to session_zones
             'caution_id'     => 'required|exists:cautions,id',
             'status'         => 'required|string',
         ]);
 
-        $session = DailySession::findOrFail($validated['session_id']);
+        $sessionZone = SessionZone::findOrFail($validated['session_zone_id']); // Changed from DailySession and session_id
 
-        if ($session->status === 'closed' && $invoice->session_id !== (int)$validated['session_id']) {
-            return back()->withErrors(['session_id' => "Transfert impossible : La session cible est clôturée."]);
+        if ($sessionZone->dailySession->status === 'closed' && $invoice->session_zone_id !== (int)$validated['session_zone_id']) {
+            return back()->withErrors(['session_zone_id' => "Transfert impossible : La session principale cible est clôturée."]);
         }
 
         $invoice->update($validated);
@@ -144,7 +157,8 @@ class InvoiceController extends Controller
             'items.item',
             'items.boat',
             'items.differences.customer',
-            'session',
+
+            'sessionZone', // Changed 'session' to 'sessionZone'
             'items.receiptItems' => function ($q) { {
                     $q->where('type', 'commission')
                         ->where('real_price', '>', 0)

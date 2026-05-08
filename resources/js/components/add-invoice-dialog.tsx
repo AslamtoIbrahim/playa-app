@@ -1,7 +1,8 @@
 import { Form, Link } from '@inertiajs/react';
 import { format } from "date-fns";
-import { Calendar as CalendarIcon, Check, ChevronsUpDown, Plus, ArrowRight } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { fr } from "date-fns/locale"; // Import pour le formatage en français si besoin
+import { ArrowRight, Calendar as CalendarIcon, Check, ChevronsUpDown, Plus } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import InputError from '@/components/input-error';
@@ -28,30 +29,30 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Spinner } from '@/components/ui/spinner';
 import { cn, commandItemClass } from "@/lib/utils";
 import { store } from '@/routes/invoices';
-import { Billable } from '@/types/invoice';
-import { Calendar } from './ui/calendar';
-import { DailySession } from '@/types/daily-session';
 import { Caution } from '@/types/caution';
+import { Billable } from '@/types/invoice';
 import { OfficeRoom } from '@/types/office-room';
+import { SessionZone } from '@/types/session-zone';
+import { Calendar } from './ui/calendar';
 
 interface Props {
     billables: Billable[];
     officeRooms: OfficeRoom[];
-    sessions: DailySession[];
+    sessionZones: SessionZone[];
     cautions: Caution[];
 }
 
-export default function AddInvoiceDialog({ billables, officeRooms, sessions, cautions }: Props) {
+export default function AddInvoiceDialog({ billables, officeRooms, sessionZones, cautions }: Props) {
     const [open, setOpen] = useState<boolean>(false);
 
     const [billableComboOpen, setBillableComboOpen] = useState<boolean>(false);
     const [officeComboOpen, setOfficeComboOpen] = useState<boolean>(false);
-    const [sessionComboOpen, setSessionComboOpen] = useState<boolean>(false);
+    const [sessionZoneComboOpen, setSessionZoneComboOpen] = useState<boolean>(false);
     const [cautionComboOpen, setCautionComboOpen] = useState<boolean>(false);
 
     const [selectedBillable, setSelectedBillable] = useState<Billable | null>(null);
     const [selectedOfficeId, setSelectedOfficeId] = useState<string>("");
-    const [selectedSessionId, setSelectedSessionId] = useState<string>("");
+    const [selectedSessionZoneId, setSelectedSessionZoneId] = useState<string>("");
     const [selectedCautionId, setSelectedCautionId] = useState<string>("");
     const [invoiceType, setInvoiceType] = useState<string>("purchase");
     const [date, setDate] = useState<Date>(new Date());
@@ -63,18 +64,17 @@ export default function AddInvoiceDialog({ billables, officeRooms, sessions, cau
 
         return cautions.filter((c) => {
             const isSameId = Number(c.owner_id) === Number(selectedBillable.id);
-
-            // Gérer les backslashes pour la comparaison polymorphic
             const isSameType = c.owner_type === selectedBillable.type || 
                                c.owner_type.includes(selectedBillable.type!.replace(/\\/g, '\\\\'));
 
-            if (isSameId && isSameType) {
-                return true;
-            }
-
-            return false;
+            return isSameId && isSameType;
         });
     }, [selectedBillable, cautions]);
+
+    // Helper pour trouver la session zone sélectionnée
+    const currentSessionZone = useMemo(() => 
+        sessionZones.find((sz) => sz.id.toString() === selectedSessionZoneId),
+    [selectedSessionZoneId, sessionZones]);
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -99,7 +99,7 @@ export default function AddInvoiceDialog({ billables, officeRooms, sessions, cau
                         setOpen(false);
                         setSelectedBillable(null);
                         setSelectedOfficeId("");
-                        setSelectedSessionId("");
+                        setSelectedSessionZoneId("");
                         setSelectedCautionId("");
                         setInvoiceType("purchase");
                         setDate(new Date());
@@ -111,7 +111,7 @@ export default function AddInvoiceDialog({ billables, officeRooms, sessions, cau
                             <input type="hidden" name="billable_id" value={selectedBillable?.id || ""} />
                             <input type="hidden" name="billable_type" value={selectedBillable?.type || ""} />
                             <input type="hidden" name="office_room_id" value={selectedOfficeId} />
-                            <input type="hidden" name="session_id" value={selectedSessionId} />
+                            <input type="hidden" name="session_zone_id" value={selectedSessionZoneId} />
                             <input type="hidden" name="caution_id" value={selectedCautionId} />
                             <input type="hidden" name="type" value={invoiceType} />
                             <input type="hidden" name="date" value={date ? format(date, "yyyy-MM-dd") : ""} />
@@ -147,11 +147,7 @@ export default function AddInvoiceDialog({ billables, officeRooms, sessions, cau
                                             <Calendar
                                                 mode="single"
                                                 selected={date}
-                                                onSelect={(d: Date | undefined) => {
-                                                    if (d) {
-                                                        setDate(d);
-                                                    }
-                                                }}
+                                                onSelect={(d) => d && setDate(d)}
                                                 initialFocus
                                             />
                                         </PopoverContent>
@@ -162,47 +158,56 @@ export default function AddInvoiceDialog({ billables, officeRooms, sessions, cau
 
                             <div className="grid gap-2">
                                 <div className="flex items-center justify-between">
-                                    <Label className="text-xs font-bold uppercase text-slate-500">Journée d'affectation</Label>
+                                    <Label className="text-xs font-bold uppercase text-slate-500">Session & Zone d'affectation</Label>
                                     <Link href="/sessions" className="text-[12px] text-blue-600 hover:underline flex items-center gap-1">
-                                        Gérer les journées <ArrowRight className="h-2 w-2" />
+                                        Gérer les sessions <ArrowRight className="h-2 w-2" />
                                     </Link>
                                 </div>
-                                <Popover open={sessionComboOpen} onOpenChange={setSessionComboOpen}>
+                                <Popover open={sessionZoneComboOpen} onOpenChange={setSessionZoneComboOpen}>
                                     <PopoverTrigger asChild>
                                         <Button
                                             variant="outline"
                                             role="combobox"
-                                            className={cn("w-full justify-between font-medium", !selectedSessionId && "text-muted-foreground", errors.session_id && "border-destructive")}
+                                            className={cn(
+                                                "w-full justify-between font-medium", 
+                                                !selectedSessionZoneId && "text-muted-foreground", 
+                                                errors.session_zone_id && "border-destructive"
+                                            )}
                                         >
-                                            {selectedSessionId
-                                                ? format(new Date(sessions.find((s) => s.id.toString() === selectedSessionId)?.session_date || ""), "dd MMMM yyyy")
-                                                : "Choisir la journée..."}
+                                            {currentSessionZone
+                                                ? `${format(new Date(currentSessionZone.daily_session?.session_date || ""), "dd/MM/yyyy")} - ${currentSessionZone.zone?.name}`
+                                                : "Choisir la session/zone..."}
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                         <Command>
-                                            <CommandInput placeholder="Rechercher une journée..." />
+                                            <CommandInput placeholder="Rechercher une zone ou date..." />
                                             <CommandList>
-                                                <CommandEmpty>Aucune journée trouvée.</CommandEmpty>
+                                                <CommandEmpty>Aucun résultat trouvé.</CommandEmpty>
                                                 <CommandGroup>
-                                                    {sessions.map((session) => (
+                                                    {sessionZones.map((sz) => (
                                                         <CommandItem
                                                             className={commandItemClass}
-                                                            key={session.id}
-                                                            value={session.session_date}
+                                                            key={sz.id}
+                                                            value={`${sz.daily_session?.session_date} ${sz.zone?.name}`}
                                                             onSelect={() => {
-                                                                setSelectedSessionId(session.id.toString());
-                                                                setSessionComboOpen(false);
+                                                                setSelectedSessionZoneId(sz.id.toString());
+                                                                setSessionZoneComboOpen(false);
                                                             }}
                                                         >
-                                                            <Check className={cn("mr-2 h-4 w-4", selectedSessionId === session.id.toString() ? "opacity-100" : "opacity-0")} />
-                                                            Journée du {format(new Date(session.session_date), "dd/MM/yyyy")}
+                                                            <Check className={cn("mr-2 h-4 w-4", selectedSessionZoneId === sz.id.toString() ? "opacity-100" : "opacity-0")} />
+                                                            <div className="flex flex-col">
+                                                                <span>{sz.zone?.name}</span>
+                                                                <span className="text-[10px] text-slate-500">
+                                                                    Session du {sz.daily_session?.session_date ? format(new Date(sz.daily_session.session_date), "dd/MM/yyyy") : 'N/A'}
+                                                                </span>
+                                                            </div>
                                                             <span className={cn(
                                                                 "ml-auto text-[10px] uppercase px-1.5 py-0.5 rounded-sm",
-                                                                session.status === 'open' ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-700"
+                                                                sz.daily_session?.status === 'open' ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-700"
                                                             )}>
-                                                                {session.status}
+                                                                {sz.daily_session?.status}
                                                             </span>
                                                         </CommandItem>
                                                     ))}
@@ -211,9 +216,10 @@ export default function AddInvoiceDialog({ billables, officeRooms, sessions, cau
                                         </Command>
                                     </PopoverContent>
                                 </Popover>
-                                <InputError message={errors.session_id} />
+                                <InputError message={errors.session_zone_id} />
                             </div>
 
+                            {/* Reste du formulaire (Client, Caution, Bureau) inchangé */}
                             <div className="grid gap-2">
                                 <Label className="text-xs font-bold uppercase text-slate-500">Compte / Client</Label>
                                 <Popover open={billableComboOpen} onOpenChange={setBillableComboOpen}>

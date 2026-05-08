@@ -80,7 +80,7 @@ export default function AddWorkersDialog({
                     onSuccess={handleSuccess}
                     onBefore={() => {
                         const wage = parseFloat(defaultWage);
-                        
+
                         if (isNaN(wage) || wage <= 0) {
                             toast.error("Le salaire doit être supérieur à 0 DH");
                             return false; // Hna kan'habso l'form maymchich
@@ -118,7 +118,7 @@ export default function AddWorkersDialog({
                                         setDefaultWage(e.target.value);
                                     }}
                                     placeholder="Ex: 150 dh"
-                                    className={cn("font-mono ",removeInputArraws)}
+                                    className={cn("font-mono ", removeInputArraws)}
                                 />
 
                                 <InputError message={errors.default_wage} />
@@ -138,12 +138,11 @@ export default function AddWorkersDialog({
                                                 <div
                                                     key={worker.id}
                                                     className={`
-                group flex items-center space-x-3 p-3 rounded-lg border transition-all duration-200
-                ${isSelected
+                                                             group flex items-center space-x-3 p-3 rounded-lg border transition-all duration-200
+                                                             ${isSelected
                                                             ? 'border-slate-600/50 bg-primary/5 '
                                                             : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                                                        }
-            `}
+                                                        }`}
                                                 >
                                                     <Checkbox
                                                         id={`worker-${worker.id}`}
@@ -156,10 +155,8 @@ export default function AddWorkersDialog({
 
                                                     <label
                                                         htmlFor={`worker-${worker.id}`}
-                                                        className={`
-                    flex-1 text-sm font-semibold cursor-pointer select-none transition-colors
-                    ${isSelected ? 'text-primary' : 'text-slate-700'}
-                `}
+                                                        className={`flex-1 text-sm font-semibold cursor-pointer select-none transition-colors
+                                                            ${isSelected ? 'text-primary' : 'text-slate-700'} `}
                                                     >
                                                         {worker.name}
                                                     </label>

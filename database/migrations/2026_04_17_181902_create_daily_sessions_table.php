@@ -19,6 +19,7 @@ return new class extends Migration
             $table->decimal('total_sell', 15, 2)->default(0); // مجموع البيع
             $table->timestamp('closed_at')->nullable();
             $table->foreignId('closed_by')->nullable()->constrained('users'); // غادي نربطوه نهار نزيدو الـ Users
+            $table->softDeletes();
             $table->timestamps();
             
         });

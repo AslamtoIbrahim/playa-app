@@ -11,34 +11,35 @@ import {
     DialogHeader,
     DialogTitle,
     DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { store } from '@/routes/office-rooms';
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { store } from '@/routes/zones';
+// import { store } from '@/routes/zones'; // Assuming store route for zones is defined
 
-export default function AddOfficeRoomDialog() {
+export default function AddZoneDialog() {
     const [open, setOpen] = useState(false);
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 <Button size="sm">
-                    <Plus className="mr-2 h-4 w-4" /> Ajouter un bureau
+                    <Plus className="mr-2 h-4 w-4" /> Ajouter une zone
                 </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle>Nouveau bureau</DialogTitle>
+                    <DialogTitle>Nouvelle zone</DialogTitle>
                     <DialogDescription>
-                        Remplissez les détails ci-dessous pour créer un nouveau bureau.
+                        Remplissez les détails ci-dessous pour créer une nouvelle zone.
                     </DialogDescription>
                 </DialogHeader>
 
                 <Form
                     {...store.form()}
-                    resetOnSuccess={['name', 'city']}
+                    resetOnSuccess={['name']}
                     onSuccess={() => {
-                        toast.success('Le bureau a été créé !');
+                        toast.success('La zone a été créée !');
                         setOpen(false);
                     }}
                     className="space-y-4 pt-4"
@@ -46,24 +47,14 @@ export default function AddOfficeRoomDialog() {
                     {({ processing, errors }) => (
                         <>
                             <div className="grid gap-2">
-                                <Label htmlFor="name">Nom du bureau</Label>
+                                <Label htmlFor="name">Nom de la zone</Label>
                                 <Input
                                     id="name"
                                     name="name"
                                     required
-                                    placeholder="ex: Bureau A"
+                                    placeholder="ex: Zone Nord"
                                 />
                                 <InputError message={errors.name} />
-                            </div>
-
-                            <div className="grid gap-2">
-                                <Label htmlFor="city">Ville</Label>
-                                <Input
-                                    id="city"
-                                    name="city"
-                                    placeholder="ex: Casablanca"
-                                />
-                                <InputError message={errors.city} />
                             </div>
 
                             <div className="flex justify-end gap-3 pt-4">
@@ -85,7 +76,9 @@ export default function AddOfficeRoomDialog() {
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                             Création...
                                         </>
-                                    ) : 'Enregistrer'}
+                                    ) : (
+                                        'Enregistrer'
+                                    )}
                                 </Button>
                             </div>
                         </>

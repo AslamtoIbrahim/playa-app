@@ -23,7 +23,7 @@ class ReceiptItemController extends Controller
             'beneficiary_id'  => 'required|exists:customers,id',
             'commission_per_unit' => 'required|numeric',
             'unit_count'      => 'required|numeric',
-            'session_id'      => 'required|exists:daily_sessions,id',
+            'session_zone_id' => 'required|exists:session_zones,id',
             'date'            => 'required|date',
         ]);
 
@@ -38,7 +38,7 @@ class ReceiptItemController extends Controller
             // 1. المستفيد (+)
             $beneficiaryReceipt = Receipt::firstOrCreate([
                 'customer_id' => $validated['beneficiary_id'],
-                'session_id'  => $validated['session_id'],
+                'session_zone_id' => $validated['session_zone_id'],
                 'date'        => $validated['date'],
             ]);
 
@@ -55,7 +55,7 @@ class ReceiptItemController extends Controller
             // 2. مول الباطو (-)
             $ownerReceipt = Receipt::firstOrCreate([
                 'customer_id' => $boatOwner->id,
-                'session_id'  => $validated['session_id'],
+                'session_zone_id' => $validated['session_zone_id'],
                 'date'        => $validated['date'],
                 'boat_id'     => $invoiceItem->boat_id,
             ]);
@@ -98,7 +98,7 @@ class ReceiptItemController extends Controller
             'beneficiary_id'  => 'required|exists:customers,id',
             'commission_per_unit' => 'required|numeric',
             'unit_count'      => 'required|numeric',
-            'session_id'      => 'required|exists:daily_sessions,id',
+            'session_zone_id' => 'required|exists:session_zones,id',
             'date'            => 'required|date',
         ]);
 
@@ -137,7 +137,7 @@ class ReceiptItemController extends Controller
         // المستفيد (+)
         $beneficiaryReceipt = Receipt::firstOrCreate([
             'customer_id' => $validated['beneficiary_id'],
-            'session_id'  => $validated['session_id'],
+            'session_zone_id'  => $validated['session_zone_id'],
             'date'        => $validated['date'],
         ]);
 
@@ -152,7 +152,7 @@ class ReceiptItemController extends Controller
         // مول الباطو (-)
         $ownerReceipt = Receipt::firstOrCreate([
             'customer_id' => $boatOwner->id,
-            'session_id'  => $validated['session_id'],
+            'session_zone_id'  => $validated['session_zone_id'],
             'date'        => $validated['date'],
             'boat_id'     => $invoiceItem->boat_id,
         ]);

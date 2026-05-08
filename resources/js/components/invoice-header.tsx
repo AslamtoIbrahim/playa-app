@@ -19,7 +19,7 @@ export function InvoiceHeader({ invoice }: Props) {
                     </p>
 
                     {invoice.office_room && (
-                        <p className="text-xs font-medium text-slate-500">
+                        <p className="text-xs font-medium capitalize text-slate-500">
                             {invoice.office_room.name} — {invoice.office_room.city}
                         </p>
                     )}

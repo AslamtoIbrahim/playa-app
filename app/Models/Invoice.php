@@ -18,7 +18,7 @@ class Invoice extends Model
         'billable_id',
         'billable_type',
         'caution_id',
-        'session_id',
+        'session_zone_id',
         'office_room_id',
         'created_by',
         'status',
@@ -57,9 +57,9 @@ class Invoice extends Model
         return $this->belongsTo(OfficeRoom::class);
     }
 
-    public function session()
+    public function sessionZone(): BelongsTo
     {
-        return $this->belongsTo(DailySession::class, 'session_id');
+        return $this->belongsTo(SessionZone::class);
     }
 
     public function payments()

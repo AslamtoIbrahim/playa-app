@@ -18,7 +18,8 @@ return new class extends Migration
 
             // الربط مع الكليان والجلسة اليومية
             $table->foreignId('customer_id')->constrained('customers')->restrictOnDelete();
-            $table->foreignId('session_id')->constrained('daily_sessions')->restrictOnDelete();
+            // $table->foreignId('session_id')->constrained('daily_sessions')->restrictOnDelete();
+            $table->foreignId('session_zone_id')->constrained('session_zones')->restrictOnDelete();
 
             $table->foreignId('boat_id')->nullable()->constrained('boats')->nullOnDelete();
 
@@ -28,6 +29,8 @@ return new class extends Migration
 
             $table->timestamps();
             $table->softDeletes();
+
+            $table->index('session_zone_id');
         });
     }
 
