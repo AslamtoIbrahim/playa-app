@@ -23,6 +23,7 @@ import { Caution } from '@/types/caution';
 import type { Billable, Invoice } from '@/types/invoice';
 import type { OfficeRoom } from '@/types/office-room';
 import { SessionZone } from '@/types/session-zone';
+import SessionZoneBadge from '@/components/receipt-session-zone-badge';
 
 interface Props {
     invoices: {
@@ -51,7 +52,7 @@ export default function Invoices({ invoices, billables, officeRooms, sessionZone
     };
 
 
-    console.log('sessionZones',sessionZones);
+    
     const getSessionDisplay = (invoice: Invoice): React.ReactNode => {
         const sessionZone = invoice.session_zone;
 
@@ -123,7 +124,7 @@ export default function Invoices({ invoices, billables, officeRooms, sessionZone
                                 <TableHead className="w-24 font-bold text-slate-800">N°</TableHead>
                                 <TableHead className="font-bold text-slate-800">Type</TableHead>
                                 <TableHead className="font-bold text-slate-800">Date</TableHead>
-                                <TableHead className="font-bold text-slate-800">Session</TableHead>
+                                <TableHead className="font-bold text-center text-slate-800">Zone Journée</TableHead>
                                 <TableHead className="font-bold text-slate-800">Bénéficiaire</TableHead>
                                 <TableHead className="font-bold text-slate-800">Caution</TableHead>
                                 <TableHead className="text-center font-bold text-slate-800">NC</TableHead>
@@ -164,7 +165,8 @@ export default function Invoices({ invoices, billables, officeRooms, sessionZone
                                         </TableCell>
 
                                         <TableCell>
-                                            {getSessionDisplay(invoice)}
+                                            {/* {getSessionDisplay(invoice)} */}
+                                            <SessionZoneBadge sessionZone={invoice.session_zone} />
                                         </TableCell>
 
                                         {/* Bénéficiaire Column */}

@@ -30,14 +30,13 @@ import { useReceiptExport } from '@/hooks/use-receipt-export';
 import { ExportDropdown } from '@/components/export-dropdown';
 import { useReceiptImport } from '@/hooks/use-receipt-import';
 import { ImportItemsDialog } from '@/components/import-items-dialog';
+import SessionZoneBadge from '@/components/receipt-session-zone-badge';
 
 interface Props {
     receipt: Receipt & {
         items: ReceiptItem[],
-        customer?: { name: string },
-        boat?: { name: string }
     };
-    items: Item[];
+    items: Item[]; // article Calamr G ....
 }
 
 export default function ReceiptShow({ receipt, items }: Props) {
@@ -228,10 +227,11 @@ export default function ReceiptShow({ receipt, items }: Props) {
             <div className='mt-4  px-2' id="receipt-content">
                 {/* Header: Date & Customer & Boat (Clean & Simple) */}
                 <div className="space-y-4" >
-                    <div className="border-t border-slate-100 pt-4">
+                    <div className="border-t border-slate-100 pt-4 flex items-center justify-between">
                         <h1 className="text-lg font-bold tracking-tight text-slate-900">
                             {formatDateDisplay(receipt.date)}
                         </h1>
+                        <SessionZoneBadge sessionZone={receipt.session_zone} />
                     </div>
                     <div className="flex justify-between items-start">
                         <div className="space-y-1">

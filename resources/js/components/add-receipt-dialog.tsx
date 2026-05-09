@@ -1,6 +1,6 @@
 import { Form } from '@inertiajs/react';
 import { format } from "date-fns";
-import { Calendar as CalendarIcon, Check, ChevronsUpDown, Plus, Receipt, Ship, X } from 'lucide-react';
+import { Calendar as CalendarIcon, Check, ChevronsUpDown, Plus, Receipt, Ship, X, MapPin, Clock } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -26,29 +26,47 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Spinner } from '@/components/ui/spinner';
 import { cn, commandItemClass } from "@/lib/utils";
+
+// Wayfinder import
 import { store } from '@/routes/receipts'; 
+
 import { Calendar } from './ui/calendar';
-import { DailySession } from '@/types/daily-session';
+import { SessionZone } from '@/types/session-zone'; // تأكد من المسار
 import { Customer } from '@/types/customer';
 import { Boat } from '@/types/boat';
 
 interface Props {
     customers: Customer[];
-    sessions: DailySession[];
+    // قمنا بتغيير النوع هنا
+    sessionZones: SessionZone[]; 
     boats: Boat[];
 }
 
-export default function AddReceiptDialog({ customers, sessions, boats }: Props) {
+export default function AddReceiptDialog({ customers, sessionZones, boats }: Props) {
     const [open, setOpen] = useState<boolean>(false);
 
     const [customerComboOpen, setCustomerComboOpen] = useState<boolean>(false);
-    const [sessionComboOpen, setSessionComboOpen] = useState<boolean>(false);
+    const [sessionZoneComboOpen, setSessionZoneComboOpen] = useState<boolean>(false);
     const [boatComboOpen, setBoatComboOpen] = useState<boolean>(false);
 
     const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
-    const [selectedSessionId, setSelectedSessionId] = useState<string>("");
+    // نستخدم session_zone_id بدلاً من session_id
+    const [selectedSessionZoneId, setSelectedSessionZoneId] = useState<string>("");
     const [selectedBoatId, setSelectedBoatId] = useState<string>("");
     const [date, setDate] = useState<Date>(new Date());
+
+    // دالة مساعدة للحصول على النص المعروض في الـ Combobox
+    const getSessionZoneLabel = (id: string) => {
+        const sz = sessionZones.find((s) => s.id.toString() === id);
+
+        if (!sz) {
+            return "";
+        }
+
+        const dateFormatted = format(new Date(sz.daily_session?.session_date || ""), "dd/MM/yyyy");
+        
+        return `${dateFormatted} - ${sz.zone?.name}`;
+    };
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -72,9 +90,10 @@ export default function AddReceiptDialog({ customers, sessions, boats }: Props) 
                     {...store.form()}
                     onSuccess={() => {
                         toast.success('Bon de réception créé avec succès !');
+                        
                         setOpen(false);
                         setSelectedCustomerId("");
-                        setSelectedSessionId("");
+                        setSelectedSessionZoneId("");
                         setSelectedBoatId("");
                         setDate(new Date());
                     }}
@@ -83,7 +102,8 @@ export default function AddReceiptDialog({ customers, sessions, boats }: Props) 
                     {({ processing, errors }) => (
                         <>
                             <input type="hidden" name="customer_id" value={selectedCustomerId} />
-                            <input type="hidden" name="session_id" value={selectedSessionId} />
+                            {/* تغيير اسم الحقل ليتوافق مع المنطق الجديد في الـ Backend */}
+                            <input type="hidden" name="session_zone_id" value={selectedSessionZoneId} />
                             <input type="hidden" name="boat_id" value={selectedBoatId} />
                             <input type="hidden" name="date" value={date ? format(date, "yyyy-MM-dd") : ""} />
 
@@ -116,41 +136,62 @@ export default function AddReceiptDialog({ customers, sessions, boats }: Props) 
                                 <InputError message={errors.date} />
                             </div>
 
-                            {/* Session Field */}
+                            {/* SessionZone Field */}
                             <div className="grid gap-2">
-                                <Label className="text-xs font-bold uppercase text-slate-500">Journée d'exploitation</Label>
-                                <Popover open={sessionComboOpen} onOpenChange={setSessionComboOpen}>
+                                <Label className="text-xs font-bold uppercase text-slate-500">Journée & Zone</Label>
+                                <Popover open={sessionZoneComboOpen} onOpenChange={setSessionZoneComboOpen}>
                                     <PopoverTrigger asChild>
                                         <Button
                                             variant="outline"
                                             role="combobox"
-                                            className={cn("w-full justify-between font-medium", !selectedSessionId && "text-muted-foreground", errors.session_id && "border-destructive")}
+                                            className={cn(
+                                                "w-full justify-between font-medium text-left h-auto py-2", 
+                                                !selectedSessionZoneId && "text-muted-foreground", 
+                                                errors.session_zone_id && "border-destructive"
+                                            )}
                                         >
-                                            {selectedSessionId
-                                                ? format(new Date(sessions.find((s) => s.id.toString() === selectedSessionId)?.session_date || ""), "dd MMMM yyyy")
-                                                : "Sélectionner la journée..."}
+                                            <div className="flex flex-col items-start  gap-0.5 overflow-hidden">
+                                                {selectedSessionZoneId ? (
+                                                    <span className="truncate capitalize flex items-center gap-3 ">
+                                                        <Clock className='text-slate-400' />
+                                                        {getSessionZoneLabel(selectedSessionZoneId)}
+                                                        </span>
+                                                ) : (
+                                                    "Sélectionner la journée et zone..."
+                                                )}
+                                            </div>
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                         <Command>
-                                            <CommandInput placeholder="Rechercher une journée..." />
+                                            <CommandInput placeholder="Rechercher une journée ou zone..." />
                                             <CommandList>
-                                                <CommandEmpty>Aucune journée trouvée.</CommandEmpty>
+                                                <CommandEmpty>Aucun résultat trouvé.</CommandEmpty>
                                                 <CommandGroup>
-                                                    {sessions.map((session) => (
+                                                    {sessionZones.map((sz) => (
                                                         <CommandItem
-                                                            className={commandItemClass}
-                                                            key={session.id}
-                                                            value={session.session_date}
+                                                            className={cn(commandItemClass, "flex items-center justify-between gap-2")}
+                                                            key={sz.id}
+                                                            // البحث يشمل التاريخ واسم المنطقة
+                                                            value={`${sz.daily_session?.session_date} ${sz.zone?.name}`}
                                                             onSelect={() => {
-                                                                setSelectedSessionId(session.id.toString());
-                                                                setSessionComboOpen(false);
+                                                                setSelectedSessionZoneId(sz.id.toString());
+                                                                setSessionZoneComboOpen(false);
                                                             }}
                                                         >
-                                                            <Check className={cn("mr-2 h-4 w-4", selectedSessionId === session.id.toString() ? "opacity-100" : "opacity-0")} />
-                                                            {format(new Date(session.session_date), "dd/MM/yyyy")}
-                                                            <span className="ml-auto text-[10px] bg-slate-100 px-1 rounded uppercase">{session.status}</span>
+                                                            <Check className={cn("mr-2 h-4 w-4", selectedSessionZoneId === sz.id.toString() ? "opacity-100" : "opacity-0")} />
+                                                            <div className="flex flex-col">
+                                                                <span className="font-bold">
+                                                                    {sz.daily_session ? format(new Date(sz.daily_session.session_date), "dd/MM/yyyy") : 'N/A'}
+                                                                </span>
+                                                                <span className="text-xs text-slate-700 capitalize font-medium flex items-center gap-1">
+                                                                    <MapPin className="h-3 w-3" /> {sz.zone?.name}
+                                                                </span>
+                                                            </div>
+                                                            <span className="ml-auto text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded uppercase font-bold">
+                                                                {sz.daily_session?.status}
+                                                            </span>
                                                         </CommandItem>
                                                     ))}
                                                 </CommandGroup>
@@ -158,7 +199,7 @@ export default function AddReceiptDialog({ customers, sessions, boats }: Props) 
                                         </Command>
                                     </PopoverContent>
                                 </Popover>
-                                <InputError message={errors.session_id} />
+                                <InputError message={errors.session_zone_id} />
                             </div>
 
                             {/* Customer Field */}

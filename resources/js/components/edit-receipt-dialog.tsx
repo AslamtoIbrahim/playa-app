@@ -4,7 +4,7 @@ import {
     Calendar as CalendarIcon,
     Check,
     ChevronsUpDown,
-    Clock,
+    MapPin,
     Pencil,
     Ship,
     X,
@@ -12,6 +12,7 @@ import {
 import { useState } from 'react';
 import { toast } from 'sonner';
 
+import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import {
@@ -39,16 +40,18 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import { cn, commandItemClass } from '@/lib/utils';
 
-import { update } from '@/routes/receipts'; 
-import { Receipt } from '@/types/receipt';
-import { Customer } from '@/types/customer';
-import { DailySession } from '@/types/daily-session';
+// Wayfinder import
+import { update } from '@/routes/receipts';
+
 import { Boat } from '@/types/boat';
+import { Customer } from '@/types/customer';
+import { SessionZone } from '@/types/session-zone';
+import { Receipt } from '@/types/receipt';
 
 interface Props {
     receipt: Receipt & { boat?: Boat | null };
     customers: Customer[];
-    sessions: DailySession[];
+    sessionZones: SessionZone[]; // التغيير هنا
     boats: Boat[];
     trigger?: React.ReactNode;
 }
@@ -56,34 +59,54 @@ interface Props {
 export default function EditReceiptDialog({
     receipt,
     customers,
-    sessions,
+    sessionZones,
     boats,
     trigger,
 }: Props) {
     const [open, setOpen] = useState<boolean>(false);
     const [customerComboOpen, setCustomerComboOpen] = useState<boolean>(false);
-    const [sessionComboOpen, setSessionComboOpen] = useState<boolean>(false);
+    const [sessionZoneComboOpen, setSessionZoneComboOpen] = useState<boolean>(false);
     const [boatComboOpen, setBoatComboOpen] = useState<boolean>(false);
 
-    const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
-        customers.find((c) => c.id === receipt.customer_id) || null
+    const [selectedCustomerId, setSelectedCustomerId] = useState<string>(
+        receipt.customer_id?.toString() || ""
     );
 
-    const [selectedSession, setSelectedSession] = useState<DailySession | null>(
-        sessions.find((s) => Number(s.id) === Number(receipt.session_id)) || null
+    const [selectedSessionZoneId, setSelectedSessionZoneId] = useState<string>(
+        receipt.session_zone_id?.toString() || ""
     );
 
-    const [selectedBoat, setSelectedBoat] = useState<Boat | null>(
-        boats.find((b) => b.id === receipt.boat_id) || null
+    const [selectedBoatId, setSelectedBoatId] = useState<string>(
+        receipt.boat_id?.toString() || ""
     );
 
     const [date, setDate] = useState<Date>(parseISO(receipt.date));
 
+    const getSessionZoneLabel = (id: string) => {
+        const sz = sessionZones.find((s) => s.id.toString() === id);
+
+        if (!sz) {
+            return "";
+        }
+
+        const dateStr = sz.daily_session?.session_date 
+            ? format(parseISO(sz.daily_session.session_date), 'dd/MM/yyyy') 
+            : 'N/A';
+
+        return `${dateStr} - ${sz.zone?.name}`;
+    };
+
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                {trigger ? trigger : (
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500">
+                {trigger ? (
+                    trigger
+                ) : (
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-blue-500"
+                    >
                         <Pencil className="h-4 w-4" />
                     </Button>
                 )}
@@ -91,8 +114,9 @@ export default function EditReceiptDialog({
 
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle className="font-black uppercase flex items-center gap-2">
-                        <Pencil className="h-5 w-5 text-blue-600" /> Modifier le Bon #{receipt.id}
+                    <DialogTitle className="flex items-center gap-2 font-black uppercase text-slate-900">
+                        <Pencil className="h-5 w-5 text-blue-600" /> Modifier le
+                        Bon #{receipt.id}
                     </DialogTitle>
                     <DialogDescription>
                         Modifier les détails du bon de réception.
@@ -109,57 +133,123 @@ export default function EditReceiptDialog({
                 >
                     {({ processing, errors }) => (
                         <>
-                            <input type="hidden" name="customer_id" value={selectedCustomer?.id || ''} />
-                            <input type="hidden" name="session_id" value={selectedSession?.id || ''} />
-                            <input type="hidden" name="boat_id" value={selectedBoat?.id || ''} />
-                            <input type="hidden" name="date" value={date ? format(date, 'yyyy-MM-dd') : ''} />
+                            <input
+                                type="hidden"
+                                name="customer_id"
+                                value={selectedCustomerId}
+                            />
+                            <input
+                                type="hidden"
+                                name="session_zone_id"
+                                value={selectedSessionZoneId}
+                            />
+                            <input
+                                type="hidden"
+                                name="boat_id"
+                                value={selectedBoatId}
+                            />
+                            <input
+                                type="hidden"
+                                name="date"
+                                value={date ? format(date, 'yyyy-MM-dd') : ''}
+                            />
 
                             {/* Date Field */}
                             <div className="grid gap-2">
-                                <Label className="text-xs font-bold text-slate-500 uppercase">Date du bon</Label>
+                                <Label className="text-xs font-bold text-slate-500 uppercase">
+                                    Date du bon
+                                </Label>
                                 <Popover>
                                     <PopoverTrigger asChild>
-                                        <Button variant="outline" className="w-full justify-start text-left font-medium">
+                                        <Button
+                                            variant="outline"
+                                            className={cn("w-full justify-start text-left font-medium", !date && "text-muted-foreground")}
+                                        >
                                             <CalendarIcon className="mr-2 h-4 w-4 text-slate-400" />
-                                            {date ? format(date, 'dd/MM/yyyy') : <span>Choisir une date</span>}
+                                            {date ? (
+                                                format(date, 'dd/MM/yyyy')
+                                            ) : (
+                                                <span>Choisir une date</span>
+                                            )}
                                         </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-auto p-0">
-                                        <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} initialFocus />
+                                        <Calendar
+                                            mode="single"
+                                            selected={date}
+                                            onSelect={(d) => {
+                                                if (d) {
+                                                    setDate(d);
+                                                }
+                                            }}
+                                            initialFocus
+                                        />
                                     </PopoverContent>
                                 </Popover>
-                                {errors.date && <p className="text-sm text-red-500">{errors.date}</p>}
+                                <InputError message={errors.date} />
                             </div>
 
-                            {/* Session Field */}
+                            {/* SessionZone Field */}
                             <div className="grid gap-2">
-                                <Label className="text-xs font-bold text-slate-500 uppercase">Session</Label>
-                                <Popover open={sessionComboOpen} onOpenChange={setSessionComboOpen}>
+                                <Label className="text-xs font-bold text-slate-500 uppercase">
+                                    Journée & Zone
+                                </Label>
+                                <Popover
+                                    open={sessionZoneComboOpen}
+                                    onOpenChange={setSessionZoneComboOpen}
+                                >
                                     <PopoverTrigger asChild>
-                                        <Button variant="outline" role="combobox" className="w-full justify-between font-medium">
-                                            <div className="flex items-center gap-2">
-                                                <Clock className="h-4 w-4 opacity-50" />
-                                                {selectedSession ? format(parseISO(selectedSession.session_date), 'dd MMMM yyyy') : 'Choisir une session...'}
+                                        <Button
+                                            variant="outline"
+                                            role="combobox"
+                                            className={cn(
+                                                "w-full justify-between font-medium text-left h-auto py-2",
+                                                !selectedSessionZoneId && "text-muted-foreground",
+                                                errors.session_zone_id && "border-destructive"
+                                            )}
+                                        >
+                                            <div className="flex flex-col items-start gap-0.5 overflow-hidden">
+                                                {selectedSessionZoneId ? (
+                                                    <span className="truncate capitalize">{getSessionZoneLabel(selectedSessionZoneId)}</span>
+                                                ) : (
+                                                    "Choisir une session & zone..."
+                                                )}
                                             </div>
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                         <Command>
-                                            <SearchInput placeholder="Rechercher..." />
+                                            <SearchInput placeholder="Rechercher une journée ou zone..." />
                                             <CommandList>
+                                                <CommandEmpty>Aucun résultat trouvé.</CommandEmpty>
                                                 <CommandGroup>
-                                                    {sessions.map((session) => (
+                                                    {sessionZones.map((sz) => (
                                                         <CommandItem
-                                                            key={session.id}
+                                                            key={sz.id}
                                                             className={commandItemClass}
+                                                            value={`${sz.daily_session?.session_date} ${sz.zone?.name}`}
                                                             onSelect={() => {
-                                                                setSelectedSession(session);
-                                                                setSessionComboOpen(false);
+                                                                setSelectedSessionZoneId(sz.id.toString());
+                                                                setSessionZoneComboOpen(false);
                                                             }}
                                                         >
-                                                            <Check className={cn("mr-2 h-4 w-4", selectedSession?.id === session.id ? "opacity-100" : "opacity-0")} />
-                                                            {format(parseISO(session.session_date), 'dd/MM/yyyy')}
+                                                            <Check
+                                                                className={cn(
+                                                                    'mr-2 h-4 w-4',
+                                                                    selectedSessionZoneId === sz.id.toString()
+                                                                        ? 'opacity-100'
+                                                                        : 'opacity-0',
+                                                                )}
+                                                            />
+                                                            <div className="flex flex-col">
+                                                                <span className="font-bold">
+                                                                    {sz.daily_session ? format(parseISO(sz.daily_session.session_date), "dd/MM/yyyy") : 'N/A'}
+                                                                </span>
+                                                                <span className="text-xs text-slate-700 capitalize font-medium flex items-center gap-1">
+                                                                    <MapPin className="h-3 w-3" /> {sz.zone?.name}
+                                                                </span>
+                                                            </div>
                                                         </CommandItem>
                                                     ))}
                                                 </CommandGroup>
@@ -167,16 +257,27 @@ export default function EditReceiptDialog({
                                         </Command>
                                     </PopoverContent>
                                 </Popover>
-                                {errors.session_id && <p className="text-sm text-red-500">{errors.session_id}</p>}
+                                <InputError message={errors.session_zone_id} />
                             </div>
 
                             {/* Customer Field */}
                             <div className="grid gap-2">
-                                <Label className="text-xs font-bold text-slate-500 uppercase">Client</Label>
-                                <Popover open={customerComboOpen} onOpenChange={setCustomerComboOpen}>
+                                <Label className="text-xs font-bold text-slate-500 uppercase">
+                                    Client
+                                </Label>
+                                <Popover
+                                    open={customerComboOpen}
+                                    onOpenChange={setCustomerComboOpen}
+                                >
                                     <PopoverTrigger asChild>
-                                        <Button variant="outline" role="combobox" className="w-full justify-between font-medium">
-                                            {selectedCustomer ? selectedCustomer.name : 'Sélectionner un client...'}
+                                        <Button
+                                            variant="outline"
+                                            role="combobox"
+                                            className={cn("w-full justify-between font-medium", errors.customer_id && "border-destructive")}
+                                        >
+                                            {selectedCustomerId
+                                                ? customers.find(c => c.id.toString() === selectedCustomerId)?.name
+                                                : 'Sélectionner un client...'}
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
                                     </PopoverTrigger>
@@ -184,18 +285,27 @@ export default function EditReceiptDialog({
                                         <Command>
                                             <SearchInput placeholder="Rechercher..." />
                                             <CommandList>
-                                                <CommandEmpty>Aucun client trouvé.</CommandEmpty>
+                                                <CommandEmpty>
+                                                    Aucun client trouvé.
+                                                </CommandEmpty>
                                                 <CommandGroup>
                                                     {customers.map((customer) => (
                                                         <CommandItem
                                                             key={customer.id}
                                                             className={commandItemClass}
                                                             onSelect={() => {
-                                                                setSelectedCustomer(customer);
+                                                                setSelectedCustomerId(customer.id.toString());
                                                                 setCustomerComboOpen(false);
                                                             }}
                                                         >
-                                                            <Check className={cn("mr-2 h-4 w-4", selectedCustomer?.id === customer.id ? "opacity-100" : "opacity-0")} />
+                                                            <Check
+                                                                className={cn(
+                                                                    'mr-2 h-4 w-4',
+                                                                    selectedCustomerId === customer.id.toString()
+                                                                        ? 'opacity-100'
+                                                                        : 'opacity-0',
+                                                                )}
+                                                            />
                                                             {customer.name}
                                                         </CommandItem>
                                                     ))}
@@ -204,29 +314,41 @@ export default function EditReceiptDialog({
                                         </Command>
                                     </PopoverContent>
                                 </Popover>
-                                {errors.customer_id && <p className="text-sm text-red-500">{errors.customer_id}</p>}
+                                <InputError message={errors.customer_id} />
                             </div>
 
                             {/* Boat Field (Optional) */}
                             <div className="grid gap-2">
-                                <Label className="text-xs font-bold text-slate-500 uppercase flex justify-between">
+                                <Label className="flex justify-between text-xs font-bold text-slate-500 uppercase">
                                     Bateau (Optionnel)
-                                    {selectedBoat && (
-                                        <button 
-                                            type="button" 
-                                            onClick={() => setSelectedBoat(null)}
-                                            className="text-[10px] text-red-500 hover:underline flex items-center gap-1"
+                                    {selectedBoatId && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setSelectedBoatId("")}
+                                            className="flex items-center gap-1 text-[10px] text-red-500 hover:underline"
                                         >
                                             <X className="h-3 w-3" /> Détacher
                                         </button>
                                     )}
                                 </Label>
-                                <Popover open={boatComboOpen} onOpenChange={setBoatComboOpen}>
+                                <Popover
+                                    open={boatComboOpen}
+                                    onOpenChange={setBoatComboOpen}
+                                >
                                     <PopoverTrigger asChild>
-                                        <Button variant="outline" role="combobox" className={cn("w-full justify-between font-medium bg-slate-50/30", !selectedBoat && "text-muted-foreground")}>
+                                        <Button
+                                            variant="outline"
+                                            role="combobox"
+                                            className={cn(
+                                                'w-full justify-between bg-slate-50/30 font-medium',
+                                                !selectedBoatId && 'text-muted-foreground',
+                                            )}
+                                        >
                                             <div className="flex items-center">
                                                 <Ship className="mr-2 h-4 w-4 text-slate-400" />
-                                                {selectedBoat ? selectedBoat.name : 'Sans bateau (Client direct)'}
+                                                {selectedBoatId
+                                                    ? boats.find(b => b.id.toString() === selectedBoatId)?.name
+                                                    : 'Sans bateau (Client direct)'}
                                             </div>
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
@@ -235,18 +357,27 @@ export default function EditReceiptDialog({
                                         <Command>
                                             <SearchInput placeholder="Rechercher un bateau..." />
                                             <CommandList>
-                                                <CommandEmpty>Aucun bateau trouvé.</CommandEmpty>
+                                                <CommandEmpty>
+                                                    Aucun bateau trouvé.
+                                                </CommandEmpty>
                                                 <CommandGroup>
                                                     {boats.map((boat) => (
                                                         <CommandItem
                                                             key={boat.id}
                                                             className={commandItemClass}
                                                             onSelect={() => {
-                                                                setSelectedBoat(boat);
+                                                                setSelectedBoatId(boat.id.toString());
                                                                 setBoatComboOpen(false);
                                                             }}
                                                         >
-                                                            <Check className={cn("mr-2 h-4 w-4", selectedBoat?.id === boat.id ? "opacity-100" : "opacity-0")} />
+                                                            <Check
+                                                                className={cn(
+                                                                    'mr-2 h-4 w-4',
+                                                                    selectedBoatId === boat.id.toString()
+                                                                        ? 'opacity-100'
+                                                                        : 'opacity-0',
+                                                                )}
+                                                            />
                                                             {boat.name}
                                                         </CommandItem>
                                                     ))}
@@ -255,25 +386,45 @@ export default function EditReceiptDialog({
                                         </Command>
                                     </PopoverContent>
                                 </Popover>
-                                {errors.boat_id && <p className="text-sm text-red-500">{errors.boat_id}</p>}
+                                <InputError message={errors.boat_id} />
                             </div>
 
                             {/* Summary View */}
-                            <div className="grid grid-cols-2 gap-4 rounded-lg bg-slate-50 p-3 border border-dashed">
+                            <div className="grid grid-cols-2 gap-4 rounded-lg border border-dashed bg-slate-50 p-3">
                                 <div>
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase">Quantité</span>
-                                    <p className="text-sm font-bold">{receipt.quantity} units</p>
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase">
+                                        Quantité
+                                    </span>
+                                    <p className="text-sm font-bold">
+                                        {receipt.quantity} Kg
+                                    </p>
                                 </div>
                                 <div className="border-l pl-4">
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase">Total DH</span>
-                                    <p className="text-sm font-bold text-blue-600">{receipt.total_amount} DH</p>
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase">
+                                        Total DH
+                                    </span>
+                                    <p className="text-sm font-bold text-blue-600">
+                                        {receipt.total_amount} DH
+                                    </p>
                                 </div>
                             </div>
 
                             <div className="flex justify-end gap-3 pt-2">
-                                <Button variant="outline" type="button" onClick={() => setOpen(false)}>Annuler</Button>
-                                <Button type="submit" disabled={processing} className="font-bold bg-slate-900">
-                                    {processing && <Spinner className="mr-2 h-4 w-4" />}
+                                <Button
+                                    variant="outline"
+                                    type="button"
+                                    onClick={() => setOpen(false)}
+                                >
+                                    Annuler
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    disabled={processing}
+                                    className="bg-slate-900 font-bold"
+                                >
+                                    {processing && (
+                                        <Spinner className="mr-2 h-4 w-4" />
+                                    )}
                                     Mettre à jour
                                 </Button>
                             </div>

@@ -1,4 +1,8 @@
-import { destroy, storeCommission, updateCommission } from '@/routes/receipts/items';
+import {
+    destroy,
+    storeCommission,
+    updateCommission,
+} from '@/routes/receipts/items';
 import { router } from '@inertiajs/react';
 import { KeyboardEvent, useState } from 'react';
 import { toast } from 'sonner';
@@ -7,7 +11,7 @@ import { ReceiptItem } from '@/types/receipt-item';
 interface UseCommissionRowProps {
     invoiceItemId: number;
     unitCount: number;
-    sessionId: number;
+    sessionZoneId: number;
     date: string;
     onSuccess?: () => void;
     commission?: ReceiptItem;
@@ -16,10 +20,10 @@ interface UseCommissionRowProps {
 export function useCommissionRow({
     invoiceItemId,
     unitCount,
-    sessionId,
+    sessionZoneId,
     date,
     onSuccess,
-    commission
+    commission,
 }: UseCommissionRowProps) {
     const [loading, setLoading] = useState<boolean>(false);
 
@@ -28,7 +32,9 @@ export function useCommissionRow({
     const [data, setData] = useState({
         beneficiary_id: commission?.receipt?.customer?.id?.toString() || '',
         commission_per_unit: commission?.real_price?.toString() || '',
-        unit_count: commission ? commission.unit_count.toString() : unitCount.toString(),
+        unit_count: commission
+            ? commission.unit_count.toString()
+            : unitCount.toString(),
     });
 
     const handleDataChange = (updates: Partial<typeof data>): void => {
@@ -75,9 +81,11 @@ export function useCommissionRow({
                 _method: isUpdate ? 'PUT' : 'POST',
                 invoice_item_id: invoiceItemId,
                 beneficiary_id: parseInt(currentData.beneficiary_id),
-                commission_per_unit: parseFloat(currentData.commission_per_unit),
+                commission_per_unit: parseFloat(
+                    currentData.commission_per_unit,
+                ),
                 unit_count: parseFloat(currentData.unit_count),
-                session_id: sessionId,
+                session_zone_id: sessionZoneId,
                 date: date,
             },
             {
@@ -85,7 +93,14 @@ export function useCommissionRow({
 
                 onSuccess: (): void => {
                     {
-                        toast.success(isUpdate ? 'Commission mise à jour ✅' : 'Commission enregistrée ✅');
+                        router.reload({only: ['receipts', 'reports', 'invoices']}); 
+                        
+                        toast.success(
+                            isUpdate
+                                ? 'Commission mise à jour ✅'
+                                : 'Commission enregistrée ✅',
+                        );
+
 
                         if (!isUpdate) {
                             {
@@ -110,7 +125,7 @@ export function useCommissionRow({
                         setLoading(false);
                     }
                 },
-            }
+            },
         );
     };
 
@@ -138,35 +153,36 @@ export function useCommissionRow({
 
         setLoading(true);
 
-        router.delete(
-            destroy([commission.receipt_id, commission.id]),
-            {
-                preserveScroll: true,
+        router.delete(destroy([commission.receipt_id, commission.id]), {
+            preserveScroll: true,
 
-                onSuccess: (): void => {
-                    {
-                        toast.success('Commission supprimée');
+            onSuccess: (): void => {
+                {
+                    toast.success('Commission supprimée');
 
-                        if (onSuccess) {
-                            {
-                                onSuccess();
-                            }
+                    router.reload({
+                        only: ['receipts', 'reports', 'invoices'], // حدد الـ props اللي بغيتي تفرش
+                    });
+
+                    if (onSuccess) {
+                        {
+                            onSuccess();
                         }
                     }
-                },
+                }
+            },
 
-                onFinish: (): void => {
-                    {
-                        setLoading(false);
-                    }
-                },
-            }
-        );
+            onFinish: (): void => {
+                {
+                    setLoading(false);
+                }
+            },
+        });
     };
 
     const handleKeyDown = (
         e: KeyboardEvent<HTMLElement>,
-        type?: 'customer'
+        type?: 'customer',
     ): void => {
         {
             if (openCustomer) {
@@ -179,7 +195,9 @@ export function useCommissionRow({
         {
             if (type === 'customer' && !openCustomer) {
                 {
-                    const isCharacter = e.key.length === 1 && e.key.match(/[a-z0-9\u0600-\u06FF]/i);
+                    const isCharacter =
+                        e.key.length === 1 &&
+                        e.key.match(/[a-z0-9\u0600-\u06FF]/i);
 
                     if (isCharacter) {
                         {
@@ -206,7 +224,12 @@ export function useCommissionRow({
             }
         }
 
-        const isMovementKey = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key);
+        const isMovementKey = [
+            'ArrowUp',
+            'ArrowDown',
+            'ArrowLeft',
+            'ArrowRight',
+        ].includes(e.key);
 
         {
             if (isMovementKey) {
@@ -223,7 +246,9 @@ export function useCommissionRow({
 
                     const focusElement = (el: Element | null): void => {
                         {
-                            const target = el?.querySelector('input, button, [role="combobox"]') as HTMLElement;
+                            const target = el?.querySelector(
+                                'input, button, [role="combobox"]',
+                            ) as HTMLElement;
 
                             if (target) {
                                 {
@@ -239,7 +264,8 @@ export function useCommissionRow({
                         }
                     };
 
-                    const cellIndex = (currentCell as HTMLTableCellElement).cellIndex;
+                    const cellIndex = (currentCell as HTMLTableCellElement)
+                        .cellIndex;
 
                     {
                         if (e.key === 'ArrowRight') {
@@ -252,7 +278,9 @@ export function useCommissionRow({
                     {
                         if (e.key === 'ArrowLeft') {
                             {
-                                focusElement(currentCell.previousElementSibling);
+                                focusElement(
+                                    currentCell.previousElementSibling,
+                                );
                             }
                         }
                     }
@@ -261,7 +289,10 @@ export function useCommissionRow({
                         if (e.key === 'ArrowDown') {
                             {
                                 focusElement(
-                                    currentCell.parentElement?.nextElementSibling?.children[cellIndex] || null
+                                    currentCell.parentElement
+                                        ?.nextElementSibling?.children[
+                                        cellIndex
+                                    ] || null,
                                 );
                             }
                         }
@@ -271,7 +302,10 @@ export function useCommissionRow({
                         if (e.key === 'ArrowUp') {
                             {
                                 focusElement(
-                                    currentCell.parentElement?.previousElementSibling?.children[cellIndex] || null
+                                    currentCell.parentElement
+                                        ?.previousElementSibling?.children[
+                                        cellIndex
+                                    ] || null,
                                 );
                             }
                         }

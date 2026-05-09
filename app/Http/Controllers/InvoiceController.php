@@ -21,7 +21,7 @@ class InvoiceController extends Controller
      */
     public function index()
     {
-        $invoices = Invoice::with(['billable', 'officeRoom', 'sessionZone', 'caution']) // Changed 'session' to 'sessionZone'
+        $invoices = Invoice::with(['billable', 'officeRoom', 'sessionZone.dailySession', 'sessionZone.zone', 'caution']) // Changed 'session' to 'sessionZone'
             ->latest()
             ->paginate(10);
 
@@ -157,8 +157,8 @@ class InvoiceController extends Controller
             'items.item',
             'items.boat',
             'items.differences.customer',
-
-            'sessionZone', // Changed 'session' to 'sessionZone'
+            'sessionZone.dailySession', // Changed 'session' to 'sessionZone'
+             'sessionZone.zone',
             'items.receiptItems' => function ($q) { {
                     $q->where('type', 'commission')
                         ->where('real_price', '>', 0)

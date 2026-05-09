@@ -19,13 +19,13 @@ class ReceiptController extends Controller
      */
     public function index()
     {
-        $receipts = Receipt::with(['customer', 'sessionZone', 'boat'])
+        $receipts = Receipt::with(['customer', 'sessionZone.dailySession', 'sessionZone.zone', 'boat'])
             ->latest()
             ->paginate(10);
 
         $customers = Customer::all(['id', 'name']);
 
-        $sessionZones = SessionZone::with('dailySession')
+        $sessionZones = SessionZone::with(['dailySession', 'zone'])
             ->whereHas('dailySession', function ($query) {
                 $query->where('status', 'open');
             })
@@ -37,12 +37,7 @@ class ReceiptController extends Controller
         return Inertia::render('receipts', [
             'receipts'  => $receipts,
             'customers' => $customers,
-            'sessionZones'  => $sessionZones->map(function ($sessionZone) {
-                return [
-                    'id' => $sessionZone->id,
-                    'name' => $sessionZone->dailySession->session_date->format('Y-m-d') . ' - Zone ' . $sessionZone->zone_id,
-                ];
-            }),
+            'sessionZones' => $sessionZones,
             'boats'     => $boats,
         ]);
     }
@@ -86,7 +81,7 @@ class ReceiptController extends Controller
      */
     public function show(Receipt $receipt)
     {
-        $receipt->load(['customer', 'sessionZone.dailySession', 'boat', 'items.item']);
+        $receipt->load(['customer', 'sessionZone.dailySession', 'sessionZone.zone', 'boat', 'items.item']);
 
         return Inertia::render('receipts-show', [
             'receipt' => $receipt,

@@ -70,12 +70,15 @@ class ReceiptItemController extends Controller
 
             $ownerReceipt->calculateTotals();
 
+
             // كنرجعو الـ Item مع الـ commissions (الموجبة فقط) باش الـ Frontend يتحدث
-            return InvoiceItem::with(['receiptItems' => function ($q) {
+            $item =  InvoiceItem::with(['receiptItems' => function ($q) {
                 $q->where('type', 'commission')
                     ->where('real_price', '>', 0) // باش يطلع غير المستفيد فـ الـ Dialog
                     ->with('receipt.customer');
             }])->find($validated['invoice_item_id']);
+
+            return $item->refresh();
         });
 
         if (!$updatedItem) {
@@ -91,6 +94,41 @@ class ReceiptItemController extends Controller
     /**
      * تحديث الكوميسيون (Double Entry)
      */
+    // public function updateCommission(Request $request, Receipt $receipt, ReceiptItem $item)
+    // {
+    //     $validated = $request->validate([
+    //         'invoice_item_id' => 'required|exists:invoice_items,id',
+    //         'beneficiary_id'  => 'required|exists:customers,id',
+    //         'commission_per_unit' => 'required|numeric',
+    //         'unit_count'      => 'required|numeric',
+    //         'session_zone_id' => 'required|exists:session_zones,id',
+    //         'date'            => 'required|date',
+    //     ]);
+
+    //     $updatedItem = DB::transaction(function () use ($validated, $item) {
+    //         // 1. مسح السطور القديمة المرتبطة بهاد الكوميسيون
+    //         // كنمسحو أي سطر عنده نفس invoice_item_id و نوعه commission
+    //         $relatedItems = ReceiptItem::where('invoice_item_id', $item->invoice_item_id)
+    //             ->where('type', 'commission')
+    //             ->get();
+
+    //         foreach ($relatedItems as $ri) {
+    //             $r = $ri->receipt;
+    //             $ri->delete();
+    //             if ($r) $r->calculateTotals();
+    //         }
+
+    //         // 2. عاود عيط لـ نفس المنطق ديال الـ Store باش تكريهوم من جديد نقيين
+    //         // عيط لـ الدالة storeCommission اللي ديجا عندك أو دير refactor للمنطق
+    //         return $this->processCommissionLogic($validated);
+    //     });
+
+    //     return back()->with([
+    //         'success' => 'Commission mise à jour.',
+    //         'updated_item' => $updatedItem
+    //     ]);
+    // }
+
     public function updateCommission(Request $request, Receipt $receipt, ReceiptItem $item)
     {
         $validated = $request->validate([
@@ -102,26 +140,51 @@ class ReceiptItemController extends Controller
             'date'            => 'required|date',
         ]);
 
-        $updatedItem = DB::transaction(function () use ($validated, $item) {
-            // 1. مسح السطور القديمة المرتبطة بهاد الكوميسيون
-            // كنمسحو أي سطر عنده نفس invoice_item_id و نوعه commission
-            $relatedItems = ReceiptItem::where('invoice_item_id', $item->invoice_item_id)
+        $updatedItem = DB::transaction(function () use ($validated, $item, $receipt) {
+            // 1. كنجيبو الـ Item التوأم (اللي عند مول الباطو بالسالب) قبل ما نمسحو
+            $twinItem = ReceiptItem::where('invoice_item_id', $item->invoice_item_id)
                 ->where('type', 'commission')
-                ->get();
+                ->where('id', '!=', $item->id)
+                ->first();
 
-            foreach ($relatedItems as $ri) {
-                $r = $ri->receipt;
-                $ri->delete();
-                if ($r) $r->calculateTotals();
+            // 2. تحديث الـ Receipt الحالي بالـ Client الجديد والمعلومات الجديدة
+            $receipt->update([
+                'customer_id' => $validated['beneficiary_id'],
+                'session_zone_id' => $validated['session_zone_id'],
+                'date' => $validated['date'],
+            ]);
+
+            // 3. تحديث الـ Item نفسه (المستفيد)
+            $item->update([
+                'unit_count' => $validated['unit_count'],
+                'real_price' => $validated['commission_per_unit'],
+            ]);
+
+            $receipt->calculateTotals();
+
+            // 4. تحديث طرف مول الباطو (Twin)
+            if ($twinItem) {
+                $ownerReceipt = $twinItem->receipt;
+                $twinItem->update([
+                    'unit_count' => $validated['unit_count'],
+                    'real_price' => -abs($validated['commission_per_unit']),
+                ]);
+
+                // تحديث الـ Header ديال بون مول الباطو حتى هو إلا تبدلات الـ zone أو التاريخ
+                $ownerReceipt->update([
+                    'session_zone_id' => $validated['session_zone_id'],
+                    'date' => $validated['date'],
+                ]);
+                $ownerReceipt->calculateTotals();
             }
 
-            // 2. عاود عيط لـ نفس المنطق ديال الـ Store باش تكريهوم من جديد نقيين
-            // عيط لـ الدالة storeCommission اللي ديجا عندك أو دير refactor للمنطق
-            return $this->processCommissionLogic($validated);
+            return InvoiceItem::with(['receiptItems' => function ($q) {
+                $q->where('type', 'commission')->where('real_price', '>', 0)->with('receipt.customer');
+            }])->find($validated['invoice_item_id']);
         });
 
         return back()->with([
-            'success' => 'Commission mise à jour.',
+            'success' => 'Commission mise à jour avec succès.',
             'updated_item' => $updatedItem
         ]);
     }
@@ -148,6 +211,7 @@ class ReceiptItemController extends Controller
             'type'       => 'commission',
         ]);
         $beneficiaryReceipt->calculateTotals();
+        $beneficiaryReceipt->refresh();
 
         // مول الباطو (-)
         $ownerReceipt = Receipt::firstOrCreate([
@@ -164,6 +228,7 @@ class ReceiptItemController extends Controller
             'type'       => 'commission',
         ]);
         $ownerReceipt->calculateTotals();
+        $ownerReceipt->refresh();
 
         return InvoiceItem::with(['receiptItems' => function ($q) {
             $q->where('type', 'commission')->where('real_price', '>', 0)->with('receipt.customer');
@@ -399,6 +464,7 @@ class ReceiptItemController extends Controller
          * 3. تحديث الـ Receipt الحالي وتنظيفه إلا خوى
          */
         $receipt->calculateTotals();
+        $receipt->refresh();
 
         $receiptDeleted = false;
 
@@ -419,9 +485,14 @@ class ReceiptItemController extends Controller
             }
         }])->find($invoiceItemId);
 
+        if (!$receiptDeleted) {
+            $receipt->refresh(); // كتعاود تجيب البيانات الفريش من الـ DB
+        }
+
         return back()->with([
             'success' => $receiptDeleted ? 'Receipt supprimé car il est vide' : 'Supprimé ✅',
-            'updated_item' => $updatedItem
+            'updated_item' => $updatedItem,
+            'refresh_all' => true
         ]);
     }
 

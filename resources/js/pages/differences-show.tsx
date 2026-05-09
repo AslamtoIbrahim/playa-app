@@ -66,6 +66,8 @@ export default function DifferenceShow({ details, total_boxes, total_amount }: P
         );
     }
 
+    console.log('details 💛',details);
+
     const first = details[0];
 
 

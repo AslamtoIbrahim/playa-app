@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\Boat;
+use App\Models\Customer;
 use App\Models\Difference;
 use App\Models\InvoiceItem;
 use Illuminate\Http\Request;
@@ -13,7 +15,7 @@ class DifferenceController extends Controller
 {
     public function index()
     {
-        // 1. Differences (li jayin men l-fawatir)
+        // 1. Differences (الأساس: أي تقرير لازم يبدا من هنا)
         $diffs = DB::table('differences')
             ->join('invoice_items', 'differences.invoice_item_id', '=', 'invoice_items.id')
             ->join('invoices', 'invoice_items.invoice_id', '=', 'invoices.id')
@@ -26,23 +28,32 @@ class DifferenceController extends Controller
             )
             ->groupBy('differences.customer_id', 'invoice_items.boat_id', 'report_date');
 
-        // 2. Receipt Items (Extra lli m-liyyin b bateau o kelyan)
-        // Zdna "whereNotNull('receipts.boat_id')" bach n-haydou ay khidma dyal "DI" aw chi haja khra
+        // 2. Receipt Items (فقط إذا كان كاين Difference في نفس النهار/الباطو/الكليان)
         $receipts = DB::table('receipt_items')
             ->join('receipts', 'receipt_items.receipt_id', '=', 'receipts.id')
             ->whereNotNull('receipts.boat_id')
             ->whereNotNull('receipts.customer_id')
+            // الشرط السحري: كنشوفو واش كاين شي Difference مسجلة لهاد الكليان والباطو فنفس النهار
+            ->whereExists(function ($query) {
+                $query->select(DB::raw(1))
+                    ->from('differences')
+                    ->join('invoice_items', 'differences.invoice_item_id', '=', 'invoice_items.id')
+                    ->join('invoices', 'invoice_items.invoice_id', '=', 'invoices.id')
+                    ->whereColumn('differences.customer_id', 'receipts.customer_id')
+                    ->whereColumn('invoice_items.boat_id', 'receipts.boat_id')
+                    ->whereColumn(DB::raw('DATE(invoices.date)'), DB::raw('DATE(receipts.date)'));
+            })
             ->select(
                 'receipts.customer_id',
                 'receipts.boat_id',
                 DB::raw('DATE(receipts.date) as report_date'),
-                // Hna l-mochkil dyal 100 DH: t-aked anaka makhdamch b commission hna o f differences bjouj
                 DB::raw('SUM(receipt_items.unit_count * receipt_items.real_price) as amount'),
                 DB::raw('COUNT(receipt_items.id) as items_count')
             )
             ->groupBy('receipts.customer_id', 'receipts.boat_id', 'report_date');
 
         // 3. Union & Final Grouping
+        // دابا الـ Union غيجمع الـ Diffs مع الـ Receipts لي محققين الشرط فقط
         $combined = DB::query()->fromSub($diffs->unionAll($receipts), 'sub')
             ->select(
                 'customer_id',
@@ -52,27 +63,27 @@ class DifferenceController extends Controller
                 DB::raw('SUM(items_count) as total_items')
             )
             ->groupBy('customer_id', 'boat_id', 'invoice_date')
-            // N-fawtou ay haja ma-fihach bateau (Safe check)
             ->whereNotNull('boat_id')
             ->get();
 
         $reports = $combined->map(function ($row) {
-            $customer = \App\Models\Customer::find($row->customer_id);
-            $boat = \App\Models\Boat::find($row->boat_id);
+            $customer = Customer::find($row->customer_id);
+            $boat = Boat::find($row->boat_id);
 
-            // Ila mal9ach l-boat aw customer (data dyal tjerrib), may-affichihomch
-            if (!$customer || !$boat) return null;
+            if (!$customer || !$boat) {
+                return null;
+            }
 
             return (object)[
-                'customer_id' => $row->customer_id,
-                'boat_id' => $row->boat_id,
-                'invoice_date' => $row->invoice_date,
+                'customer_id'       => $row->customer_id,
+                'boat_id'           => $row->boat_id,
+                'invoice_date'      => $row->invoice_date,
                 'total_diff_amount' => (float)$row->total_diff_amount,
-                'items_count' => (int)$row->total_items,
-                'customer' => $customer,
-                'boat_name' => $boat->name,
+                'items_count'       => (int)$row->total_items,
+                'customer'          => $customer,
+                'boat_name'         => $boat->name,
             ];
-        })->filter()->values(); // filter() bach n-haydou l-nulls
+        })->filter()->values();
 
         return Inertia::render('differences', [
             'reports' => $reports

@@ -4,12 +4,13 @@ namespace App\Models;
 
 use App\Models\Boat;
 use App\Models\Customer;
-use App\Models\SessionZone; // Changed from DailySession
 use App\Models\ReceiptItem;
+use App\Models\SessionZone; // Changed from DailySession
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 
 class Receipt extends Model
 {
@@ -73,11 +74,30 @@ class Receipt extends Model
     /**
      * حساب المجاميع وتحديث الموديل
      */
+    // public function calculateTotals(): void
+    // {
+    //     $this->quantity = $this->items()->sum('unit_count');
+    //     $this->total_amount = $this->items()->sum('total_diff');
+    //     $this->total_boxes = $this->items()->sum('box');
+
+    //     $this->save();
+    // }
+
     public function calculateTotals(): void
     {
-        $this->quantity = $this->items()->sum('unit_count');
-        $this->total_amount = $this->items()->sum('total_diff');
-        $this->total_boxes = $this->items()->sum('box');
+        // 1. حساب مجموع الكمية (unit_count)
+        $this->quantity = (float) $this->items()->sum('unit_count');
+
+        // 2. حساب المجموع المالي (ضرب الكمية في الثمن الحقيقي لكل سطر)
+        // كنستخدمو DB::raw باش تكون العملية سريعة فـ Database
+        $this->total_amount = (float) $this->items()
+            ->select(DB::raw('SUM(unit_count * real_price) as total'))
+            ->value('total') ?? 0;
+
+        // 3. بخصوص الصناديق (boxes): 
+        // إلا ما كانش عندك هاد العمود فـ table receipt_items، حيد هاد السطر أو ردو 0
+        // إلا كان كاين، خليها هكا:
+        $this->total_boxes = (float) $this->items()->sum('box');
 
         $this->save();
     }

@@ -2,6 +2,7 @@ import { formatDateDisplay } from '@/lib/date';
 import { Invoice } from '@/types/invoice';
 import { ShieldCheck, Calendar } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import SessionZoneBadge from './receipt-session-zone-badge';
 
 interface Props {
     invoice: Invoice;
@@ -34,6 +35,8 @@ export function InvoiceHeader({ invoice }: Props) {
                     </Badge>
                 )}
             </div>
+
+            <SessionZoneBadge sessionZone={invoice.session_zone} />
 
             {/* Right Side: Invoice Details */}
             <div className="flex flex-col items-end space-y-2">
