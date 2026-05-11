@@ -28,7 +28,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { cn, commandItemClass } from "@/lib/utils";
 
 // Wayfinder import
-import { store } from '@/routes/receipts'; 
+import { store } from '@/routes/receipts';
 
 import { Calendar } from './ui/calendar';
 import { SessionZone } from '@/types/session-zone'; // تأكد من المسار
@@ -38,7 +38,7 @@ import { Boat } from '@/types/boat';
 interface Props {
     customers: Customer[];
     // قمنا بتغيير النوع هنا
-    sessionZones: SessionZone[]; 
+    sessionZones: SessionZone[];
     boats: Boat[];
 }
 
@@ -64,7 +64,7 @@ export default function AddReceiptDialog({ customers, sessionZones, boats }: Pro
         }
 
         const dateFormatted = format(new Date(sz.daily_session?.session_date || ""), "dd/MM/yyyy");
-        
+
         return `${dateFormatted} - ${sz.zone?.name}`;
     };
 
@@ -90,7 +90,7 @@ export default function AddReceiptDialog({ customers, sessionZones, boats }: Pro
                     {...store.form()}
                     onSuccess={() => {
                         toast.success('Bon de réception créé avec succès !');
-                        
+
                         setOpen(false);
                         setSelectedCustomerId("");
                         setSelectedSessionZoneId("");
@@ -145,8 +145,8 @@ export default function AddReceiptDialog({ customers, sessionZones, boats }: Pro
                                             variant="outline"
                                             role="combobox"
                                             className={cn(
-                                                "w-full justify-between font-medium text-left h-auto py-2", 
-                                                !selectedSessionZoneId && "text-muted-foreground", 
+                                                "w-full justify-between font-medium text-left h-auto py-2",
+                                                !selectedSessionZoneId && "text-muted-foreground",
                                                 errors.session_zone_id && "border-destructive"
                                             )}
                                         >
@@ -155,7 +155,7 @@ export default function AddReceiptDialog({ customers, sessionZones, boats }: Pro
                                                     <span className="truncate capitalize flex items-center gap-3 ">
                                                         <Clock className='text-slate-400' />
                                                         {getSessionZoneLabel(selectedSessionZoneId)}
-                                                        </span>
+                                                    </span>
                                                 ) : (
                                                     "Sélectionner la journée et zone..."
                                                 )}
@@ -212,8 +212,8 @@ export default function AddReceiptDialog({ customers, sessionZones, boats }: Pro
                                             role="combobox"
                                             className={cn("w-full justify-between font-medium", !selectedCustomerId && "text-muted-foreground", errors.customer_id && "border-destructive")}
                                         >
-                                            {selectedCustomerId 
-                                                ? customers.find(c => c.id.toString() === selectedCustomerId)?.name 
+                                            {selectedCustomerId
+                                                ? customers.find(c => c.id.toString() === selectedCustomerId)?.name
                                                 : "Sélectionner un client..."}
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
@@ -251,8 +251,8 @@ export default function AddReceiptDialog({ customers, sessionZones, boats }: Pro
                                 <Label className="text-xs font-bold uppercase text-slate-500 flex justify-between">
                                     Bateau (Optionnel)
                                     {selectedBoatId && (
-                                        <button 
-                                            type="button" 
+                                        <button
+                                            type="button"
                                             onClick={() => setSelectedBoatId("")}
                                             className="text-[10px] text-red-500 hover:underline flex items-center gap-1"
                                         >
@@ -269,8 +269,8 @@ export default function AddReceiptDialog({ customers, sessionZones, boats }: Pro
                                         >
                                             <div className="flex items-center">
                                                 <Ship className="mr-2 h-4 w-4 text-slate-400" />
-                                                {selectedBoatId 
-                                                    ? boats.find(b => b.id.toString() === selectedBoatId)?.name 
+                                                {selectedBoatId
+                                                    ? boats.find(b => b.id.toString() === selectedBoatId)?.name
                                                     : "Sans bateau (Client direct)"}
                                             </div>
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />

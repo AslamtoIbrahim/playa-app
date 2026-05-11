@@ -1,27 +1,27 @@
-import { AttendanceItem } from "./attendance-item";
-import { DailySession } from "./daily-session";
+import { AttendanceItem } from './attendance-item';
+import { SessionZone } from './session-zone';
 
 export interface Attendance {
     id: number;
-    date: string; 
-    daily_session_id: number;
+    date: string;
+    session_zone_id: number;
     total_wage: number;
-    session?: DailySession;
+    session_zone?: SessionZone;
     items?: AttendanceItem[];
     created_at?: string;
     updated_at?: string;
     deleted_at?: string | null;
 }
- 
+
 export interface AttendanceFormData {
-    daily_session_id: string;
+    session_zone_id: string;
 }
 
 export interface AttendancesIndexProps {
     attendances: {
         data: Attendance[];
-        links: any[];  
+        links: any[];
         meta: any;
     };
-    sessions: DailySession[];
+    sessionZones: SessionZone[];
 }

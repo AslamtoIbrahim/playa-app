@@ -1,12 +1,6 @@
 import { Form } from '@inertiajs/react';
 import { format, parseISO } from 'date-fns';
-import {
-    Check,
-    ChevronsUpDown,
-    Clock,
-    Pencil,
-    UserCheck,
-} from 'lucide-react';
+import { Check, ChevronsUpDown, Clock, MapPin, Pencil, UserCheck } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -16,7 +10,7 @@ import {
     Command,
     CommandEmpty,
     CommandGroup,
-    CommandInput,
+    CommandInput as SearchInput,
     CommandItem,
     CommandList,
 } from '@/components/ui/command';
@@ -43,26 +37,41 @@ import { update } from '@/routes/attendances';
 // Types
 import { Attendance } from '@/types/attendance';
 import { DailySession } from '@/types/daily-session';
+import { SessionZone } from '@/types/session-zone';
 
 interface Props {
     attendance: Attendance;
-    sessions: DailySession[];
+    sessionZones: SessionZone[];
     trigger?: React.ReactNode;
 }
 
 export default function EditAttendanceDialog({
     attendance,
-    sessions,
+    sessionZones,
     trigger,
 }: Props) {
     const [open, setOpen] = useState<boolean>(false);
     const [sessionComboOpen, setSessionComboOpen] = useState<boolean>(false);
+    const [sessionZoneComboOpen, setSessionZoneComboOpen] = useState<boolean>(false);
 
-    const [selectedSession, setSelectedSession] = useState<DailySession | null>(
-        sessions.find((s) => {
-            return Number(s.id) === Number(attendance.daily_session_id);
-        }) || null
+    const [selectedSessionZoneId, setSelectedSessionZoneId] = useState<string>(
+        attendance.session_zone_id?.toString() || ""
     );
+
+    const getSessionZoneLabel = (id: string) => {
+        const sz = sessionZones.find((s) => s.id.toString() === id);
+
+        if (!sz) {
+            return "";
+        }
+
+        const dateStr = sz.daily_session?.session_date
+            ? format(parseISO(sz.daily_session.session_date), 'dd/MM/yyyy')
+            : 'N/A';
+
+        return `${dateStr} - ${sz.zone?.name}`;
+    };
+
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -70,7 +79,11 @@ export default function EditAttendanceDialog({
                 {trigger ? (
                     trigger
                 ) : (
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-blue-500"
+                    >
                         <Pencil className="h-4 w-4" />
                     </Button>
                 )}
@@ -78,12 +91,14 @@ export default function EditAttendanceDialog({
 
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle className="font-black uppercase flex items-center gap-2 text-slate-900">
-                        <UserCheck className="h-5 w-5 text-blue-600" /> Modifier Pointage #{attendance.id}
+                    <DialogTitle className="flex items-center gap-2 font-black text-slate-900 uppercase">
+                        <UserCheck className="h-5 w-5 text-blue-600" /> Modifier
+                        Pointage #{attendance.id}
                     </DialogTitle>
 
                     <DialogDescription>
-                        Modifier la session associée à cette feuille de présence. La date sera mise à jour automatiquement.
+                        Modifier la session associée à cette feuille de
+                        présence. La date sera mise à jour automatiquement.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -95,43 +110,53 @@ export default function EditAttendanceDialog({
                         setOpen(false);
                     }}
                     onError={(e) => {
-                        toast.error('Une erreur est survenue. Veuillez réessayer.');
+                        toast.error(
+                            'Une erreur est survenue. Veuillez réessayer.',
+                        );
                         console.error(e);
                     }}
                     className="space-y-5 pt-4"
                 >
                     {({ processing, errors }) => {
+
                         return (
                             <>
-                                <input 
-                                    type="hidden" 
-                                    name="daily_session_id" 
-                                    value={selectedSession?.id || ''} 
+                                <input
+                                    type="hidden"
+                                    name="session_zone_id"
+                                    value={selectedSessionZoneId}
                                 />
 
                                 {/* Session Field */}
-                                <div className="grid gap-2">
-                                    <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                {/* <div className="grid gap-2">
+                                    <Label className="text-xs font-bold tracking-wider text-slate-500 uppercase">
                                         Session de travail
                                     </Label>
 
-                                    <Popover open={sessionComboOpen} onOpenChange={setSessionComboOpen}>
+                                    <Popover
+                                        open={sessionComboOpen}
+                                        onOpenChange={setSessionComboOpen}
+                                    >
                                         <PopoverTrigger asChild>
                                             <Button
                                                 variant="outline"
                                                 role="combobox"
                                                 className={cn(
-                                                    "w-full justify-between font-medium border-slate-200",
-                                                    errors.daily_session_id && "border-destructive"
+                                                    'w-full justify-between border-slate-200 font-medium',
+                                                    errors.daily_session_id &&
+                                                    'border-destructive',
                                                 )}
                                             >
                                                 <div className="flex items-center gap-2 text-slate-700">
                                                     <Clock className="h-4 w-4 opacity-50" />
-                                                    {selectedSession ? (
-                                                        format(parseISO(selectedSession.session_date), 'dd MMMM yyyy')
-                                                    ) : (
-                                                        'Choisir une session...'
-                                                    )}
+                                                    {selectedSession
+                                                        ? format(
+                                                            parseISO(
+                                                                selectedSession.session_date,
+                                                            ),
+                                                            'dd MMMM yyyy',
+                                                        )
+                                                        : 'Choisir une session...'}
                                                 </div>
 
                                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -143,40 +168,131 @@ export default function EditAttendanceDialog({
                                                 <CommandInput placeholder="Rechercher une session..." />
 
                                                 <CommandList>
-                                                    <CommandEmpty>Aucune session trouvée.</CommandEmpty>
+                                                    <CommandEmpty>
+                                                        Aucune session trouvée.
+                                                    </CommandEmpty>
 
                                                     <CommandGroup>
-                                                        {sessions.map((session) => {
-                                                            return (
-                                                                <CommandItem
-                                                                    key={session.id}
-                                                                    className={commandItemClass}
-                                                                    onSelect={() => {
-                                                                        setSelectedSession(session);
+                                                        {sessions.map(
+                                                            (session) => {
+                                                                return (
+                                                                    <CommandItem
+                                                                        key={
+                                                                            session.id
+                                                                        }
+                                                                        className={
+                                                                            commandItemClass
+                                                                        }
+                                                                        onSelect={() => {
+                                                                            setSelectedSession(
+                                                                                session,
+                                                                            );
 
-                                                                        setSessionComboOpen(false);
-                                                                    }}
-                                                                >
-                                                                    <Check
-                                                                        className={cn(
-                                                                            "mr-2 h-4 w-4",
-                                                                            selectedSession?.id === session.id ? "opacity-100" : "opacity-0"
+                                                                            setSessionComboOpen(
+                                                                                false,
+                                                                            );
+                                                                        }}
+                                                                    >
+                                                                        <Check
+                                                                            className={cn(
+                                                                                'mr-2 h-4 w-4',
+                                                                                selectedSession?.id ===
+                                                                                    session.id
+                                                                                    ? 'opacity-100'
+                                                                                    : 'opacity-0',
+                                                                            )}
+                                                                        />
+                                                                        {format(
+                                                                            parseISO(
+                                                                                session.session_date,
+                                                                            ),
+                                                                            'dd/MM/yyyy',
                                                                         )}
-                                                                    />
-                                                                    {format(parseISO(session.session_date), 'dd/MM/yyyy')}
-                                                                </CommandItem>
-                                                            );
-                                                        })}
+                                                                    </CommandItem>
+                                                                );
+                                                            },
+                                                        )}
                                                     </CommandGroup>
                                                 </CommandList>
                                             </Command>
                                         </PopoverContent>
                                     </Popover>
 
-                                    <InputError message={errors.daily_session_id} />
+                                    <InputError
+                                        message={errors.daily_session_id}
+                                    />
+                                </div> */}
+                                <div className="grid gap-2">
+                                    <Label className="text-xs font-bold text-slate-500 uppercase">
+                                        Journée & Zone
+                                    </Label>
+                                    <Popover
+                                        open={sessionZoneComboOpen}
+                                        onOpenChange={setSessionZoneComboOpen}
+                                    >
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                role="combobox"
+                                                className={cn(
+                                                    "w-full justify-between font-medium text-left h-auto py-2",
+                                                    !selectedSessionZoneId && "text-muted-foreground",
+                                                    errors.session_zone_id && "border-destructive"
+                                                )}
+                                            >
+                                                <div className="flex flex-col items-start gap-0.5 overflow-hidden">
+                                                    {selectedSessionZoneId ? (
+                                                        <span className="truncate capitalize">{getSessionZoneLabel(selectedSessionZoneId)}</span>
+                                                    ) : (
+                                                        "Choisir une session & zone..."
+                                                    )}
+                                                </div>
+                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                            <Command>
+                                                <SearchInput placeholder="Rechercher une journée ou zone..." />
+                                                <CommandList>
+                                                    <CommandEmpty>Aucun résultat trouvé.</CommandEmpty>
+                                                    <CommandGroup>
+                                                        {sessionZones.map((sz) => (
+                                                            <CommandItem
+                                                                key={sz.id}
+                                                                className={commandItemClass}
+                                                                value={`${sz.daily_session?.session_date} ${sz.zone?.name}`}
+                                                                onSelect={() => {
+                                                                    setSelectedSessionZoneId(sz.id.toString());
+                                                                    setSessionZoneComboOpen(false);
+                                                                }}
+                                                            >
+                                                                <Check
+                                                                    className={cn(
+                                                                        'mr-2 h-4 w-4',
+                                                                        selectedSessionZoneId === sz.id.toString()
+                                                                            ? 'opacity-100'
+                                                                            : 'opacity-0',
+                                                                    )}
+                                                                />
+                                                                <div className="flex flex-col">
+                                                                    <span className="font-bold">
+                                                                        {sz.daily_session ? format(parseISO(sz.daily_session.session_date), "dd/MM/yyyy") : 'N/A'}
+                                                                    </span>
+                                                                    <span className="text-xs text-slate-700 capitalize font-medium flex items-center gap-1">
+                                                                        <MapPin className="h-3 w-3" /> {sz.zone?.name}
+                                                                    </span>
+                                                                </div>
+                                                            </CommandItem>
+                                                        ))}
+                                                    </CommandGroup>
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
+                                    <InputError message={errors.session_zone_id} />
                                 </div>
 
-                                <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                                <div className="flex justify-end gap-3 border-t border-slate-100 pt-4">
                                     <Button
                                         variant="outline"
                                         type="button"
@@ -190,9 +306,11 @@ export default function EditAttendanceDialog({
                                     <Button
                                         type="submit"
                                         disabled={processing}
-                                        className="font-bold bg-slate-900 px-6 shadow-lg"
+                                        className="bg-slate-900 px-6 font-bold shadow-lg"
                                     >
-                                        {processing && <Spinner className="mr-2 h-4 w-4" />}
+                                        {processing && (
+                                            <Spinner className="mr-2 h-4 w-4" />
+                                        )}
                                         Enregistrer les modifications
                                     </Button>
                                 </div>

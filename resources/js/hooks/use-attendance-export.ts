@@ -1,9 +1,9 @@
-import * as XLSX from 'xlsx';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import { Attendance } from '@/types/attendance';
 import { AttendanceItem } from '@/types/attendance-item';
 import { format } from 'date-fns';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 
 export function useAttendanceExport() {
     /**
@@ -35,9 +35,9 @@ export function useAttendanceExport() {
             const excelData = data.map((d) => {
                 {
                     return {
-                        'OUVRIER': d.workerName,
+                        OUVRIER: d.workerName,
                         'SALAIRE (DH)': d.wage,
-                        'STATUT': d.status,
+                        STATUT: d.status,
                     };
                 }
             });
@@ -63,7 +63,10 @@ export function useAttendanceExport() {
 
             XLSX.utils.book_append_sheet(workbook, worksheet, 'Pointage');
 
-            XLSX.writeFile(workbook, `Pointage_${attendance.id}_${attendance.date}.xlsx`);
+            XLSX.writeFile(
+                workbook,
+                `Pointage_${attendance.id}_${attendance.date}.xlsx`,
+            );
         }
     };
 
@@ -108,20 +111,22 @@ export function useAttendanceExport() {
 
             doc.text('GESTION CHANTIER', 160, 22);
 
-            doc.text(`Date: ${format(new Date(attendance.date), 'dd-MM-yyyy')}`, 160, 28);
+            doc.text(
+                `Date: ${format(new Date(attendance.date), 'dd-MM-yyyy')}`,
+                160,
+                28,
+            );
 
-            doc.text(`Session: ${attendance.session?.status || '-'}`, 160, 34);
+            doc.text(
+                `Session: ${attendance.sessionZone?.status || '-'}`,
+                160,
+                34,
+            );
 
             // Table
             autoTable(doc, {
                 startY: 45,
-                head: [
-                    [
-                        'OUVRIER',
-                        'STATUT',
-                        'SALAIRE (DH)',
-                    ],
-                ],
+                head: [['OUVRIER', 'STATUT', 'SALAIRE (DH)']],
                 body: data.map((d) => {
                     {
                         return [
@@ -146,9 +151,12 @@ export function useAttendanceExport() {
 
             doc.setFontSize(12);
 
-            const total = Number(attendance.total_wage).toLocaleString('fr-FR', {
-                minimumFractionDigits: 2,
-            });
+            const total = Number(attendance.total_wage).toLocaleString(
+                'fr-FR',
+                {
+                    minimumFractionDigits: 2,
+                },
+            );
 
             doc.text(`TOTAL DES SALAIRES:    ${total} DH`, 196, finalY, {
                 align: 'right',

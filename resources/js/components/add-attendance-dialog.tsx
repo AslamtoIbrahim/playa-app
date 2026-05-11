@@ -4,7 +4,9 @@ import {
     Check,
     ChevronsUpDown,
     Plus,
-    UserCheck
+    UserCheck,
+    MapPin,
+    Clock
 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -36,16 +38,28 @@ import { cn, commandItemClass } from "@/lib/utils";
 import { store } from '@/routes/attendances';
 
 // Types
-import { DailySession } from '@/types/daily-session';
+import { SessionZone } from '@/types/session-zone'; // Assure-toi que le chemin est correct
 
 interface Props {
-    sessions: DailySession[];
+    sessionZones: SessionZone[];
 }
 
-export default function AddAttendanceDialog({ sessions }: Props) {
+export default function AddAttendanceDialog({ sessionZones }: Props) {
     const [open, setOpen] = useState<boolean>(false);
-    const [sessionComboOpen, setSessionComboOpen] = useState<boolean>(false);
-    const [selectedSessionId, setSelectedSessionId] = useState<string>("");
+    const [sessionZoneComboOpen, setSessionZoneComboOpen] = useState<boolean>(false);
+    const [selectedSessionZoneId, setSelectedSessionZoneId] = useState<string>("");
+
+    const getSessionZoneLabel = (id: string) => {
+        const sz = sessionZones.find((s) => s.id.toString() === id);
+
+        if (!sz) {
+            return "";
+        }
+
+        const dateFormatted = format(new Date(sz.daily_session?.session_date || ""), "dd/MM/yyyy");
+
+        return `${dateFormatted} - ${sz.zone?.name}`;
+    };
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -62,7 +76,7 @@ export default function AddAttendanceDialog({ sessions }: Props) {
                     </DialogTitle>
 
                     <DialogDescription>
-                        Sélectionnez la session correspondante pour ouvrir une nouvelle feuille de pointage.
+                        Sélectionnez la journée et la zone correspondante pour ouvrir une nouvelle feuille de pointage.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -70,71 +84,87 @@ export default function AddAttendanceDialog({ sessions }: Props) {
                     {...store.form()}
                     onSuccess={() => {
                         toast.success('Feuille de pointage créée !');
-
                         setOpen(false);
-
-                        setSelectedSessionId("");
+                        setSelectedSessionZoneId("");
                     }}
                     className="space-y-5 pt-4"
                 >
                     {({ processing, errors }) => (
                         <>
-                            <input type="hidden" name="daily_session_id" value={selectedSessionId} />
 
-                            {/* Session Field */}
+                            <input type="hidden" name="session_zone_id" value={selectedSessionZoneId} />
+                            {/* SessionZone Field */}
                             <div className="grid gap-2">
                                 <Label className="text-xs font-bold uppercase text-slate-500">
-                                    Session de Travail
+                                    Journée & Zone
                                 </Label>
 
-                                <Popover open={sessionComboOpen} onOpenChange={setSessionComboOpen}>
+                                <Popover open={sessionZoneComboOpen} onOpenChange={setSessionZoneComboOpen}>
                                     <PopoverTrigger asChild>
                                         <Button
                                             variant="outline"
                                             role="combobox"
                                             className={cn(
-                                                "w-full justify-between font-medium border-slate-200 shadow-sm",
-                                                !selectedSessionId && "text-muted-foreground",
-                                                errors.daily_session_id && "border-destructive"
+                                                "w-full justify-between font-medium text-left h-auto py-2 border-slate-200 shadow-sm",
+                                                !selectedSessionZoneId && "text-muted-foreground",
+                                                errors.session_zone_id && "border-destructive"
                                             )}
                                         >
-                                            {selectedSessionId
-                                                ? format(new Date(sessions.find((s) => s.id.toString() === selectedSessionId)?.session_date || ""), "dd/MM/yyyy")
-                                                : "Sélectionner une session..."}
+                                            <div className="flex flex-col items-start gap-0.5 overflow-hidden">
+                                                {selectedSessionZoneId ? (
+                                                    <span className="truncate capitalize flex items-center gap-2 text-slate-900">
+                                                        <Clock className="h-4 w-4 text-slate-400" />
+                                                        {getSessionZoneLabel(selectedSessionZoneId)}
+                                                    </span>
+                                                ) : (
+                                                    "Sélectionner la journée et zone..."
+                                                )}
+                                            </div>
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
                                     </PopoverTrigger>
 
                                     <PopoverContent className="p-0 w-(--radix-popover-trigger-width)">
                                         <Command>
-                                            <CommandInput placeholder="Rechercher une session..." />
+                                            <CommandInput placeholder="Rechercher une journée ou zone..." />
 
                                             <CommandList>
-                                                <CommandEmpty>Aucune session trouvée.</CommandEmpty>
+                                                <CommandEmpty>Aucun résultat trouvé.</CommandEmpty>
 
                                                 <CommandGroup>
-                                                    {sessions.map((session) => (
+                                                    {sessionZones.map((sz) => (
                                                         <CommandItem
-                                                            className={cn(commandItemClass, "w-full justify-between")}
-                                                            key={session.id}
-                                                            value={session.session_date}
+                                                            className={cn(commandItemClass, "flex items-center justify-between gap-2")}
+                                                            key={sz.id}
+                                                            // Valeur de recherche : combine date et nom de zone
+                                                            value={`${sz.daily_session?.session_date} ${sz.zone?.name}`}
                                                             onSelect={() => {
-                                                                setSelectedSessionId(session.id.toString());
-
-                                                                setSessionComboOpen(false);
+                                                                setSelectedSessionZoneId(sz.id.toString());
+                                                                setSessionZoneComboOpen(false);
                                                             }}
                                                         >
-                                                            <Check
-                                                                className={cn(
-                                                                    "mr-2 h-4 w-4",
-                                                                    selectedSessionId === session.id.toString() ? "opacity-100" : "opacity-0"
-                                                                )}
-                                                            />
+                                                            <div className="flex items-center">
+                                                                <Check
+                                                                    className={cn(
+                                                                        "mr-2 h-4 w-4",
+                                                                        selectedSessionZoneId === sz.id.toString() ? "opacity-100" : "opacity-0"
+                                                                    )}
+                                                                />
+                                                                <div className="flex flex-col">
+                                                                    <span className="font-bold">
+                                                                        {sz.daily_session ? format(new Date(sz.daily_session.session_date), "dd/MM/yyyy") : 'N/A'}
+                                                                    </span>
+                                                                    <span className="text-xs text-slate-700 capitalize font-medium flex items-center gap-1">
+                                                                        <MapPin className="h-3 w-3" /> {sz.zone?.name}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
 
-                                                            {format(new Date(session.session_date), "dd/MM/yyyy")}
-
-                                                            <span className="ml-auto text-[10px] border border-slate-300 bg-slate-100 px-1.5 py-0.5 rounded font-bold uppercase text-slate-500">
-                                                                {session.status}
+                                                            <span className={cn(
+                                                                "ml-auto text-[10px] px-1.5 py-0.5 rounded uppercase font-bold",
+                                                                sz.daily_session?.status === 'open' ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"
+                                                            )}>
+                                                                {sz.daily_session?.status}
                                                             </span>
                                                         </CommandItem>
                                                     ))}
@@ -144,14 +174,14 @@ export default function AddAttendanceDialog({ sessions }: Props) {
                                     </PopoverContent>
                                 </Popover>
 
-                                <InputError message={errors.daily_session_id} />
+                                <InputError message={errors.session_zone_id} />
                             </div>
 
                             <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-2">
                                 <Button
                                     type="submit"
-                                    disabled={processing}
-                                    className="w-full font-black uppercase tracking-widest shadow-lg shadow-emerald-100"
+                                    disabled={processing || !selectedSessionZoneId}
+                                    className="w-full font-black uppercase tracking-widest shadow-lg shadow-slate-200"
                                 >
                                     {processing && <Spinner className="mr-2 h-4 w-4" />}
                                     Confirmer l'ouverture

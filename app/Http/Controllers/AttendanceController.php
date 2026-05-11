@@ -17,22 +17,30 @@ class AttendanceController extends Controller
      */
     public function index()
     {
-        $attendances = Attendance::with(['sessionZone.dailySession', 'items.worker']) // Changed 'session' to 'sessionZone.dailySession'
+        $attendances = Attendance::with(['sessionZone.dailySession','sessionZone.zone', 'items.worker']) // Changed 'session' to 'sessionZone.dailySession'
             ->latest()
             ->paginate(10);
 
-        $sessionZones = SessionZone::with('dailySession')
-            ->orderBy('daily_session_id', 'desc')
-            ->get();
+        // $sessionZones = SessionZone::with('dailySession')
+        //     ->orderBy('daily_session_id', 'desc')
+        //     ->get();
+
+        $sessionZones = SessionZone::with(['dailySession', 'zone'])
+            ->whereHas('dailySession', function ($query) {
+                $query->where('status', 'open');
+            })
+            ->latest()
+            ->get(['id', 'zone_id', 'daily_session_id']);
 
         return Inertia::render('attendances', [
             'attendances' => $attendances,
-            'sessionZones'    => $sessionZones->map(function ($sessionZone) {
-                return [
-                    'id' => $sessionZone->id,
-                    'name' => $sessionZone->dailySession->session_date->format('Y-m-d') . ' - Zone ' . $sessionZone->zone_id, // Format for display
-                ];
-            }),
+            'sessionZones' => $sessionZones,
+            // 'sessionZones'    => $sessionZones->map(function ($sessionZone) {
+            //     return [
+            //         'id' => $sessionZone->id,
+            //         'name' => $sessionZone->dailySession->session_date->format('Y-m-d') . ' - Zone ' . $sessionZone->zone_id, // Format for display
+            //     ];
+            // }),
         ]);
     }
 
