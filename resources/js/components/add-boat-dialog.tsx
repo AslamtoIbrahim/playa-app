@@ -34,8 +34,7 @@ import { toast } from 'sonner';
 interface Props {
     owners: Owner[];
 }
-
-export default function AddBoatDialog({ owners }: Props) {
+  export default function AddBoatDialog({ owners }: Props) {
     const [open, setOpen] = useState(false);
     const [popoverOpen, setPopoverOpen] = useState(false);
     const [selectedOwnerId, setSelectedOwnerId] = useState('');

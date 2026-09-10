@@ -1,0 +1,38 @@
+# Project Context & AI Rules
+
+## Tech Stack & Core Packages
+- **Backend:** PHP 8.3, Laravel 13 (Eloquent ORM), Inertia.js (^3.0), Fortify[cite: 2].
+- **Testing:** Pest (^4.4)[cite: 2].
+- **Frontend:** React 19, TypeScript, Tailwind CSS v4, Vite[cite: 3].
+- **UI & Components:** Radix UI primitives, Lucide React (Icons), Tailwind Merge, Class Variance Authority (CVA)[cite: 3].
+- **Utilities & Features:** 
+  - Drag and Drop (`@dnd-kit`)[cite: 3].
+  - Data Export & Generation (`xlsx`, `jspdf`, `html2pdf.js`)[cite: 3].
+  - Date manipulation (`date-fns`)[cite: 3].
+
+## Coding Standards & Guidelines
+- **TypeScript:** Always use strict types for frontend components, props, and Inertia page responses. Avoid `any` types.
+- **Laravel:** Write modern Laravel 13 code, leverage Form Requests for validation, Eloquent relationships, and Inertia controller responses.
+- **Styling:** Use Tailwind CSS v4 utility classes combined with `clsx` and `tailwind-merge` for dynamic classes.
+- **Code Quality:** Write clean, modular, and reusable components. Follow project linting rules (`pint` for PHP and `eslint`/`prettier` for Frontend)[cite: 2, 3].
+- **Direct Output:** Keep responses direct, focusing strictly on code and solutions without unnecessary conversational filler.
+
+
+# AI Development Rules & Guidelines
+
+## 1. Code Quality & Formatting (Strict Rules)
+- **ESLint & Prettier Compliance:** Always write code that strictly passes project ESLint and Prettier rules (`npm run lint:check` and `npm run format:check`).
+- **Curly Braces & Blocks:** NEVER omit curly braces `{}`. Always use curly braces for all `if`, `else`, `for`, `while`, and conditional blocks, even for single-line statements.
+- **PHP / Pint Compliance:** Backend PHP code must strictly comply with Laravel Pint standards (`composer lint:check`).
+
+## 2. Frontend Stack (React 19 & TypeScript)
+- **Strict Types:** Always use strict TypeScript types for components, props, state, and Inertia page responses. Absolutely **avoid `any`**.
+- **Styling:** Use Tailwind CSS v4 utility classes combined with `clsx` and `tailwind-merge` for dynamic classes.
+- **Icons & UI:** Utilize `lucide-react` for icons and Radix UI primitives with Class Variance Authority (CVA) where applicable.
+
+## 3. Backend Stack (Laravel 13 & Inertia)
+- **Modern Laravel:** Write modern Laravel 13 code leveraging Form Requests for validation, clean Eloquent relationships, and Inertia controller responses.
+- **Testing:** Ensure feature and unit tests are written or updated using Pest (^4.4).
+
+## 4. Response Guidelines
+- Keep responses direct and concise. Focus strictly on code and solutions without unnecessary conversational filler or introductory text.
