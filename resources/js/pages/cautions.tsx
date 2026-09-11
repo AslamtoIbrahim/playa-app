@@ -13,7 +13,7 @@ import {
 import { formatDateDisplay } from '@/lib/date';
 import type { Caution, Owner } from '@/types/caution';
 import { Head } from '@inertiajs/react';
-import { ShieldCheck, User, Building2 } from 'lucide-react';
+import { User, Building2 } from 'lucide-react';
 
 interface Props {
     cautions: Caution[];

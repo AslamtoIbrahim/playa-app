@@ -24,6 +24,7 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover';
 import { cn, commandItemClass } from '@/lib/utils';
+import MissingCustomerCompanyPopup from '@/components/missing-customer-company-popup';
 import { store } from '@/routes/boats';
 import { Owner } from '@/types/boat';
 import { Form } from '@inertiajs/react';
@@ -37,6 +38,7 @@ interface Props {
   export default function AddBoatDialog({ owners }: Props) {
     const [open, setOpen] = useState(false);
     const [popoverOpen, setPopoverOpen] = useState(false);
+    const [ownerSearch, setOwnerSearch] = useState('');
     const [selectedOwnerId, setSelectedOwnerId] = useState('');
     const [selectedOwnerType, setSelectedOwnerType] = useState('');
 
@@ -44,7 +46,8 @@ interface Props {
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 <Button size="sm">
-                    <Plus className="mr-2 h-4 w-4" /> Ajouter un bateau
+                    Ajouter un bateau
+                    <Plus className="h-4 w-4" />
                 </Button>
             </DialogTrigger>
 
@@ -126,7 +129,24 @@ interface Props {
                                         align="start"
                                     >
                                         <Command>
-                                            <CommandInput placeholder="Rechercher..." />
+                                            <div className="flex items-center gap-2 p-2">
+                                                <CommandInput
+                                                    placeholder="Rechercher..."
+                                                    value={ownerSearch}
+                                                    onValueChange={setOwnerSearch}
+                                                    className="h-9 flex-1 p-0"
+                                                />
+                                                {ownerSearch.trim() &&
+                                                    !owners.some((owner) =>
+                                                        owner.name
+                                                            .toLowerCase()
+                                                            .includes(ownerSearch.trim().toLowerCase()),
+                                                    ) && (
+                                                        <MissingCustomerCompanyPopup
+                                                            initialName={ownerSearch.trim()}
+                                                        />
+                                                    )}
+                                            </div>
                                             <CommandList>
                                                 <CommandEmpty>
                                                     Aucun propriétaire trouvé.

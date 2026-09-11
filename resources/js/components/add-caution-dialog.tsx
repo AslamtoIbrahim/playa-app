@@ -23,6 +23,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
+import MissingCustomerCompanyPopup from '@/components/missing-customer-company-popup';
 import { cn, commandItemClass } from '@/lib/utils';
 import { store } from '@/routes/cautions';
 import { Owner } from '@/types/caution';
@@ -38,14 +39,15 @@ interface Props {
 export default function AddCautionDialog({ owners }: Props) {
     const [open, setOpen] = useState(false);
     const [popoverOpen, setPopoverOpen] = useState(false);
+    const [ownerSearch, setOwnerSearch] = useState('');
     const [selectedOwnerId, setSelectedOwnerId] = useState('');
     const [selectedOwnerType, setSelectedOwnerType] = useState('');
 
     const handleNameKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' || e.key === 'ArrowDown') {
             {
-                e.preventDefault();  
-                setPopoverOpen(true);  
+                e.preventDefault();
+                setPopoverOpen(true);
             }
         }
     };
@@ -62,7 +64,8 @@ export default function AddCautionDialog({ owners }: Props) {
                 <DialogHeader>
                     <DialogTitle>Nouvelle caution</DialogTitle>
                     <DialogDescription>
-                        Créez une nouvelle caution et affectez-la à un propriétaire.
+                        Créez une nouvelle caution et affectez-la à un
+                        propriétaire.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -92,7 +95,9 @@ export default function AddCautionDialog({ owners }: Props) {
                             />
 
                             <div className="grid gap-2">
-                                <Label htmlFor="name">Désignation de la caution</Label>
+                                <Label htmlFor="name">
+                                    Désignation de la caution
+                                </Label>
                                 <Input
                                     id="name"
                                     name="name"
@@ -117,15 +122,17 @@ export default function AddCautionDialog({ owners }: Props) {
                                             className={cn(
                                                 'w-full justify-between font-normal',
                                                 !selectedOwnerId &&
-                                                'text-muted-foreground',
+                                                    'text-muted-foreground',
                                             )}
                                         >
                                             {selectedOwnerId
                                                 ? owners.find(
-                                                    (o) =>
-                                                        o.id.toString() === selectedOwnerId &&
-                                                        o.type === selectedOwnerType
-                                                )?.name
+                                                      (o) =>
+                                                          o.id.toString() ===
+                                                              selectedOwnerId &&
+                                                          o.type ===
+                                                              selectedOwnerType,
+                                                  )?.name
                                                 : 'Choisir un propriétaire...'}
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
@@ -136,7 +143,33 @@ export default function AddCautionDialog({ owners }: Props) {
                                         align="start"
                                     >
                                         <Command>
-                                            <CommandInput placeholder="Rechercher un client ou société..." />
+                                            <div className="flex items-center gap-2 p-1">
+                                                <div className="min-w-0 flex-1">
+                                                    <CommandInput
+                                                        placeholder="Rechercher un client ou société..."
+                                                        value={ownerSearch}
+                                                        onValueChange={
+                                                            setOwnerSearch
+                                                        }
+                                                    />
+                                                </div>
+                                                {ownerSearch.trim() &&
+                                                    !owners.some((owner) =>
+                                                        owner.name
+                                                            .toLowerCase()
+                                                            .includes(
+                                                                ownerSearch
+                                                                    .trim()
+                                                                    .toLowerCase(),
+                                                            ),
+                                                    ) && (
+                                                        <div className="shrink-0">
+                                                            <MissingCustomerCompanyPopup
+                                                                initialName={ownerSearch.trim()}
+                                                            />
+                                                        </div>
+                                                    )}
+                                            </div>
                                             <CommandList>
                                                 <CommandEmpty>
                                                     Aucun résultat trouvé.
@@ -144,28 +177,44 @@ export default function AddCautionDialog({ owners }: Props) {
                                                 <CommandGroup>
                                                     {owners.map((owner) => (
                                                         <CommandItem
-                                                            className={commandItemClass}
+                                                            className={
+                                                                commandItemClass
+                                                            }
                                                             key={`${owner.id}-${owner.type}`}
                                                             value={`${owner.name}-${owner.type}`}
                                                             onSelect={() => {
-                                                                setSelectedOwnerId(owner.id.toString());
-                                                                setSelectedOwnerType(owner.type);
-                                                                setPopoverOpen(false);
+                                                                setSelectedOwnerId(
+                                                                    owner.id.toString(),
+                                                                );
+                                                                setSelectedOwnerType(
+                                                                    owner.type,
+                                                                );
+                                                                setPopoverOpen(
+                                                                    false,
+                                                                );
                                                             }}
                                                         >
                                                             <Check
                                                                 className={cn(
                                                                     'mr-2 h-4 w-4',
-                                                                    selectedOwnerId === owner.id.toString() &&
-                                                                        selectedOwnerType === owner.type
+                                                                    selectedOwnerId ===
+                                                                        owner.id.toString() &&
+                                                                        selectedOwnerType ===
+                                                                            owner.type
                                                                         ? 'opacity-100'
                                                                         : 'opacity-0',
                                                                 )}
                                                             />
                                                             <div className="flex flex-col">
-                                                                <span>{owner.name}</span>
+                                                                <span>
+                                                                    {owner.name}
+                                                                </span>
                                                                 <span className="text-[10px] text-muted-foreground">
-                                                                    {owner.type.includes('Customer') ? 'Client' : 'Société'}
+                                                                    {owner.type.includes(
+                                                                        'Customer',
+                                                                    )
+                                                                        ? 'Client'
+                                                                        : 'Société'}
                                                                 </span>
                                                             </div>
                                                         </CommandItem>
@@ -189,10 +238,7 @@ export default function AddCautionDialog({ owners }: Props) {
                                     Annuler
                                 </Button>
 
-                                <Button 
-                                    type="submit" 
-                                    disabled={processing}
-                                >
+                                <Button type="submit" disabled={processing}>
                                     {processing ? (
                                         <>
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />

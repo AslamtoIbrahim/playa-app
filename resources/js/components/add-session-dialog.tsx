@@ -21,6 +21,7 @@ import { Calendar as CalendarIcon, Loader2, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { cn } from "@/lib/utils";
+import MissingZonePopup from '@/components/missing-zone-popup';
 
 interface Props {
     existingDates?: string[];
@@ -60,7 +61,7 @@ export default function AddSessionDialog({ existingDates = [], zones }: Props) {
                 </Button>
             </DialogTrigger>
 
-            <DialogContent className="sm:max-w-[450px]">
+            <DialogContent className="sm:max-w-112.5">
                 <DialogHeader>
                     <DialogTitle className="uppercase font-black text-slate-900 text-xl">
                         Nouvelle Journée
@@ -152,9 +153,12 @@ export default function AddSessionDialog({ existingDates = [], zones }: Props) {
 
                                 {/* Zones Selection Section */}
                                 <div className="grid gap-3">
-                                    <Label className="text-xs font-bold uppercase text-slate-500">
-                                        Zones à inclure ({selectedZones.length})
-                                    </Label>
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-xs font-bold uppercase text-slate-500">
+                                            Zones à inclure ({selectedZones.length})
+                                        </Label>
+                                        <MissingZonePopup />
+                                    </div>
 
 
 

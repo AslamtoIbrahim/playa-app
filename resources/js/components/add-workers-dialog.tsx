@@ -17,6 +17,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import InputError from '@/components/input-error';
+import MissingWorkerPopup from '@/components/missing-worker-popup';
 
 import { bulkStore } from '@/routes/attendances/items';
 import { Worker } from '@/types/worker';
@@ -125,9 +126,12 @@ export default function AddWorkersDialog({
                             </div>
 
                             <div className="space-y-4">
-                                <Label className="text-xs font-bold uppercase text-slate-500">
-                                    Sélection ({selectedWorkerIds.length} / {availableWorkers.length})
-                                </Label>
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-xs font-bold uppercase text-slate-500">
+                                        Sélection ({selectedWorkerIds.length} / {availableWorkers.length})
+                                    </Label>
+                                    <MissingWorkerPopup />
+                                </div>
 
                                 <ScrollArea className="h-64  border p-4 bg-slate-50/50">
                                     <div className="space-y-2">

@@ -2,8 +2,9 @@ import { Form } from '@inertiajs/react';
 import { Plus, Check, ChevronsUpDown, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { cn, commandItemClass } from "@/lib/utils";
+import { cn, commandItemClass } from '@/lib/utils';
 import InputError from '@/components/input-error';
+import MissingCategoryPopup from '@/components/missing-category-popup';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -12,9 +13,9 @@ import {
     DialogHeader,
     DialogTitle,
     DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
     Command,
     CommandEmpty,
@@ -22,12 +23,12 @@ import {
     CommandInput,
     CommandItem,
     CommandList,
-} from "@/components/ui/command";
+} from '@/components/ui/command';
 import {
     Popover,
     PopoverContent,
     PopoverTrigger,
-} from "@/components/ui/popover";
+} from '@/components/ui/popover';
 import { store } from '@/routes/items';
 import { Category } from '@/types/category';
 
@@ -38,13 +39,14 @@ interface Props {
 export default function AddItemDialog({ categories }: Props) {
     const [open, setOpen] = useState(false);
     const [popoverOpen, setPopoverOpen] = useState(false);
-    const [selectedCategoryId, setSelectedCategoryId] = useState("");
-    
+    const [categorySearch, setCategorySearch] = useState('');
+    const [selectedCategoryId, setSelectedCategoryId] = useState('');
+
     const handleNameKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' || e.key === 'ArrowDown') {
             {
-                e.preventDefault();  
-                setPopoverOpen(true);  
+                e.preventDefault();
+                setPopoverOpen(true);
             }
         }
     };
@@ -60,7 +62,8 @@ export default function AddItemDialog({ categories }: Props) {
                 <DialogHeader>
                     <DialogTitle>Nouvel article</DialogTitle>
                     <DialogDescription>
-                        Entrez les détails de l'article et choisissez une catégorie.
+                        Entrez les détails de l'article et choisissez une
+                        catégorie.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -68,16 +71,21 @@ export default function AddItemDialog({ categories }: Props) {
                     {...store.form()}
                     resetOnSuccess={['name']}
                     onSuccess={() => {
-                        toast.success('L\'article a été créé ! ✨');
+                        toast.success("L'article a été créé ! ✨");
                         setOpen(false);
-                        setSelectedCategoryId("");
+                        setSelectedCategoryId('');
+                        setCategorySearch('');
                     }}
                     className="space-y-4 pt-4"
                 >
                     {({ processing, errors }) => (
                         <>
                             {/* Hidden input to pass the selected category ID */}
-                            <input type="hidden" name="category_id" value={selectedCategoryId} />
+                            <input
+                                type="hidden"
+                                name="category_id"
+                                value={selectedCategoryId}
+                            />
 
                             <div className="grid gap-2">
                                 <Label htmlFor="name">Nom de l'article</Label>
@@ -92,50 +100,104 @@ export default function AddItemDialog({ categories }: Props) {
                                 <InputError message={errors.name} />
                             </div>
 
-                            <div className="grid gap-2" >
+                            <div className="grid gap-2">
                                 <Label>Catégorie</Label>
-                                <Popover open={popoverOpen} onOpenChange={setPopoverOpen} >
+                                <Popover
+                                    open={popoverOpen}
+                                    onOpenChange={setPopoverOpen}
+                                >
                                     <PopoverTrigger asChild>
                                         <Button
                                             variant="outline"
                                             role="combobox"
                                             className={cn(
-                                                "w-full justify-between font-normal",
-                                                !selectedCategoryId && "text-muted-foreground"
+                                                'w-full justify-between font-normal',
+                                                !selectedCategoryId &&
+                                                    'text-muted-foreground',
                                             )}
-                                            
                                         >
                                             {selectedCategoryId
-                                                ? categories.find((c) => c.id.toString() === selectedCategoryId)?.name
-                                                : "Choisir une catégorie..."}
+                                                ? categories.find(
+                                                      (c) =>
+                                                          c.id.toString() ===
+                                                          selectedCategoryId,
+                                                  )?.name
+                                                : 'Choisir une catégorie...'}
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
                                     </PopoverTrigger>
-                                    <PopoverContent className="w-(--radix-popover-trigger-width) p-0" align="start">
+                                    <PopoverContent
+                                        className="w-(--radix-popover-trigger-width) p-0"
+                                        align="start"
+                                    >
                                         <Command>
-                                            <CommandInput placeholder="Rechercher..." />
-                                            <CommandList>
-                                                <CommandEmpty>Aucune catégorie trouvée.</CommandEmpty>
-                                                <CommandGroup>
-                                                    {categories.map((category) => (
-                                                        <CommandItem
-                                                            className={commandItemClass}
-                                                            key={category.id}
-                                                            value={category.name}
-                                                            onSelect={() => {
-                                                                setSelectedCategoryId(category.id.toString());
-                                                                setPopoverOpen(false);
-                                                            }}
-                                                        >
-                                                            <Check
-                                                                className={cn(
-                                                                    "mr-2 h-4 w-4",
-                                                                    selectedCategoryId === category.id.toString() ? "opacity-100" : "opacity-0"
-                                                                )}
+                                            <div className="flex items-center gap-2 p-1">
+                                                <div className="min-w-0 flex-1">
+                                                    <CommandInput
+                                                        placeholder="Rechercher..."
+                                                        value={categorySearch}
+                                                        onValueChange={
+                                                            setCategorySearch
+                                                        }
+                                                    />
+                                                </div>
+                                                {categorySearch.trim() &&
+                                                    !categories.some(
+                                                        (category) =>
+                                                            category.name
+                                                                .toLowerCase()
+                                                                .includes(
+                                                                    categorySearch
+                                                                        .trim()
+                                                                        .toLowerCase(),
+                                                                ),
+                                                    ) && (
+                                                        <div className="shrink-0">
+                                                            <MissingCategoryPopup
+                                                                initialName={categorySearch.trim()}
                                                             />
-                                                            {category.name}
-                                                        </CommandItem>
-                                                    ))}
+                                                        </div>
+                                                    )}
+                                            </div>
+                                            <CommandList>
+                                                <CommandEmpty>
+                                                    Aucune catégorie trouvée.
+                                                </CommandEmpty>
+                                                <CommandGroup>
+                                                    {categories.map(
+                                                        (category) => (
+                                                            <CommandItem
+                                                                className={
+                                                                    commandItemClass
+                                                                }
+                                                                key={
+                                                                    category.id
+                                                                }
+                                                                value={
+                                                                    category.name
+                                                                }
+                                                                onSelect={() => {
+                                                                    setSelectedCategoryId(
+                                                                        category.id.toString(),
+                                                                    );
+                                                                    setPopoverOpen(
+                                                                        false,
+                                                                    );
+                                                                }}
+                                                            >
+                                                                <Check
+                                                                    className={cn(
+                                                                        'mr-2 h-4 w-4',
+                                                                        selectedCategoryId ===
+                                                                            category.id.toString()
+                                                                            ? 'opacity-100'
+                                                                            : 'opacity-0',
+                                                                    )}
+                                                                />
+                                                                {category.name}
+                                                            </CommandItem>
+                                                        ),
+                                                    )}
                                                 </CommandGroup>
                                             </CommandList>
                                         </Command>
@@ -163,7 +225,9 @@ export default function AddItemDialog({ categories }: Props) {
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                             Enregistrement...
                                         </>
-                                    ) : 'Enregistrer'}
+                                    ) : (
+                                        'Enregistrer'
+                                    )}
                                 </Button>
                             </div>
                         </>

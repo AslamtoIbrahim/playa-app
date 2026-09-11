@@ -1,11 +1,12 @@
 import { Form, Link } from '@inertiajs/react';
 import { format } from "date-fns";
-import { fr } from "date-fns/locale"; // Import pour le formatage en français si besoin
 import { ArrowRight, Calendar as CalendarIcon, Check, ChevronsUpDown, Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import InputError from '@/components/input-error';
+import MissingCustomerCompanyPopup from '@/components/missing-customer-company-popup';
+import MissingOfficePopup from '@/components/missing-office-popup';
 import { Button } from '@/components/ui/button';
 import {
     Command,
@@ -49,6 +50,8 @@ export default function AddInvoiceDialog({ billables, officeRooms, sessionZones,
     const [officeComboOpen, setOfficeComboOpen] = useState<boolean>(false);
     const [sessionZoneComboOpen, setSessionZoneComboOpen] = useState<boolean>(false);
     const [cautionComboOpen, setCautionComboOpen] = useState<boolean>(false);
+    const [billableSearch, setBillableSearch] = useState('');
+    const [officeSearch, setOfficeSearch] = useState('');
 
     const [selectedBillable, setSelectedBillable] = useState<Billable | null>(null);
     const [selectedOfficeId, setSelectedOfficeId] = useState<string>("");
@@ -235,7 +238,22 @@ export default function AddInvoiceDialog({ billables, officeRooms, sessionZones,
                                     </PopoverTrigger>
                                     <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                         <Command>
-                                            <CommandInput placeholder="Rechercher..." />
+                                            <div className="flex items-center gap-2 p-2">
+                                                <CommandInput
+                                                    placeholder="Rechercher..."
+                                                    value={billableSearch}
+                                                    onValueChange={setBillableSearch}
+                                                    className="h-9 flex-1 p-0"
+                                                />
+                                                {billableSearch.trim() &&
+                                                    !billables.some((item) =>
+                                                        item.name.toLowerCase().includes(billableSearch.trim().toLowerCase()),
+                                                    ) && (
+                                                        <MissingCustomerCompanyPopup
+                                                            initialName={billableSearch.trim()}
+                                                        />
+                                                    )}
+                                            </div>
                                             <CommandList>
                                                 <CommandEmpty>Aucun résultat trouvé.</CommandEmpty>
                                                 <CommandGroup>
@@ -320,14 +338,25 @@ export default function AddInvoiceDialog({ billables, officeRooms, sessionZones,
                                             className={cn("w-full justify-between font-medium", !selectedOfficeId && "text-muted-foreground", errors.office_room_id && "border-destructive")}
                                         >
                                             {selectedOfficeId
-                                                ? officeRooms.find((r) => r.id.toString() === selectedOfficeId)?.name
+                                                ? officeRooms.find((r) => r.id.toString() === selectedOfficeId)?.city
                                                 : "Sélectionner un bureau..."}
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                         <Command>
-                                            <CommandInput placeholder="Rechercher un bureau..." />
+                                            <div className="flex items-center gap-2 p-2">
+                                                <CommandInput
+                                                    placeholder="Rechercher un bureau..."
+                                                    value={officeSearch}
+                                                    onValueChange={setOfficeSearch}
+                                                    className="h-9 flex-1 p-0"
+                                                />
+                                                {officeSearch.trim() &&
+                                                    !officeRooms.some((room) =>
+                                                        `${room.name} ${room.city}`.toLowerCase().includes(officeSearch.trim().toLowerCase()),
+                                                    ) && <MissingOfficePopup />}
+                                            </div>
                                             <CommandList>
                                                 <CommandEmpty>Aucun bureau trouvé.</CommandEmpty>
                                                 <CommandGroup>
