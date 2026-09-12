@@ -1,0 +1,20 @@
+# Sensitive files (الملفات الحساسة)
+.env
+.env.*
+*.pem
+*.key
+
+# Dependencies & Build (مجلدات البناء والاعتمادات)
+node_modules/
+vendor/
+.git/
+dist/
+build/
+
+# Storage & Logs (السجلات والتخزين)
+storage/
+logs/
+*.log
+
+# System files (ملفات النظام)
+.DS_Store
