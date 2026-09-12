@@ -42,7 +42,7 @@ export default function Boats({ boats, owners }: Props) {
                     <AddBoatDialog owners={owners} />
                 </div>
 
-                <div className="relative min-h-screen flex-1 overflow-hidden rounded-xl border border-sidebar-border/70 bg-white p-4 md:min-h-min dark:border-sidebar-border">
+                <div className="relative min-h-screen flex-1 overflow-hidden rounded-xl border border-sidebar-border/70 bg-white p-4 dark:border-sidebar-border dark:bg-neutral-900 md:min-h-min">
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -74,7 +74,7 @@ export default function Boats({ boats, owners }: Props) {
                                                 #{boat.id}
                                             </TableCell>
 
-                                            <TableCell className="font-bold text-slate-900">
+                                            <TableCell className="font-bold text-slate-900 dark:text-neutral-100">
                                                 {boat.name}
                                             </TableCell>
 
@@ -82,9 +82,9 @@ export default function Boats({ boats, owners }: Props) {
                                                 <div className="flex flex-col gap-1.5">
                                                     <div className="flex items-center gap-2">
                                                         {isCompany ? (
-                                                            <Building2 className="h-3.5 w-3.5 text-slate-500" />
+                                                            <Building2 className="h-3.5 w-3.5 text-slate-500 dark:text-neutral-400" />
                                                         ) : (
-                                                            <User className="h-3.5 w-3.5 text-slate-500" />
+                                                            <User className="h-3.5 w-3.5 text-slate-500 dark:text-neutral-400" />
                                                         )}
                                                         <span className="text-sm font-medium tracking-tight">
                                                             {boat.owner?.name || 'Non assigné'}
@@ -93,11 +93,17 @@ export default function Boats({ boats, owners }: Props) {
 
                                                     <div>
                                                         {isCompany ? (
-                                                            <Badge variant="secondary" className="bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-50 text-[10px] px-1.5 py-0 uppercase font-bold">
+                                                            <Badge
+                                                                variant="secondary"
+                                                                className="border-amber-200 bg-amber-50 px-1.5 py-0 text-[10px] font-bold uppercase text-amber-700 hover:bg-amber-50 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-400"
+                                                            >
                                                                 Société
                                                             </Badge>
                                                         ) : (
-                                                            <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50 text-[10px] px-1.5 py-0 uppercase font-bold">
+                                                            <Badge
+                                                                variant="secondary"
+                                                                className="border-blue-200 bg-blue-50 px-1.5 py-0 text-[10px] font-bold uppercase text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-400"
+                                                            >
                                                                 Client
                                                             </Badge>
                                                         )}

@@ -52,7 +52,7 @@ export default function Sessions({ sessions, zones, existingDates }: Props) {
                     <AddSessionDialog existingDates={existingDates} zones={zones} />
                 </div>
 
-                <div className="relative min-h-screen flex-1 overflow-hidden rounded-xl border border-sidebar-border/70 bg-white p-4 md:min-h-min dark:border-sidebar-border">
+                <div className="relative min-h-screen flex-1 overflow-hidden rounded-xl border border-sidebar-border/70 bg-white p-4 dark:border-sidebar-border dark:bg-neutral-900 md:min-h-min">
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -71,7 +71,7 @@ export default function Sessions({ sessions, zones, existingDates }: Props) {
 
                                 return (
                                     <TableRow
-                                        className="cursor-pointer hover:bg-slate-50/80 transition-colors"
+                                        className="cursor-pointer transition-colors hover:bg-slate-50/80 dark:hover:bg-neutral-800/80"
                                         key={session.id}
                                         onClick={() => {
                                             handleRowClick(session.id);
@@ -85,12 +85,12 @@ export default function Sessions({ sessions, zones, existingDates }: Props) {
                                             {session.status === 'open' ? (
                                                 <Badge
                                                     variant="outline"
-                                                    className="border-green-500 text-green-600 gap-1"
+                                                    className="gap-1 border-green-500 text-green-600 dark:border-green-600 dark:text-green-400"
                                                 >
                                                     <Unlock className="h-3 w-3" /> Ouverte
                                                 </Badge>
                                             ) : (
-                                                <Badge variant="secondary" className="gap-1">
+                                                <Badge variant="secondary" className="gap-1 dark:bg-neutral-800 dark:text-neutral-300">
                                                     <Lock className="h-3 w-3" /> Clôturée
                                                 </Badge>
                                             )}
@@ -100,13 +100,13 @@ export default function Sessions({ sessions, zones, existingDates }: Props) {
                                             {formatCurrency(session.total_buy)}
                                         </TableCell>
 
-                                        <TableCell className="text-right font-mono text-blue-600 font-semibold">
+                                        <TableCell className="text-right font-mono font-semibold text-blue-600 dark:text-blue-400">
                                             {formatCurrency(session.total_sell)}
                                         </TableCell>
 
                                         <TableCell
                                             className={`text-right font-mono font-bold ${
-                                                margin >= 0 ? 'text-green-600' : 'text-red-600'
+                                                margin >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                                             }`}
                                         >
                                             {formatCurrency(margin)}

@@ -28,7 +28,7 @@ export default function OfficeRooms({ officeRooms }: Props) {
                     <AddOfficeRoomDialog />
                 </div>
 
-                <div className="relative min-h-screen flex-1 overflow-hidden rounded-xl border border-sidebar-border/70 md:min-h-min dark:border-sidebar-border bg-white p-4">
+                <div className="relative min-h-screen flex-1 overflow-hidden rounded-xl border border-sidebar-border/70 bg-white p-4 md:min-h-min dark:border-sidebar-border dark:bg-neutral-900">
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -46,7 +46,7 @@ export default function OfficeRooms({ officeRooms }: Props) {
                                         <TableCell className="font-medium">#{room.id}</TableCell>
                                         <TableCell className="font-medium">{room.name}</TableCell>
                                         <TableCell>
-                                            <Badge variant="secondary" className="bg-slate-100 text-slate-700 text-[10px] font-bold rounded-md uppercase">
+                                            <Badge variant="secondary" className="bg-slate-100 text-slate-700 dark:bg-neutral-800 dark:text-neutral-300 text-[10px] font-bold rounded-md uppercase">
                                                 {room.city || '—'}
                                             </Badge>
                                         </TableCell>

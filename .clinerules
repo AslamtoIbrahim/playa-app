@@ -17,6 +17,21 @@
 - **Code Quality:** Write clean, modular, and reusable components. Follow project linting rules (`pint` for PHP and `eslint`/`prettier` for Frontend)[cite: 2, 3].
 - **Direct Output:** Keep responses direct, focusing strictly on code and solutions without unnecessary conversational filler.
 
+## Code Formatting & ESLint Rules
+* **Empty Lines:** Always insert an empty line before `if` statements, `return` statements, and block blocks to satisfy ESLint rules.
+* **Direct Edits:** Always modify and write code directly using file editing tools without executing terminal echo/cat commands unless explicitly asked.
+
+* **Clean Imports:** Always remove unused imports, components, and variables from TSX/TS files before saving.
+
+## Tailwind CSS Standards
+* **Canonical Classes:** Avoid arbitrary values like `max-w-[450px]` or `p-[16px]`. Always use Tailwind v4 canonical scale classes (e.g., `max-w-112.5` instead of `max-w-[450px]`).
+
+## Dark Mode & Styling Rules
+* **Dual Theme Support:** Always implement Tailwind CSS Dark Mode alongside Light Mode styles.
+* **Semantic Classes:** Never write hardcoded light classes without their dark counterpart (e.g., use `bg-white dark:bg-gray-900` or `text-slate-900 dark:text-slate-100`).
+* **Backgrounds & Text:** Ensure all card containers, popups, inputs, and text elements explicitly include `dark:` variant classes to avoid unreadable text in dark theme.
+
+
 
 # AI Development Rules & Guidelines
 

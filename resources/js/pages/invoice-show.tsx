@@ -264,7 +264,7 @@ export default function InvoiceShow({
     };
 
     return (
-        <div className="mx-auto min-h-screen max-w-7xl space-y-6 bg-white p-6 font-sans text-slate-900">
+        <div className="mx-auto min-h-screen max-w-7xl space-y-6 bg-white p-6 font-sans text-slate-900 dark:bg-neutral-950 dark:text-neutral-100">
             <Head title={`Facture ${invoice.invoice_number}`} />
 
             {/* Header & Stats */}
@@ -277,7 +277,7 @@ export default function InvoiceShow({
                     variant="outline"
                     size="sm"
                     title="Copy for WhatsApp"
-                    className="h-9 border-slate-200 text-slate-500 shadow-sm hover:bg-slate-50"
+                    className="h-9 border-slate-200 text-slate-500 shadow-sm hover:bg-slate-50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
                 >
                     <Camera className="h-4 w-4" />
                 </Button>
@@ -286,7 +286,7 @@ export default function InvoiceShow({
                     onClick={handlePrint}
                     variant="outline"
                     size="sm"
-                    className="h-9 border-slate-200 text-slate-500 shadow-sm hover:bg-slate-50"
+                    className="h-9 border-slate-200 text-slate-500 shadow-sm hover:bg-slate-50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
                 >
                     <Printer className="h-3 w-3" />
                 </Button>
@@ -301,13 +301,13 @@ export default function InvoiceShow({
                 {selectedIds.length > 0 ? (
                     <div className="flex animate-in items-center gap-3 duration-200 fade-in slide-in-from-left-2">
                         <div className="flex items-center gap-2">
-                            <span className="rounded bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-600">
+                            <span className="rounded bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-600 dark:bg-blue-950/60 dark:text-blue-400">
                                 {selectedIds.length} sélectionnés
                             </span>
                             <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-8 gap-1.5 px-2 text-[10px] font-black tracking-tighter text-slate-500 uppercase transition-colors hover:bg-red-50 hover:text-red-600"
+                                className="h-8 gap-1.5 px-2 text-[10px] font-black tracking-tighter text-slate-500 uppercase transition-colors hover:bg-red-50 hover:text-red-600 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:bg-red-950/40 dark:hover:text-red-400"
                                 onClick={() => setSelectedIds([])}
                             >
                                 <X className="h-3.5 w-3.5" /> Annuler
@@ -317,7 +317,7 @@ export default function InvoiceShow({
                             <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-8 gap-2 text-xs"
+                                className="h-8 gap-2 text-xs dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
                                 onClick={handleBulkDuplicate}
                             >
                                 <Copy className="h-3.5 w-3.5" /> Dupliquer
@@ -340,7 +340,7 @@ export default function InvoiceShow({
             {/* Table Area */}
             <div
                 id="invoice-content"
-                className="relative overflow-hidden rounded-lg rounded-b-none border border-slate-100 shadow-sm"
+                className="relative overflow-hidden rounded-lg rounded-b-none border border-slate-100 shadow-sm dark:border-neutral-800 dark:bg-neutral-900"
             >
                 <DndContext
                     sensors={sensors}
@@ -350,7 +350,7 @@ export default function InvoiceShow({
                     modifiers={[restrictToVerticalAxis]}
                 >
                     <Table>
-                        <TableHeader className="border-b border-slate-100 bg-slate-50/50">
+                        <TableHeader className="border-b border-slate-100 bg-slate-50/50 dark:border-neutral-800 dark:bg-neutral-900/50">
                             <TableRow className="h-11 hover:bg-transparent">
                                 <TableHead className="w-8 print:hidden"></TableHead>
                                 <TableHead className="w-10 print:hidden">
@@ -372,28 +372,28 @@ export default function InvoiceShow({
                                         }}
                                     />
                                 </TableHead>
-                                <TableHead className="text-[10px] font-black tracking-tight text-slate-500 uppercase">
+                                <TableHead className="text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
                                     Bateau
                                 </TableHead>
-                                <TableHead className="text-[10px] font-black tracking-tight text-slate-500 uppercase">
+                                <TableHead className="text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
                                     Espèces
                                 </TableHead>
-                                <TableHead className="text-center text-[10px] font-black tracking-tight text-slate-500 uppercase">
+                                <TableHead className="text-center text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
                                     Qte / NC
                                 </TableHead>
-                                <TableHead className="text-right text-[10px] font-black tracking-tight text-slate-500 uppercase">
+                                <TableHead className="text-right text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
                                     Prix Unitaire
                                 </TableHead>
-                                <TableHead className="text-center text-[10px] font-black tracking-tight text-slate-500 uppercase">
+                                <TableHead className="text-center text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
                                     Unité
                                 </TableHead>
-                                <TableHead className="text-center text-[10px] font-black tracking-tight text-slate-500 uppercase">
+                                <TableHead className="text-center text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
                                     Poids
                                 </TableHead>
-                                <TableHead className="text-center text-[10px] font-black tracking-tight text-slate-500 uppercase">
+                                <TableHead className="text-center text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
                                     Caisses
                                 </TableHead>
-                                <TableHead className="px-6 text-right text-[10px] font-black tracking-tight text-slate-500 uppercase">
+                                <TableHead className="px-6 text-right text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
                                     Valeur DH
                                 </TableHead>
                                 <TableHead className="w-12 print:hidden"></TableHead>

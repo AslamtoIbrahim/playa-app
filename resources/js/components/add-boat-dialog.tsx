@@ -129,7 +129,7 @@ interface Props {
                                         align="start"
                                     >
                                         <Command>
-                                            <div className="flex items-center gap-2 p-2">
+                                            <div className="flex items-center gap-2 border-b p-2">
                                                 <CommandInput
                                                     placeholder="Rechercher..."
                                                     value={ownerSearch}

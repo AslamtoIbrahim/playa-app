@@ -5,8 +5,6 @@ import {
     Calendar as CalendarIcon,
     Loader2,
     Pencil,
-    AlertCircle,
-    ScrollText,
 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -89,16 +87,16 @@ export default function EditSessionDialog({ session, existingDates = [], zones }
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-blue-500 hover:bg-blue-50 hover:text-blue-700"
+                    className="h-8 w-8 text-blue-500 hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-neutral-800 dark:hover:text-blue-400"
                 >
                     <Pencil className="h-4 w-4" />
                 </Button>
             </DialogTrigger>
 
-            <DialogContent className="sm:max-w-[450px]">
+            <DialogContent className="sm:max-w-112.5">
                 <DialogHeader>
-                    <DialogTitle className="font-black uppercase flex items-center gap-2">
-                        <Pencil className="h-5 w-5 text-blue-600" />
+                    <DialogTitle className="flex items-center gap-2 font-black uppercase text-slate-900 dark:text-neutral-100">
+                        <Pencil className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                         Modifier la Journée
                     </DialogTitle>
                     <DialogDescription>
@@ -129,7 +127,7 @@ export default function EditSessionDialog({ session, existingDates = [], zones }
                                 })}
 
                                 <div className="grid gap-2">
-                                    <Label className="text-xs font-bold text-slate-500 uppercase">
+                                    <Label className="text-xs font-bold uppercase text-slate-500 dark:text-neutral-400">
                                         Date de la session
                                     </Label>
                                     <Popover>
@@ -138,10 +136,10 @@ export default function EditSessionDialog({ session, existingDates = [], zones }
                                                 variant="outline"
                                                 className={cn(
                                                     "w-full justify-start text-left font-medium py-6 border-2",
-                                                    errors.session_date ? "border-destructive bg-destructive/5" : "border-slate-200"
+                                                    errors.session_date ? "border-destructive bg-destructive/5" : "border-slate-200 dark:border-neutral-700"
                                                 )}
                                             >
-                                                <CalendarIcon className="mr-2 h-4 w-4 text-blue-600" />
+                                                <CalendarIcon className="mr-2 h-4 w-4 text-blue-600 dark:text-blue-400" />
                                                 {date ? format(date, 'dd-MM-yyyy', { locale: fr }) : <span>Choisir</span>}
                                             </Button>
                                         </PopoverTrigger>
@@ -154,16 +152,17 @@ export default function EditSessionDialog({ session, existingDates = [], zones }
                                                 }}
                                                 disabled={disabledDays}
                                                 locale={fr}
+                                                className="rounded-md border shadow-lg dark:border-neutral-800 dark:bg-neutral-900"
                                             />
                                         </PopoverContent>
                                     </Popover>
                                 </div>
 
                                 <div className="grid gap-3">
-                                    <Label className="text-xs font-bold uppercase text-slate-500">
+                                    <Label className="text-xs font-bold uppercase text-slate-500 dark:text-neutral-400">
                                         Zones de travail
                                     </Label>
-                                    <ScrollArea className="h-48 rounded-md border-2 border-slate-100 bg-slate-50/50 p-4">
+                                    <ScrollArea className="h-48 rounded-md border-2 border-slate-100 bg-slate-50/50 p-4 dark:border-neutral-800 dark:bg-neutral-900/50">
                                         <div className="space-y-2">
                                             {zones.map((zone) => {
                                                 const isSelected = selectedZones.includes(zone.id);
@@ -171,8 +170,11 @@ export default function EditSessionDialog({ session, existingDates = [], zones }
                                                 return (
                                                     <div
                                                         key={zone.id}
-                                                        className={`group flex items-center space-x-3 p-3 rounded-lg border transition-all duration-200 ${isSelected ? 'border-blue-200 bg-blue-50/50 shadow-sm' : 'border-slate-200 bg-white hover:bg-slate-50'
-                                                            }`}
+                                                        className={`group flex items-center space-x-3 p-3 rounded-lg border transition-all duration-200 ${
+                                                            isSelected
+                                                                ? 'border-blue-200 bg-blue-50/50 shadow-sm dark:border-blue-900 dark:bg-blue-950/40'
+                                                                : 'border-slate-200 bg-white hover:bg-slate-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:border-neutral-700 dark:hover:bg-neutral-800'
+                                                        }`}
                                                     >
                                                         <Checkbox
                                                             id={`edit-zone-${zone.id}`}
@@ -181,7 +183,14 @@ export default function EditSessionDialog({ session, existingDates = [], zones }
                                                                 return toggleZone(zone.id);
                                                             }}
                                                         />
-                                                        <label htmlFor={`edit-zone-${zone.id}`} className={`flex-1 text-sm font-semibold cursor-pointer ${isSelected ? 'text-blue-700' : 'text-slate-700'}`}>
+                                                        <label
+                                                            htmlFor={`edit-zone-${zone.id}`}
+                                                            className={`flex-1 text-sm font-semibold cursor-pointer ${
+                                                                isSelected
+                                                                    ? 'text-blue-700 dark:text-blue-300'
+                                                                    : 'text-slate-700 dark:text-neutral-300'
+                                                            }`}
+                                                        >
                                                             {zone.name}
                                                         </label>
                                                     </div>
@@ -200,7 +209,7 @@ export default function EditSessionDialog({ session, existingDates = [], zones }
                                     }} disabled={processing}>
                                         Annuler
                                     </Button>
-                                    <Button type="submit" disabled={processing || selectedZones.length === 0} className="min-w-[140px] font-bold uppercase">
+                                    <Button type="submit" disabled={processing || selectedZones.length === 0} className="min-w-35 font-bold uppercase">
                                         {processing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Mettre à jour'}
                                     </Button>
                                 </div>

@@ -20,13 +20,15 @@ export default function Companies({ companies }: Props) {
     return (
         <>
             <Head title="Sociétés" />
+            
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <div className="flex items-center justify-between px-2">
                     <h1 className="text-xl font-semibold">Liste des Sociétés</h1>
+                    
                     <AddCompanyDialog />
                 </div>
 
-                <div className="relative min-h-screen flex-1 overflow-hidden rounded-xl border border-sidebar-border/70 bg-white p-4 md:min-h-min dark:border-sidebar-border">
+                <div className="relative min-h-screen flex-1 overflow-hidden rounded-xl border border-sidebar-border/70 bg-white p-4 md:min-h-min dark:border-sidebar-border dark:bg-neutral-900">
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -61,6 +63,7 @@ export default function Companies({ companies }: Props) {
                                             <EditCompanyDialog
                                                 company={company}
                                             />
+                                            
                                             <DeleteCompanyDialog
                                                 companyId={company.id}
                                                 companyName={company.name}

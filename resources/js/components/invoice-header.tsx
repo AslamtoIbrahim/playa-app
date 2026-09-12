@@ -11,23 +11,23 @@ interface Props {
 export function InvoiceHeader({ invoice }: Props) {
 
     return (
-        <div className="flex flex-row items-start justify-between border-b pb-8 border-slate-100">
+        <div className="flex flex-row items-start justify-between border-b pb-8 border-slate-100 dark:border-neutral-800">
             {/* Left Side: Beneficiary & Caution */}
             <div className="text-left space-y-3">
                 <div className="space-y-1">
-                    <p className="text-lg font-bold text-slate-900 capitalize">
+                    <p className="text-lg font-bold text-slate-900 capitalize dark:text-neutral-100">
                         {invoice.billable?.name || '---'}
                     </p>
 
                     {invoice.office_room && (
-                        <p className="text-xs font-medium capitalize text-slate-500">
+                        <p className="text-xs font-medium capitalize text-slate-500 dark:text-neutral-400">
                             {invoice.office_room.name} — {invoice.office_room.city}
                         </p>
                     )}
                 </div>
 
                 {invoice.caution && (
-                    <Badge variant="secondary" className="bg-blue-50 text-indigo-700 border-blue-100 hover:bg-blue-50 gap-1.5 px-2.5 py-1">
+                    <Badge variant="secondary" className="bg-blue-50 text-indigo-700 border-blue-100 hover:bg-blue-50 gap-1.5 px-2.5 py-1 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-900/60 dark:hover:bg-blue-950/60">
                         <ShieldCheck className="h-3.5 w-3.5" />
                         <span className="text-[10px] font-black uppercase tracking-wider">
                             {invoice.caution.name}
@@ -41,13 +41,13 @@ export function InvoiceHeader({ invoice }: Props) {
             {/* Right Side: Invoice Details */}
             <div className="flex flex-col items-end space-y-2">
                 <div className="space-y-1">
-                    <h1 className="font-black text-right tracking-tighter text-slate-900">
+                    <h1 className="font-black text-right tracking-tighter text-slate-900 dark:text-neutral-100">
                         {invoice.invoice_number}
                     </h1>
                 </div>
 
-                <Badge variant="outline" className="bg-slate-50/50 text-slate-600 border-slate-200 gap-2 px-3 py-1.5">
-                    <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                <Badge variant="outline" className="bg-slate-50/50 text-slate-600 border-slate-200 gap-2 px-3 py-1.5 dark:bg-neutral-900 dark:text-neutral-300 dark:border-neutral-800">
+                    <Calendar className="h-3.5 w-3.5 text-slate-400 dark:text-neutral-500" />
                     <span className="text-xs font-bold">
                         {formatDateDisplay(invoice.date)}
                     </span>

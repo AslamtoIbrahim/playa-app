@@ -54,20 +54,20 @@ export function DifferenceRow({
     });
 
     const inputClass =
-        "h-10 border-none bg-transparent text-center focus-visible:ring-0 focus-visible:bg-slate-100 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
+        "h-10 border-none bg-transparent text-center focus-visible:ring-0 focus-visible:bg-slate-100 dark:focus-visible:bg-neutral-800 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none text-slate-900 dark:text-neutral-100";
 
     return (
         <TableRow
             className={cn(
-                "group transition-colors h-10 min-h-10",
-                isNew ? "bg-blue-50/30 border-t-2 border-blue-100" : "hover:bg-slate-50/50"
+                "group transition-colors h-10 min-h-10 border-b border-slate-100 dark:border-neutral-800",
+                isNew ? "bg-blue-50/30 border-t-2 border-blue-100 dark:bg-blue-950/40 dark:border-blue-900" : "hover:bg-slate-50/50 dark:hover:bg-neutral-900/40"
             )}
         >
             {/* عمود الكليان */}
             <TableCell
                 className={cn(
                     "p-0 border-r w-[20%]",
-                    isNew ? "border-blue-100/50" : "border-slate-100"
+                    isNew ? "border-blue-100/50 dark:border-blue-900/40" : "border-slate-100 dark:border-neutral-800"
                 )}
             >
                 <SearchSelect
@@ -95,15 +95,15 @@ export function DifferenceRow({
                             }
                         }
                     }}
-                    className="border-none bg-transparent shadow-none w-full justify-between capitalize font-medium"
+                    className="border-none bg-transparent shadow-none w-full justify-between capitalize font-medium text-slate-900 dark:text-neutral-100"
                 />
             </TableCell>
 
             {/* عمود السلعة (Article) */}
             <TableCell
                 className={cn(
-                    "p-0 border-r  ",
-                    isNew ? "border-blue-100/50" : "border-slate-100"
+                    "p-0 border-r",
+                    isNew ? "border-blue-100/50 dark:border-blue-900/40" : "border-slate-100 dark:border-neutral-800"
                 )}
             >
                 <SearchSelect
@@ -130,7 +130,7 @@ export function DifferenceRow({
                             }
                         }
                     }}
-                    className="border-none bg-transparent shadow-none capitalize font-medium"
+                    className="border-none bg-transparent shadow-none capitalize font-medium text-slate-900 dark:text-neutral-100"
                 />
             </TableCell>
 
@@ -138,7 +138,7 @@ export function DifferenceRow({
             <TableCell
                 className={cn(
                     "p-0 border-r",
-                    isNew ? "border-blue-100/50" : "border-slate-100"
+                    isNew ? "border-blue-100/50 dark:border-blue-900/40" : "border-slate-100 dark:border-neutral-800"
                 )}
             >
                 <Input
@@ -172,7 +172,7 @@ export function DifferenceRow({
             <TableCell
                 className={cn(
                     "p-0 border-r w-[25%]",
-                    isNew ? "border-blue-100/50" : "border-slate-100"
+                    isNew ? "border-blue-100/50 dark:border-blue-900/40" : "border-slate-100 dark:border-neutral-800"
                 )}
             >
                 <Input
@@ -207,24 +207,24 @@ export function DifferenceRow({
                 className={cn(
                     "text-right pr-6 font-bold w-[15%]",
                     isNew
-                        ? "text-slate-300 italic text-xs"
+                        ? "text-slate-300 italic text-xs dark:text-neutral-600"
                         : (() => {
                               const value = Number(diff?.total_diff);
 
                               if (value < 0) {
                                   {
-                                      return "text-red-500";
+                                      return "text-red-500 dark:text-red-400";
                                   }
                               }
 
                               if (value > 0) {
                                   {
-                                      return "text-green-600";
+                                      return "text-green-600 dark:text-green-400";
                                   }
                               }
 
                               {
-                                  return "text-slate-600";
+                                  return "text-slate-600 dark:text-neutral-300";
                               }
                           })()
                 )}
@@ -247,7 +247,7 @@ export function DifferenceRow({
                         <Loader2
                             className={cn(
                                 "h-4 w-4 animate-spin",
-                                isNew ? "text-blue-600" : "text-slate-400"
+                                isNew ? "text-blue-600 dark:text-blue-400" : "text-slate-400 dark:text-neutral-500"
                             )}
                         />
                     ) : (
@@ -262,8 +262,8 @@ export function DifferenceRow({
                             className={cn(
                                 "h-10 w-full rounded-none",
                                 isNew
-                                    ? "text-blue-600 hover:bg-blue-100"
-                                    : "text-slate-400 hover:text-red-600"
+                                    ? "text-blue-600 hover:bg-blue-100 dark:text-blue-400 dark:hover:bg-blue-950/60"
+                                    : "text-slate-400 hover:text-red-600 dark:text-neutral-400 dark:hover:text-red-400"
                             )}
                         >
                             {isNew ? <Plus className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />}

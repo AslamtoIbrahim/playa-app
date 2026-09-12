@@ -63,7 +63,7 @@ export default function AddSessionDialog({ existingDates = [], zones }: Props) {
 
             <DialogContent className="sm:max-w-112.5">
                 <DialogHeader>
-                    <DialogTitle className="uppercase font-black text-slate-900 text-xl">
+                    <DialogTitle className="text-xl font-black uppercase text-slate-900 dark:text-neutral-100">
                         Nouvelle Journée
                     </DialogTitle>
                     <DialogDescription>
@@ -104,7 +104,7 @@ export default function AddSessionDialog({ existingDates = [], zones }: Props) {
 
                                 {/* Date Picker Section */}
                                 <div className="grid gap-2">
-                                    <Label className="text-xs font-bold uppercase text-slate-500">
+                                    <Label className="text-xs font-bold uppercase text-slate-500 dark:text-neutral-400">
                                         Date de la session
                                     </Label>
 
@@ -114,7 +114,7 @@ export default function AddSessionDialog({ existingDates = [], zones }: Props) {
                                                 variant="outline"
                                                 className={cn(
                                                     "w-full justify-start text-left font-medium py-6 border-2",
-                                                    errors.session_date ? "border-destructive bg-destructive/5" : "border-slate-200",
+                                                    errors.session_date ? "border-destructive bg-destructive/5" : "border-slate-200 dark:border-neutral-700",
                                                     !date && "text-muted-foreground"
                                                 )}
                                             >
@@ -138,7 +138,7 @@ export default function AddSessionDialog({ existingDates = [], zones }: Props) {
                                                 disabled={disabledDays}
                                                 initialFocus
                                                 locale={fr}
-                                                className="rounded-md border shadow-lg"
+                                                className="rounded-md border shadow-lg dark:border-neutral-800 dark:bg-neutral-900"
                                             />
                                         </PopoverContent>
                                     </Popover>
@@ -162,7 +162,7 @@ export default function AddSessionDialog({ existingDates = [], zones }: Props) {
 
 
 
-                                    <ScrollArea className="h-64 rounded-md border-2 border-slate-100 bg-slate-50/50 p-4">
+                                    <ScrollArea className="h-64 rounded-md border-2 border-slate-100 bg-slate-50/50 p-4 dark:border-neutral-800 dark:bg-neutral-900/50">
                                         <div className="space-y-2">
                                             {zones.map((zone) => {
                                                 const isSelected = selectedZones.includes(zone.id);
@@ -173,8 +173,8 @@ export default function AddSessionDialog({ existingDates = [], zones }: Props) {
                                                         className={`
                                                                 group flex items-center space-x-3 p-3 rounded-lg border transition-all duration-200
                                                                 ${isSelected
-                                                                ? 'border-primary/40 bg-primary/5 shadow-sm'
-                                                                : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                                                                ? 'border-primary/40 bg-primary/5 shadow-sm dark:bg-primary/10'
+                                                                : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:border-neutral-700 dark:hover:bg-neutral-800'
                                                                 }  `}
                                                     >
                                                         <Checkbox
@@ -189,7 +189,7 @@ export default function AddSessionDialog({ existingDates = [], zones }: Props) {
                                                         <label
                                                             htmlFor={`zone-${zone.id}`}
                                                             className={`flex-1 text-sm font-semibold cursor-pointer select-none transition-colors
-                                                             ${isSelected ? 'text-primary' : 'text-slate-700'}  `}
+                                                             ${isSelected ? 'text-primary' : 'text-slate-700 dark:text-neutral-300'}  `}
                                                         >
                                                             {zone.name}
                                                         </label>
