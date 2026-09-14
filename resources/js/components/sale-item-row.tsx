@@ -78,9 +78,9 @@ export default function SaleItemRow({
         position: (isDragging ? 'relative' : 'static') as any,
     };
 
-    const cellFocusClass = 'focus-within:ring-1 focus-within:ring-inset focus-within:ring-slate-300 focus-within:bg-slate-100/50 transition-all';
+    const cellFocusClass = 'focus-within:ring-1 focus-within:ring-inset focus-within:ring-slate-300 dark:focus-within:ring-slate-600 focus-within:bg-slate-100/50 dark:focus-within:bg-slate-800/50 transition-all';
 
-    const inputBaseClass = 'border-none rounded-none h-10 text-xs shadow-none bg-transparent focus-visible:ring-0 w-full font-normal [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none';
+    const inputBaseClass = 'border-none rounded-none h-10 text-xs shadow-none bg-transparent text-slate-900 dark:text-slate-100 focus-visible:ring-0 w-full font-normal [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none';
 
     return (
         <TableRow
@@ -88,9 +88,9 @@ export default function SaleItemRow({
             style={style}
             className={cn(
                 'group border-b',
-                isNew ? 'bg-slate-50/50' : 'hover:bg-slate-50/30',
-                isDragging && 'bg-blue-50/80 shadow-2xl',
-                selected && 'bg-blue-50/50',
+                isNew ? 'bg-slate-50/50 dark:bg-slate-900/50' : 'hover:bg-slate-50/30 dark:hover:bg-slate-800/30',
+                isDragging && 'bg-blue-50/80 dark:bg-blue-950/80 shadow-2xl',
+                selected && 'bg-blue-50/50 dark:bg-blue-950/50',
                 isNew && 'print:hidden',
             )}
         >
@@ -99,7 +99,7 @@ export default function SaleItemRow({
                     <button
                         {...attributes}
                         {...listeners}
-                        className="flex h-10 w-full cursor-grab items-center justify-center text-slate-300 transition-colors hover:text-slate-600"
+                        className="flex h-10 w-full cursor-grab items-center justify-center text-slate-300 transition-colors hover:text-slate-600 dark:text-slate-600 dark:hover:text-slate-300"
                     >
                         <GripVertical className="h-4 w-4" />
                     </button>
@@ -116,7 +116,7 @@ export default function SaleItemRow({
                                     onSelectChange?.(checked);
                                 }
                             }}
-                            className="h-4 w-4 border-slate-300"
+                            className="h-4 w-4 border-slate-300 dark:border-slate-600"
                         />
                     </div>
                 )}
@@ -159,7 +159,7 @@ export default function SaleItemRow({
                     }}
                     onSelect={(id) => {
                         {
-                            const selectedItem = items.find((i) => { return String(i.id) === String(id); });
+                            const selectedItem = items.find((i) => String(i.id) === String(id));
                             const isPoulpe = selectedItem?.name?.toLowerCase().includes('poulpe') || selectedItem?.name?.toLowerCase().includes('بولبو');
 
                             handleDataChange({
@@ -184,7 +184,7 @@ export default function SaleItemRow({
                         }
                     }}
                     onKeyDown={handleKeyDown}
-                    className={cn(inputBaseClass, 'text-center font-bold')}
+                        className={cn(inputBaseClass, 'text-center font-bold')}
                 />
             </TableCell>
 
@@ -199,7 +199,7 @@ export default function SaleItemRow({
                         }
                     }}
                     onKeyDown={handleKeyDown}
-                    className={cn(inputBaseClass, 'pr-4 text-right font-medium')}
+                        className={cn(inputBaseClass, 'pr-4 text-right font-medium')}
                 />
             </TableCell>
 
@@ -217,7 +217,7 @@ export default function SaleItemRow({
                 >
                     <SelectTrigger
                         onKeyDown={handleKeyDown}
-                        className="h-10 w-full rounded-none border-none bg-transparent px-3 text-[10px] uppercase shadow-none focus:ring-0"
+                        className="h-10 w-full rounded-none border-none bg-transparent px-3 text-[10px] uppercase text-slate-900 dark:text-slate-100 shadow-none focus:ring-0"
                     >
                         <SelectValue />
                     </SelectTrigger>
@@ -245,7 +245,7 @@ export default function SaleItemRow({
                         'text-center font-medium',
                         data.unit === 'caisse' && Number(weight) !== (Number(data.unit_count) * 21)
                             ? 'text-blue-600 font-bold'
-                            : 'text-slate-500'
+                            : 'text-slate-500 dark:text-slate-400'
                     )}
                 />
             </TableCell>
@@ -264,14 +264,14 @@ export default function SaleItemRow({
                     onKeyDown={handleKeyDown}
                     className={cn(
                         inputBaseClass,
-                        'text-center font-bold text-blue-900',
-                        data.unit === 'caisse' && 'text-slate-500 font-normal'
+                        'text-center font-bold text-blue-900 dark:text-blue-300',
+                        data.unit === 'caisse' && 'text-slate-500 dark:text-slate-400 font-normal'
                     )}
                 />
             </TableCell>
 
             {/* TOTAL AMOUNT */}
-            <TableCell className="w-32 bg-slate-50/10 px-6 text-right text-xs font-bold text-slate-900">
+            <TableCell className="w-32 bg-slate-50/10 dark:bg-slate-900/10 px-6 text-right text-xs font-bold text-slate-900 dark:text-slate-100">
                 {amount > 0
                     ? amount.toLocaleString('fr-FR', { minimumFractionDigits: 2 })
                     : '0.00'}
@@ -281,7 +281,7 @@ export default function SaleItemRow({
             <TableCell className="relative w-12 border-l p-0 text-center print:hidden">
                 {loading ? (
                     <div className="flex h-10 w-full items-center justify-center">
-                        <Loader2 className="h-3 w-3 animate-spin text-slate-400" />
+                        <Loader2 className="h-3 w-3 animate-spin text-slate-400 dark:text-slate-500" />
                     </div>
                 ) : (
                     <div className="flex h-10 w-full items-center justify-center">
@@ -292,8 +292,8 @@ export default function SaleItemRow({
                                 className={cn(
                                     'h-10 w-full rounded-none transition-colors',
                                     isReadyToSave()
-                                        ? 'text-green-600 hover:bg-green-50'
-                                        : 'cursor-not-allowed text-slate-300',
+                                        ? 'text-green-600 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-950/40'
+                                        : 'cursor-not-allowed text-slate-300 dark:text-slate-600',
                                 )}
                                 onClick={() => {
                                     if (isReadyToSave()) {

@@ -7,25 +7,25 @@ export function SaleStatsGrid({ stats }: { stats: SaleStats }) {
     return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 print:hidden">
             {/* Total Caisses */}
-            <Card className="shadow-none border-amber-200 h-24 flex flex-col justify-center">
+            <Card className="shadow-none border-amber-200 dark:border-amber-800 bg-white dark:bg-slate-900 h-24 flex flex-col justify-center">
                 <CardContent className="p-4 py-0">
-                    <p className="text-[9px] uppercase font-bold text-slate-400 mb-1 tracking-wider">Total Caisses</p>
+                    <p className="text-[9px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-1 tracking-wider">Total Caisses</p>
                     
                     <div className='flex items-center gap-2'>
-                        <p className="text-xl font-bold text-slate-700">{stats.totalBoxes}</p>
-                        <Package className="h-4 w-4 text-slate-400" />
+                        <p className="text-xl font-bold text-slate-700 dark:text-slate-100">{stats.totalBoxes}</p>
+                        <Package className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                     </div>
                 </CardContent>
             </Card>
 
             {/* Total Poids */}
-            <Card className="shadow-none border-amber-200 h-24 flex flex-col justify-center">
+            <Card className="shadow-none border-amber-200 dark:border-amber-800 bg-white dark:bg-slate-900 h-24 flex flex-col justify-center">
                 <CardContent className="p-4 py-0">
-                    <p className="text-[9px] uppercase font-bold text-slate-400 mb-1 tracking-wider">Total Poids</p>
+                    <p className="text-[9px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-1 tracking-wider">Total Poids</p>
                     
                     <div className='flex items-center gap-2'>
-                        <p className="text-xl font-bold text-slate-700">{stats.formattedWeight}</p>
-                        <span className="text-xs text-slate-600 font-semibold opacity-50">Kg</span>
+                        <p className="text-xl font-bold text-slate-700 dark:text-slate-100">{stats.formattedWeight}</p>
+                        <span className="text-xs text-slate-600 dark:text-slate-300 font-semibold opacity-50">Kg</span>
                     </div>
                 </CardContent>
             </Card>

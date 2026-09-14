@@ -78,10 +78,10 @@ export default function AddReceiptDialog({ customers, sessionZones, boats }: Pro
 
             <DialogContent className="sm:max-w-106.25">
                 <DialogHeader>
-                    <DialogTitle className="uppercase font-black text-slate-900 flex items-center gap-2">
-                        <Receipt className="h-5 w-5 text-blue-600" /> Nouveau Bon
+                    <DialogTitle className="uppercase font-black text-slate-900 dark:text-slate-50 flex items-center gap-2">
+                        <Receipt className="h-5 w-5 text-blue-600 dark:text-blue-400" /> Nouveau Bon
                     </DialogTitle>
-                    <DialogDescription>
+                    <DialogDescription className="dark:text-slate-300">
                         Créez l'entête du bon de réception. Vous pourrez ajouter les articles après validation.
                     </DialogDescription>
                 </DialogHeader>
@@ -109,14 +109,17 @@ export default function AddReceiptDialog({ customers, sessionZones, boats }: Pro
 
                             {/* Date Field */}
                             <div className="grid gap-2">
-                                <Label className="text-xs font-bold uppercase text-slate-500">Date de Réception</Label>
+                                <Label className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400">Date de Réception</Label>
                                 <Popover>
                                     <PopoverTrigger asChild>
                                         <Button
                                             variant="outline"
-                                            className={cn("w-full justify-start text-left font-medium", !date && "text-muted-foreground")}
+                                            className={cn(
+                                                "w-full justify-start text-left font-medium dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50",
+                                                !date && "text-muted-foreground"
+                                            )}
                                         >
-                                            <CalendarIcon className="mr-2 h-4 w-4 text-slate-400" />
+                                            <CalendarIcon className="mr-2 h-4 w-4 text-slate-400 dark:text-slate-300" />
                                             {date ? format(date, "dd/MM/yyyy") : <span>Choisir une date</span>}
                                         </Button>
                                     </PopoverTrigger>
@@ -138,14 +141,14 @@ export default function AddReceiptDialog({ customers, sessionZones, boats }: Pro
 
                             {/* SessionZone Field */}
                             <div className="grid gap-2">
-                                <Label className="text-xs font-bold uppercase text-slate-500">Journée & Zone</Label>
+                                <Label className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400">Journée & Zone</Label>
                                 <Popover open={sessionZoneComboOpen} onOpenChange={setSessionZoneComboOpen}>
                                     <PopoverTrigger asChild>
                                         <Button
                                             variant="outline"
                                             role="combobox"
                                             className={cn(
-                                                "w-full justify-between font-medium text-left h-auto py-2",
+                                                "w-full justify-between font-medium text-left h-auto py-2 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50",
                                                 !selectedSessionZoneId && "text-muted-foreground",
                                                 errors.session_zone_id && "border-destructive"
                                             )}
@@ -153,7 +156,7 @@ export default function AddReceiptDialog({ customers, sessionZones, boats }: Pro
                                             <div className="flex flex-col items-start  gap-0.5 overflow-hidden">
                                                 {selectedSessionZoneId ? (
                                                     <span className="truncate capitalize flex items-center gap-3 ">
-                                                        <Clock className='text-slate-400' />
+                                                        <Clock className='text-slate-400 dark:text-slate-300' />
                                                         {getSessionZoneLabel(selectedSessionZoneId)}
                                                     </span>
                                                 ) : (
@@ -185,11 +188,11 @@ export default function AddReceiptDialog({ customers, sessionZones, boats }: Pro
                                                                 <span className="font-bold">
                                                                     {sz.daily_session ? format(new Date(sz.daily_session.session_date), "dd/MM/yyyy") : 'N/A'}
                                                                 </span>
-                                                                <span className="text-xs text-slate-700 capitalize font-medium flex items-center gap-1">
+                                                                <span className="text-xs text-slate-700 dark:text-slate-200 capitalize font-medium flex items-center gap-1">
                                                                     <MapPin className="h-3 w-3" /> {sz.zone?.name}
                                                                 </span>
                                                             </div>
-                                                            <span className="ml-auto text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded uppercase font-bold">
+                                                            <span className="ml-auto text-[10px] bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300 px-1.5 py-0.5 rounded uppercase font-bold">
                                                                 {sz.daily_session?.status}
                                                             </span>
                                                         </CommandItem>
@@ -204,13 +207,17 @@ export default function AddReceiptDialog({ customers, sessionZones, boats }: Pro
 
                             {/* Customer Field */}
                             <div className="grid gap-2">
-                                <Label className="text-xs font-bold uppercase text-slate-500">Client / Fournisseur</Label>
+                                <Label className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400">Client / Fournisseur</Label>
                                 <Popover open={customerComboOpen} onOpenChange={setCustomerComboOpen}>
                                     <PopoverTrigger asChild>
                                         <Button
                                             variant="outline"
                                             role="combobox"
-                                            className={cn("w-full justify-between font-medium", !selectedCustomerId && "text-muted-foreground", errors.customer_id && "border-destructive")}
+                                            className={cn(
+                                                "w-full justify-between font-medium dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50",
+                                                !selectedCustomerId && "text-muted-foreground",
+                                                errors.customer_id && "border-destructive"
+                                            )}
                                         >
                                             {selectedCustomerId
                                                 ? customers.find(c => c.id.toString() === selectedCustomerId)?.name
@@ -248,13 +255,13 @@ export default function AddReceiptDialog({ customers, sessionZones, boats }: Pro
 
                             {/* Boat Field (Optional) */}
                             <div className="grid gap-2">
-                                <Label className="text-xs font-bold uppercase text-slate-500 flex justify-between">
+                                <Label className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 flex justify-between">
                                     Bateau (Optionnel)
                                     {selectedBoatId && (
                                         <button
                                             type="button"
                                             onClick={() => setSelectedBoatId("")}
-                                            className="text-[10px] text-red-500 hover:underline flex items-center gap-1"
+                                            className="text-[10px] text-red-500 dark:text-red-400 hover:underline flex items-center gap-1"
                                         >
                                             <X className="h-3 w-3" /> Effacer
                                         </button>
@@ -265,10 +272,13 @@ export default function AddReceiptDialog({ customers, sessionZones, boats }: Pro
                                         <Button
                                             variant="outline"
                                             role="combobox"
-                                            className={cn("w-full justify-between font-medium bg-slate-50/50", !selectedBoatId && "text-muted-foreground")}
+                                            className={cn(
+                                                "w-full justify-between font-medium bg-slate-50/50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50",
+                                                !selectedBoatId && "text-muted-foreground"
+                                            )}
                                         >
                                             <div className="flex items-center">
-                                                <Ship className="mr-2 h-4 w-4 text-slate-400" />
+                                                <Ship className="mr-2 h-4 w-4 text-slate-400 dark:text-slate-300" />
                                                 {selectedBoatId
                                                     ? boats.find(b => b.id.toString() === selectedBoatId)?.name
                                                     : "Sans bateau (Client direct)"}
@@ -305,7 +315,7 @@ export default function AddReceiptDialog({ customers, sessionZones, boats }: Pro
                             </div>
 
                             <div className="flex justify-end gap-3 pt-4">
-                                <Button type="submit" disabled={processing} className="w-full font-bold uppercase tracking-wider bg-slate-900">
+                                <Button type="submit" disabled={processing} className="w-full font-bold uppercase tracking-wider bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200">
                                     {processing && <Spinner className="mr-2 h-4 w-4" />}
                                     Enregistrer et continuer
                                 </Button>

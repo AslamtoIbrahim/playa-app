@@ -48,37 +48,36 @@ export default function Attendances({
                 {/* Header Section */}
                 <div className="flex flex-col justify-between gap-4 px-2 sm:flex-row sm:items-center">
                     <div>
-                        <h1 className="text-2xl font-black tracking-tight text-slate-900 uppercase">
+                        <h1 className="text-2xl font-black tracking-tight text-neutral-900 uppercase dark:text-neutral-100">
                             Pointage Quotidien
                         </h1>
-                        <p className="text-sm font-medium text-muted-foreground">
+                        <p className="text-sm font-medium text-muted-foreground dark:text-neutral-400">
                             Gestion d'assiduité et calcul des salaires
                             journaliers.
                         </p>
                     </div>
 
-                    {/* هاد الـ Dialog دابا غايخدم مزيان حيت صيفطنا ليه الـ sessions */}
                     <AddAttendanceDialog sessionZones={sessionZones} />
                 </div>
 
                 {/* Table Card */}
-                <div className="flex-1 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div className="flex-1 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900/90">
                     <Table>
-                        <TableHeader className="bg-slate-50/50">
-                            <TableRow className="border-b border-slate-200 text-sm hover:bg-transparent">
-                                <TableHead className="w-24 font-bold text-slate-800">
+                        <TableHeader className="bg-neutral-50/50 dark:bg-neutral-800/50">
+                            <TableRow className="border-b border-neutral-200 text-sm hover:bg-transparent dark:border-neutral-800">
+                                <TableHead className="w-24 font-bold text-neutral-800 dark:text-neutral-200">
                                     ID
                                 </TableHead>
-                                <TableHead className="font-bold text-slate-800">
+                                <TableHead className="font-bold text-neutral-800 dark:text-neutral-200">
                                     Date du Pointage
                                 </TableHead>
-                                <TableHead className="text-center font-bold text-slate-800">
+                                <TableHead className="text-center font-bold text-neutral-800 dark:text-neutral-200">
                                     Journée
                                 </TableHead>
-                                <TableHead className="text-center font-bold text-slate-800">
+                                <TableHead className="text-center font-bold text-neutral-800 dark:text-neutral-200">
                                     Zone
                                 </TableHead>
-                                <TableHead className="text-right font-bold text-slate-800">
+                                <TableHead className="text-right font-bold text-neutral-800 dark:text-neutral-200">
                                     Masse Salariale
                                 </TableHead>
                                 <TableHead className="w-12"></TableHead>
@@ -93,16 +92,16 @@ export default function Attendances({
                                         onClick={() =>
                                             handleRowClick(attendance.id)
                                         }
-                                        className="group cursor-pointer border-b border-slate-100 transition-all last:border-0 hover:bg-slate-50"
+                                        className="group cursor-pointer border-b border-slate-100 bg-white transition-all last:border-0 hover:bg-slate-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800/70"
                                     >
-                                        <TableCell className="font-mono text-sm font-bold text-slate-700">
+                                        <TableCell className="font-mono text-sm font-bold text-slate-700 dark:text-neutral-300">
                                             #{attendance.id}
                                         </TableCell>
 
                                         {/* هنا استعملنا التاريخ اللي جا من الـ Accessor في Laravel */}
-                                        <TableCell className="text-sm font-semibold text-slate-600">
+                                        <TableCell className="text-sm font-semibold text-slate-600 dark:text-neutral-300">
                                             <div className="flex items-center gap-2">
-                                                <CalendarDays className="h-4 w-4 text-slate-400" />
+                                                <CalendarDays className="h-4 w-4 text-slate-400 dark:text-neutral-500" />
                                                 {attendance.date
                                                     ? format(
                                                         new Date(
@@ -173,8 +172,8 @@ export default function Attendances({
                                                             attendance.session_zone.daily_session
                                                                 ?.status ===
                                                                 'open'
-                                                                ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                                                                : 'border-slate-200 bg-slate-50 text-slate-600',
+                                                                ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300'
+                                                                : 'border-slate-200 bg-slate-50 text-slate-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300',
                                                         )}
                                                     >
                                                         <Clock
@@ -185,8 +184,8 @@ export default function Attendances({
                                                                     .daily_session
                                                                     ?.status ===
                                                                     'open'
-                                                                    ? 'text-emerald-500'
-                                                                    : 'text-slate-400',
+                                                                    ? 'text-emerald-500 dark:text-emerald-400'
+                                                                    : 'text-slate-400 dark:text-neutral-500',
                                                             )}
                                                         />
 
@@ -198,7 +197,7 @@ export default function Attendances({
                                                         </span>
                                                     </Badge>
                                                 ) : (
-                                                    <span className="text-xs text-slate-400">
+                                                    <span className="text-xs text-slate-400 dark:text-neutral-500">
                                                         -
                                                     </span>
                                                 )}
@@ -210,9 +209,9 @@ export default function Attendances({
                                                 {attendance.session_zone ? (
                                                     <Badge
                                                         variant="outline"
-                                                        className={cn('flex items-center gap-1 border px-2 py-0.5 font-bold')}
+                                                        className={cn('flex items-center gap-1 border px-2 py-0.5 font-bold border-slate-200 bg-slate-50 text-slate-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300')}
                                                     >
-                                                        <MapPin />
+                                                        <MapPin className="h-3 w-3 text-slate-500 dark:text-neutral-400" />
 
                                                         <span className="text-[10px] tracking-wider uppercase">
                                                             {
@@ -221,14 +220,14 @@ export default function Attendances({
                                                         </span>
                                                     </Badge>
                                                 ) : (
-                                                    <span className="text-xs text-slate-400">
+                                                    <span className="text-xs text-slate-400 dark:text-neutral-500">
                                                         -
                                                     </span>
                                                 )}
                                             </div>
                                         </TableCell>
 
-                                        <TableCell className="bg-slate-50/30 text-right text-base font-black text-slate-900">
+                                        <TableCell className="text-right text-base font-black text-slate-900 dark:text-neutral-100">
                                             {new Intl.NumberFormat('fr-FR', {
                                                 style: 'currency',
                                                 currency: 'MAD',
@@ -249,7 +248,7 @@ export default function Attendances({
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-8 w-8 text-blue-500 hover:bg-blue-50"
+                                                            className="h-8 w-8 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/70"
                                                         >
                                                             <Pencil className="h-4 w-4" />
                                                         </Button>
@@ -263,7 +262,7 @@ export default function Attendances({
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-8 w-8 text-red-500 hover:bg-red-50"
+                                                            className="h-8 w-8 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/70"
                                                         >
                                                             <Trash2 className="h-4 w-4" />
                                                         </Button>
@@ -277,7 +276,7 @@ export default function Attendances({
                                 <TableRow>
                                     <TableCell
                                         colSpan={5}
-                                        className="py-24 text-center font-medium text-muted-foreground italic"
+                                        className="py-24 text-center font-medium text-muted-foreground italic dark:text-neutral-400"
                                     >
                                         Aucune feuille de pointage enregistrée.
                                     </TableCell>
@@ -287,8 +286,8 @@ export default function Attendances({
                     </Table>
 
                     {/* Pagination */}
-                    <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50/50 px-6 py-4">
-                        <div className="text-xs font-bold tracking-widest text-slate-500 uppercase">
+                    <div className="flex items-center justify-between border-t border-neutral-200 bg-neutral-50/50 px-6 py-4 dark:border-neutral-800 dark:bg-neutral-800/50">
+                        <div className="text-xs font-bold tracking-widest text-neutral-500 dark:text-neutral-400 uppercase">
                             {attendances.meta?.total || attendances.data.length}{' '}
                             Feuilles au total
                         </div>
@@ -303,9 +302,9 @@ export default function Attendances({
                                     size="sm"
                                     disabled={!link.url}
                                     className={cn(
-                                        'h-8 min-w-8 text-xs font-bold shadow-none transition-all',
+                                        'h-8 min-w-8 text-xs font-bold shadow-none transition-all dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800',
                                         link.active &&
-                                        'scale-105 bg-slate-900 text-white',
+                                        'scale-105 bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900',
                                         !link.url && 'opacity-30',
                                     )}
                                     asChild={!!link.url}
@@ -341,7 +340,11 @@ export default function Attendances({
     );
 }
 
-Attendances.layout = (page: any) => ({
-    children: page,
-    breadcrumbs: [{ title: 'Pointages', href: '/attendances' }],
-});
+Attendances.layout = {
+    breadcrumbs: [
+        {
+            title: 'Pointages',
+            href: '/attendances',
+        },
+    ],
+};

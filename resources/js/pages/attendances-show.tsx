@@ -86,8 +86,8 @@ export default function AttendancesShow({
             {/* Header Section */}
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
                 <div className="space-y-1">
-                    <h1 className="flex items-center gap-3 text-xl font-black tracking-tight text-slate-600 print:hidden">
-                        <Calendar className="size-4 text-slate-600" />
+                    <h1 className="flex items-center gap-3 text-xl font-black tracking-tight text-neutral-600 dark:text-neutral-300 print:hidden">
+                        <Calendar className="size-4 text-neutral-600 dark:text-neutral-400" />
                         Feuille de Pointage #{attendance.id}
                     </h1>
 
@@ -96,8 +96,8 @@ export default function AttendancesShow({
                         className={cn(
                             'flex items-center gap-1.5 border px-3 py-1 font-bold shadow-sm',
                             attendance.sessionZone?.status === 'open'
-                                ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                                : 'border-slate-200 bg-slate-50 text-slate-600',
+                                ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300'
+                                : 'border-neutral-200 bg-neutral-50 text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400',
                         )}
                     >
                         <Clock
@@ -105,7 +105,7 @@ export default function AttendancesShow({
                                 'h-3.5 w-3.5',
                                 attendance.sessionZone?.status === 'open'
                                     ? 'text-emerald-500'
-                                    : 'text-slate-400',
+                                    : 'text-neutral-400 dark:text-neutral-600',
                             )}
                         />
                         <span className="text-[11px] tracking-wider uppercase">
@@ -126,9 +126,9 @@ export default function AttendancesShow({
                         onClick={() => {
                             setIsAddDialogOpen(true);
                         }}
-                        className="font-bold shadow-lg shadow-blue-100 print:hidden"
+                        className="font-bold shadow-lg shadow-blue-100 dark:shadow-blue-950/40 print:hidden"
                     >
-                        <Plus className="mr-2 h-4 w-4" />
+                        <Plus className="mr-2 h-4 w-4 text-white dark:text-neutral-800" />
                         Pointer des ouvriers
                     </Button>
                 </div>
@@ -136,25 +136,25 @@ export default function AttendancesShow({
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 gap-6 md:grid-cols-3 print:hidden">
-                <Card className="border-none bg-slate-50 shadow-sm">
+                <Card className="border-none bg-neutral-100 shadow-sm transition-colors hover:bg-neutral-200 dark:bg-neutral-900 dark:hover:bg-neutral-800">
                     <CardHeader className="pb-2">
-                        <CardDescription className="flex items-center gap-2 text-xs font-bold tracking-widest text-slate-400 uppercase">
-                            <Users className="h-3 w-3" /> Total Ouvriers
+                        <CardDescription className="flex items-center gap-2 text-xs font-bold tracking-widest text-neutral-500 dark:text-neutral-400 uppercase">
+                            <Users className="h-3 w-3 text-neutral-500 dark:text-neutral-400" /> Total Ouvriers
                         </CardDescription>
 
-                        <CardTitle className="text-2xl font-black text-slate-800">
+                        <CardTitle className="text-2xl font-black text-neutral-800 dark:text-neutral-100">
                             {attendance.items?.length || 0}
                         </CardTitle>
                     </CardHeader>
                 </Card>
 
-                <Card className="border-none bg-slate-50 shadow-sm">
+                <Card className="border-none bg-neutral-100 shadow-sm transition-colors hover:bg-neutral-200 dark:bg-neutral-900 dark:hover:bg-neutral-800">
                     <CardHeader className="pb-2">
-                        <CardDescription className="flex items-center gap-2 text-xs font-bold tracking-widest text-slate-400 uppercase">
-                            <Wallet className="h-3 w-3" /> Masse Salariale
+                        <CardDescription className="flex items-center gap-2 text-xs font-bold tracking-widest text-neutral-500 dark:text-neutral-400 uppercase">
+                            <Wallet className="h-3 w-3 text-neutral-500 dark:text-neutral-400" /> Masse Salariale
                         </CardDescription>
 
-                        <CardTitle className="text-2xl font-black text-green-600">
+                        <CardTitle className="text-2xl font-black text-green-600 dark:text-green-400">
                             {attendance.total_wage}{' '}
                             <span className="text-sm">DH</span>
                         </CardTitle>
@@ -162,7 +162,7 @@ export default function AttendancesShow({
                 </Card>
             </div>
 
-            <div className="hidden gap-8 text-slate-700 print:flex">
+            <div className="hidden gap-8 text-neutral-700 dark:text-neutral-300 print:flex">
                 <p>
                     Total Ouvriers :{' '}
                     <span className="text-lg font-medium">
@@ -184,9 +184,9 @@ export default function AttendancesShow({
                         variant="outline"
                         size="sm"
                         onClick={() => setDeleteDialogOpen(true)}
-                        className="border-red-200 text-red-600 hover:bg-red-50 print:hidden"
+                        className="border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950 print:hidden"
                     >
-                        <Trash2 className="mr-2 h-4 w-4" /> Vider la liste
+                        <Trash2 className="mr-2 h-4 w-4 text-red-600 dark:text-red-400" /> Vider la liste
                     </Button>
                 )}
 
@@ -195,20 +195,20 @@ export default function AttendancesShow({
                         onClick={handleScreenshot}
                         variant="outline"
                         size="sm"
-                        className="h-9 border-slate-200 text-slate-500 shadow-sm hover:bg-slate-50"
+                        className="h-9 border-neutral-200 text-neutral-500 shadow-sm hover:bg-neutral-50 hover:text-neutral-700 dark:border-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
                         title="Copy for WhatsApp"
                     >
-                        <Camera className="h-4 w-4" />
+                        <Camera className="h-4 w-4 text-neutral-500 dark:text-neutral-400" />
                     </Button>
 
                     <Button
                         variant="outline"
                         size="sm"
                         onClick={() => window.print()}
-                        className="h-9 border-slate-200 text-slate-500 shadow-sm hover:bg-slate-50"
+                        className="h-9 border-neutral-200 text-neutral-500 shadow-sm hover:bg-neutral-50 hover:text-neutral-700 dark:border-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
                         title="Print"
                     >
-                        <Printer className="h-4 w-4" />
+                        <Printer className="h-4 w-4 text-neutral-500 dark:text-neutral-400" />
                     </Button>
 
                     <ExportDropdown onExport={handleExport} />
@@ -218,21 +218,21 @@ export default function AttendancesShow({
             {/* Attendance Table */}
             <Card
                 id="worker-content"
-                className="overflow-hidden border-slate-200 shadow-sm"
+                className="overflow-hidden border-neutral-200 text-neutral-700 shadow-sm dark:border-neutral-800 dark:text-neutral-200 [&_tbody_tr]:border-neutral-200 dark:[&_tbody_tr]:border-neutral-800 [&_tbody_td]:text-neutral-700 dark:[&_tbody_td]:text-neutral-200 [&_tbody_td_*]:text-inherit [&_tbody_[data-slot=badge]]:border-neutral-300 [&_tbody_[data-slot=badge]]:bg-neutral-100 [&_tbody_[data-slot=badge]]:text-neutral-700 dark:[&_tbody_[data-slot=badge]]:border-neutral-700 dark:[&_tbody_[data-slot=badge]]:bg-neutral-800 dark:[&_tbody_[data-slot=badge]]:text-neutral-200"
             >
                 <Table>
-                    <TableHeader className="bg-slate-50">
+                    <TableHeader className="bg-neutral-50 dark:bg-neutral-900">
                         <TableRow>
-                            <TableHead className="w-[15%] font-bold text-slate-600">
+                            <TableHead className="w-[15%] font-bold text-neutral-600 dark:text-neutral-300">
                                 Ouvrier
                             </TableHead>
-                            <TableHead className="w-[25%] font-bold text-slate-600">
+                            <TableHead className="w-[25%] font-bold text-neutral-600 dark:text-neutral-300">
                                 Salaire (DH)
                             </TableHead>
-                            <TableHead className="w-[5%] font-bold text-slate-600">
+                            <TableHead className="w-[5%] font-bold text-neutral-600 dark:text-neutral-300">
                                 Statut
                             </TableHead>
-                            <TableHead className="w-[15%] text-right font-bold text-slate-600">
+                            <TableHead className="w-[15%] text-right font-bold text-neutral-600 dark:text-neutral-300">
                                 Actions
                             </TableHead>
                         </TableRow>
@@ -252,7 +252,7 @@ export default function AttendancesShow({
                             <TableRow>
                                 <TableCell
                                     colSpan={4}
-                                    className="h-32 text-center text-slate-400 italic"
+                                    className="h-32 text-center text-neutral-400 dark:text-neutral-600 italic"
                                 >
                                     Aucun ouvrier pointé pour le moment.
                                 </TableCell>

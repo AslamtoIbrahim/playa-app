@@ -65,8 +65,8 @@ export default function ReceiptItemRow({
         position: (isDragging ? 'relative' : 'static') as any,
     };
 
-    const cellFocusClass = 'focus-within:ring-1 focus-within:ring-inset focus-within:ring-blue-300 focus-within:bg-blue-50/30 transition-all';
-    const inputBaseClass = 'border-none rounded-none h-10 text-xs shadow-none bg-transparent focus-visible:ring-0 w-full font-normal [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none';
+    const cellFocusClass = 'focus-within:ring-1 focus-within:ring-inset focus-within:ring-blue-300 dark:focus-within:ring-blue-500 focus-within:bg-blue-50/30 dark:focus-within:bg-blue-950/30 transition-all';
+    const inputBaseClass = 'border-none rounded-none h-10 text-xs shadow-none bg-transparent text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:ring-0 w-full font-normal [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none';
 
 
 
@@ -75,20 +75,20 @@ export default function ReceiptItemRow({
             ref={setNodeRef}
             style={style}
             className={cn(
-                'group border-b',
-                isNew ? 'bg-emerald-50/30' : 'hover:bg-slate-50/50',
-                isDragging && 'bg-blue-50/80 shadow-2xl opacity-80',
-                selected && 'bg-blue-50/50',
+                'group border-b border-slate-200 dark:border-slate-800',
+                isNew ? 'bg-emerald-50/30 dark:bg-emerald-950/20' : 'hover:bg-slate-50/50 dark:hover:bg-slate-800/50',
+                isDragging && 'bg-blue-50/80 dark:bg-blue-950/80 shadow-2xl opacity-80',
+                selected && 'bg-blue-50/50 dark:bg-blue-950/50',
                 isNew && 'print:hidden',
             )}
         >
             {/* 1. Drag Handle */}
-            <TableCell className="w-8 border-r p-0 text-center print:hidden">
+            <TableCell className="w-8 border-r border-slate-200 p-0 text-center print:hidden dark:border-slate-800">
                 {!isNew && (
                     <button
                         {...attributes}
                         {...listeners}
-                        className="flex h-10 w-full cursor-grab items-center justify-center text-slate-300 transition-colors hover:text-slate-600"
+                        className="flex h-10 w-full cursor-grab items-center justify-center text-slate-300 transition-colors hover:text-slate-600 dark:text-slate-600 dark:hover:text-slate-300"
                     >
                         <GripVertical className="h-4 w-4" />
                     </button>
@@ -96,20 +96,20 @@ export default function ReceiptItemRow({
             </TableCell>
 
             {/* 2. Checkbox */}
-            <TableCell className="w-8 border-r p-0 text-center print:hidden">
+            <TableCell className="w-8 border-r border-slate-200 p-0 text-center print:hidden dark:border-slate-800">
                 {!isNew && (
                     <div className="flex h-10 items-center justify-center">
                         <Checkbox
                             checked={selected || false}
                             onCheckedChange={(checked: boolean) => onSelectChange?.(checked)}
-                            className="h-4 w-4 border-slate-300"
+                            className="h-4 w-4 border-slate-300 dark:border-slate-600"
                         />
                     </div>
                 )}
             </TableCell>
 
             {/* 5. Caisses (box) */}
-            <TableCell className={cn('w-24 border-r p-0', cellFocusClass)}>
+            <TableCell className={cn('w-24 border-r border-slate-200 p-0 dark:border-slate-800', cellFocusClass)}>
                 <Input
                     type="number"
                     value={data.box}
@@ -121,7 +121,7 @@ export default function ReceiptItemRow({
             </TableCell>
 
             {/* 3. Espèce (Item) */}
-            <TableCell className={cn('min-w-45 border-r p-0', cellFocusClass)}>
+            <TableCell className={cn('min-w-45 border-r border-slate-200 p-0 dark:border-slate-800', cellFocusClass)}>
                 <SearchSelect
                     value={data.item_id}
                     options={items}
@@ -137,7 +137,7 @@ export default function ReceiptItemRow({
             </TableCell>
 
             {/* 4. Quantité (unit_count) */}
-            <TableCell className={cn('w-28 border-r p-0', cellFocusClass)}>
+            <TableCell className={cn('w-28 border-r border-slate-200 p-0 dark:border-slate-800', cellFocusClass)}>
                 <Input
                     type="number"
                     value={data.unit_count}
@@ -150,7 +150,7 @@ export default function ReceiptItemRow({
 
 
             {/* 6. Prix Unitaire (real_price) */}
-            <TableCell className={cn('w-32 border-r p-0', cellFocusClass)}>
+            <TableCell className={cn('w-32 border-r border-slate-200 p-0 dark:border-slate-800', cellFocusClass)}>
                 <Input
                     type="number"
                     value={data.real_price}
@@ -162,14 +162,14 @@ export default function ReceiptItemRow({
             </TableCell>
 
             {/* 7. Total (total_diff) */}
-            <TableCell className="w-36 bg-slate-50/30 px-6 text-right text-xs font-bold text-slate-900">
+            <TableCell className="w-36 bg-slate-50/30 px-6 text-right text-xs font-bold text-slate-900 dark:bg-slate-800/30 dark:text-slate-100">
                 {
                     rowTotal.toLocaleString('fr-FR', { minimumFractionDigits: 2 })
                 }
             </TableCell>
 
             {/* 8. Actions */}
-            <TableCell className="relative w-12 border-l p-0 text-center print:hidden">
+            <TableCell className="relative w-12 border-l border-slate-200 p-0 text-center print:hidden dark:border-slate-800">
                 {loading ? (
                     <div className="flex h-10 w-full items-center justify-center">
                         <Loader2 className="h-3 w-3 animate-spin text-blue-500" />
@@ -183,8 +183,8 @@ export default function ReceiptItemRow({
                                 className={cn(
                                     'h-10 w-full rounded-none transition-colors',
                                     isReadyToSave()
-                                        ? 'text-emerald-600 hover:bg-emerald-50'
-                                        : 'cursor-not-allowed text-slate-300',
+                                        ? 'text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40'
+                                        : 'cursor-not-allowed text-slate-300 dark:text-slate-600',
                                 )}
                                 onClick={() => isReadyToSave() && submitSave(data)}
                             >

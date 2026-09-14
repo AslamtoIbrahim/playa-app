@@ -67,7 +67,7 @@ export default function AddWorkersDialog({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2 uppercase font-black text-slate-900">
+                    <DialogTitle className="flex items-center gap-2 uppercase font-black text-slate-900 dark:text-slate-50">
                         <Users className="h-5 w-5" /> Ajouter des Ouvriers
                     </DialogTitle>
 
@@ -84,6 +84,7 @@ export default function AddWorkersDialog({
 
                         if (isNaN(wage) || wage <= 0) {
                             toast.error("Le salaire doit être supérieur à 0 DH");
+                            
                             return false; // Hna kan'habso l'form maymchich
                         }
 
@@ -105,7 +106,7 @@ export default function AddWorkersDialog({
 
                             {/* Default Wage Input - Required by Backend */}
                             <div className="space-y-2">
-                                <Label htmlFor="default_wage" className="text-xs font-bold uppercase text-slate-500 flex items-center gap-1">
+                                <Label htmlFor="default_wage" className="flex items-center gap-1 text-xs font-bold uppercase text-slate-500 dark:text-slate-400">
                                     <Banknote className="h-3 w-3" /> Salaire par défaut (DH)
                                 </Label>
 
@@ -127,13 +128,13 @@ export default function AddWorkersDialog({
 
                             <div className="space-y-4">
                                 <div className="flex items-center justify-between">
-                                    <Label className="text-xs font-bold uppercase text-slate-500">
+                                    <Label className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400">
                                         Sélection ({selectedWorkerIds.length} / {availableWorkers.length})
                                     </Label>
                                     <MissingWorkerPopup />
                                 </div>
 
-                                <ScrollArea className="h-64  border p-4 bg-slate-50/50">
+                                <ScrollArea className="h-64 border bg-slate-50/50 p-4 dark:border-slate-700 dark:bg-slate-900/50">
                                     <div className="space-y-2">
                                         {availableWorkers.map((worker) => {
                                             const isSelected = selectedWorkerIds.includes(worker.id);
@@ -144,8 +145,8 @@ export default function AddWorkersDialog({
                                                     className={`
                                                              group flex items-center space-x-3 p-3 rounded-lg border transition-all duration-200
                                                              ${isSelected
-                                                            ? 'border-slate-600/50 bg-primary/5 '
-                                                            : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                                                            ? 'border-slate-600/50 bg-primary/5 dark:border-slate-400/50 dark:bg-primary/10'
+                                                            : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:hover:border-slate-600 dark:hover:bg-slate-800/70'
                                                         }`}
                                                 >
                                                     <Checkbox
@@ -160,7 +161,7 @@ export default function AddWorkersDialog({
                                                     <label
                                                         htmlFor={`worker-${worker.id}`}
                                                         className={`flex-1 text-sm font-semibold cursor-pointer select-none transition-colors
-                                                            ${isSelected ? 'text-primary' : 'text-slate-700'} `}
+                                                            ${isSelected ? 'text-primary' : 'text-slate-700 dark:text-slate-200'} `}
                                                     >
                                                         {worker.name}
                                                     </label>

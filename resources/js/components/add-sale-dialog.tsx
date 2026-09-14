@@ -62,10 +62,10 @@ export default function AddSaleDialog({ customers, sessions }: Props) {
                 </Button>
             </DialogTrigger>
 
-            <DialogContent className="sm:max-w-106.25">
+            <DialogContent className="sm:max-w-106.25 dark:border-neutral-800 dark:bg-neutral-900 dark:text-slate-100">
                 <DialogHeader>
-                    <DialogTitle className="uppercase font-black text-slate-900">Nouvelle Vente</DialogTitle>
-                    <DialogDescription>
+                    <DialogTitle className="uppercase font-black text-slate-900 dark:text-slate-100">Nouvelle Vente</DialogTitle>
+                    <DialogDescription className="dark:text-slate-400">
                         Créez l'entête de la vente. Vous pourrez ajouter les produits après.
                     </DialogDescription>
                 </DialogHeader>
@@ -92,14 +92,14 @@ export default function AddSaleDialog({ customers, sessions }: Props) {
 
                             {/* Section Type de Vente */}
                             <div className="grid gap-2">
-                                <Label className="text-xs font-bold uppercase text-slate-500">Type de Vente</Label>
+                                <Label className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400">Type de Vente</Label>
                                 <Select value={type} onValueChange={setType}>
-                                    <SelectTrigger className="w-full font-medium">
+                                    <SelectTrigger className="w-full font-medium dark:border-neutral-700 dark:bg-neutral-800 dark:text-slate-200">
                                         <SelectValue placeholder="Type de vente" />
                                     </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="normal">Vente Normale</SelectItem>
-                                        <SelectItem value="usine">Vente Usine</SelectItem>
+                                    <SelectContent className="dark:border-neutral-700 dark:bg-neutral-800 dark:text-slate-200">
+                                        <SelectItem value="normal" className="dark:focus:bg-neutral-700 dark:focus:text-slate-100">Vente Normale</SelectItem>
+                                        <SelectItem value="usine" className="dark:focus:bg-neutral-700 dark:focus:text-slate-100">Vente Usine</SelectItem>
                                     </SelectContent>
                                 </Select>
                                 <InputError message={errors.type} />
@@ -107,34 +107,38 @@ export default function AddSaleDialog({ customers, sessions }: Props) {
 
                             {/* Section Date */}
                             <div className="grid gap-2">
-                                <Label className="text-xs font-bold uppercase text-slate-500">Date de Vente</Label>
+                                <Label className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400">Date de Vente</Label>
                                 <Popover>
                                     <PopoverTrigger asChild>
                                         <Button
                                             variant="outline"
-                                            className={cn("w-full justify-start text-left font-medium", !date && "text-muted-foreground")}
+                                            className={cn("w-full justify-start text-left font-medium dark:border-neutral-700 dark:bg-neutral-800 dark:text-slate-200 dark:hover:bg-neutral-700", !date && "text-muted-foreground dark:text-slate-400")}
                                         >
                                             <CalendarIcon className="mr-2 h-4 w-4" />
                                             {date ? format(date, "dd/MM/yyyy") : <span>Choisir une date</span>}
                                         </Button>
                                     </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0">
+                                    <PopoverContent className="w-auto p-0 dark:border-neutral-700 dark:bg-neutral-800 dark:text-slate-200">
                                         <Calendar
                                             mode="single"
                                             selected={date}
-                                            onSelect={(d) => d && setDate(d)}
+                                            onSelect={(d) => {
+                                                if (d) {
+                                                    setDate(d);
+                                                }
+                                            }}
                                             initialFocus
                                         />
                                     </PopoverContent>
                                 </Popover>
-                                <InputError message={errors.date} /> {/* Fix name here */}
+                                <InputError message={errors.date} />
                             </div>
 
                             {/* Section Session */}
                             <div className="grid gap-2">
                                 <div className="flex items-center justify-between">
-                                    <Label className="text-xs font-bold uppercase text-slate-500">Journée d'affectation</Label>
-                                    <Link href="/sessions" className="text-[12px] text-blue-600 hover:underline flex items-center gap-1">
+                                    <Label className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400">Journée d'affectation</Label>
+                                    <Link href="/sessions" className="text-[12px] text-blue-600 hover:underline flex items-center gap-1 dark:text-blue-400 dark:hover:text-blue-300">
                                         Sessions <ArrowRight className="h-2 w-2" />
                                     </Link>
                                 </div>
@@ -143,7 +147,7 @@ export default function AddSaleDialog({ customers, sessions }: Props) {
                                         <Button
                                             variant="outline"
                                             role="combobox"
-                                            className={cn("w-full justify-between font-medium", !selectedSessionId && "text-muted-foreground", errors.session_id && "border-destructive")}
+                                            className={cn("w-full justify-between font-medium dark:border-neutral-700 dark:bg-neutral-800 dark:text-slate-200 dark:hover:bg-neutral-700", !selectedSessionId && "text-muted-foreground dark:text-slate-400", errors.session_id && "border-destructive")}
                                         >
                                             {selectedSessionId
                                                 ? format(new Date(sessions.find((s) => s.id.toString() === selectedSessionId)?.session_date || ""), "dd MMMM yyyy")
@@ -151,15 +155,15 @@ export default function AddSaleDialog({ customers, sessions }: Props) {
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
                                     </PopoverTrigger>
-                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                        <Command>
-                                            <CommandInput placeholder="Rechercher une session..." />
+                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0 dark:border-neutral-700 dark:bg-neutral-800 dark:text-slate-200">
+                                        <Command className="dark:bg-neutral-800 dark:text-slate-200">
+                                            <CommandInput placeholder="Rechercher une session..." className="dark:text-slate-200 dark:placeholder:text-slate-400" />
                                             <CommandList>
-                                                <CommandEmpty>Aucune session trouvée.</CommandEmpty>
+                                                <CommandEmpty className="dark:text-slate-400">Aucune session trouvée.</CommandEmpty>
                                                 <CommandGroup>
                                                     {sessions.map((session) => (
                                                         <CommandItem
-                                                            className={commandItemClass}
+                                                            className={cn(commandItemClass, "dark:hover:bg-neutral-700 dark:text-slate-200 dark:focus:bg-neutral-700")}
                                                             key={session.id}
                                                             value={session.session_date}
                                                             onSelect={() => {
@@ -181,13 +185,13 @@ export default function AddSaleDialog({ customers, sessions }: Props) {
 
                             {/* Section Client */}
                             <div className="grid gap-2">
-                                <Label className="text-xs font-bold uppercase text-slate-500">Client</Label>
+                                <Label className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400">Client</Label>
                                 <Popover open={clientComboOpen} onOpenChange={setClientComboOpen}>
                                     <PopoverTrigger asChild>
                                         <Button
                                             variant="outline"
                                             role="combobox"
-                                            className={cn("w-full justify-between font-medium", !selectedCustomerId && "text-muted-foreground", errors.customer_id && "border-destructive")}
+                                            className={cn("w-full justify-between font-medium dark:border-neutral-700 dark:bg-neutral-800 dark:text-slate-200 dark:hover:bg-neutral-700", !selectedCustomerId && "text-muted-foreground dark:text-slate-400", errors.customer_id && "border-destructive")}
                                         >
                                             {selectedCustomerId
                                                 ? customers.find((c) => c.id.toString() === selectedCustomerId)?.name
@@ -195,15 +199,15 @@ export default function AddSaleDialog({ customers, sessions }: Props) {
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
                                     </PopoverTrigger>
-                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                        <Command>
-                                            <CommandInput placeholder="Rechercher un client..." />
+                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0 dark:border-neutral-700 dark:bg-neutral-800 dark:text-slate-200">
+                                        <Command className="dark:bg-neutral-800 dark:text-slate-200">
+                                            <CommandInput placeholder="Rechercher un client..." className="dark:text-slate-200 dark:placeholder:text-slate-400" />
                                             <CommandList>
-                                                <CommandEmpty>Aucun client trouvé.</CommandEmpty>
+                                                <CommandEmpty className="dark:text-slate-400">Aucun client trouvé.</CommandEmpty>
                                                 <CommandGroup>
                                                     {customers.map((customer) => (
                                                         <CommandItem
-                                                            className={commandItemClass}
+                                                            className={cn(commandItemClass, "dark:hover:bg-neutral-700 dark:text-slate-200 dark:focus:bg-neutral-700")}
                                                             key={customer.id}
                                                             value={customer.name}
                                                             onSelect={() => {
@@ -220,11 +224,11 @@ export default function AddSaleDialog({ customers, sessions }: Props) {
                                         </Command>
                                     </PopoverContent>
                                 </Popover>
-                                <InputError message={errors.customer_id} /> {/* Fix name here */}
+                                <InputError message={errors.customer_id} />
                             </div>
 
                             <div className="flex justify-end gap-3 pt-4">
-                                <Button type="submit" disabled={processing} className="w-full font-bold uppercase tracking-wider bg-slate-900">
+                                <Button type="submit" disabled={processing} className="w-full font-bold uppercase tracking-wider bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200">
                                     {processing && <Spinner className="mr-2 h-4 w-4" />}
                                     Continuer vers les articles
                                 </Button>

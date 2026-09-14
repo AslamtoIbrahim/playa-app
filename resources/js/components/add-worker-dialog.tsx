@@ -23,21 +23,21 @@ export default function AddWorkerDialog() {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button size="sm" >
+                <Button size="sm" className="bg-neutral-900 text-white hover:bg-neutral-800 dark:bg-neutral-800 dark:hover:bg-neutral-700">
                     <Plus className="mr-2 h-4 w-4" /> Ajouter un ouvrier
                 </Button>
             </DialogTrigger>
 
-            <DialogContent className="sm:max-w-106.25">
+            <DialogContent className="sm:max-w-106.25 bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
                 <DialogHeader>
                     <div className="flex items-center gap-2">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100">
-                            <UserPlus className="h-4 w-4 text-slate-600" />
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-900 text-neutral-100 dark:bg-neutral-800 dark:text-neutral-50">
+                            <UserPlus className="h-4 w-4" />
                         </div>
-                        <DialogTitle>Nouvel ouvrier</DialogTitle>
+                        <DialogTitle className="text-neutral-900 dark:text-neutral-100">Nouvel ouvrier</DialogTitle>
                     </div>
                     
-                    <DialogDescription className="pt-1">
+                    <DialogDescription className="pt-1 text-neutral-600 dark:text-neutral-400">
                         Créez un nouveau compte pour un ouvrier. Le nom doit être unique.
                     </DialogDescription>
                 </DialogHeader>
@@ -57,7 +57,7 @@ export default function AddWorkerDialog() {
                     {({ processing, errors }) => (
                         <>
                             <div className="grid gap-2">
-                                <Label htmlFor="name" className="text-xs uppercase tracking-widest text-slate-500">
+                                <Label htmlFor="name" className="text-xs uppercase tracking-widest text-neutral-500">
                                     Nom complet de l'ouvrier
                                 </Label>
                                 
@@ -67,7 +67,7 @@ export default function AddWorkerDialog() {
                                     required
                                     autoFocus
                                     placeholder="ex: Mohammed Alami"
-                                    className="h-11 focus-visible:ring-slate-400"
+                                    className="h-11 focus-visible:ring-neutral-400"
                                 />
                                 
                                 <InputError message={errors.name} />
@@ -90,9 +90,9 @@ export default function AddWorkerDialog() {
                                 <Button
                                     type="submit"
                                     disabled={processing}
-                                    className="min-w-35 bg-slate-900 hover:bg-slate-800"
+                                    className="min-w-35 text-white! bg-neutral-900 hover:bg-neutral-800 dark:bg-neutral-800 dark:!text-white dark:hover:bg-neutral-700"
                                 >
-                                    {processing && <Spinner className="mr-2 h-4 w-4" />}
+                                    {processing && <Spinner className="mr-2 h-4 w-4 text-white! dark:!text-white" />}
                                     Enregistrer l'ouvrier
                                 </Button>
                             </div>

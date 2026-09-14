@@ -89,10 +89,6 @@ export default function ReceiptShow({ receipt, items }: Props) {
             return;
         }
 
-        /**
-         * تحويل البيانات لتنسيق يقبله Inertia ويطابق الـ Controller
-         * كنصيفطو فقط الـ IDs والأرقام، بلا الـ Objects ديال الـ Relations
-         */
         const cleanData = rawData.map((row) => {
             return {
                 item_id: row.item_id,
@@ -189,33 +185,37 @@ export default function ReceiptShow({ receipt, items }: Props) {
 
 
     return (
-        <div className="p-8 space-y-2 max-w-5xl mx-auto bg-white min-h-screen text-slate-900">
+        <div className="mx-auto min-h-screen max-w-7xl space-y-6 bg-white p-6 font-sans text-slate-900 dark:bg-neutral-950 dark:text-neutral-100">
             <Head title={`Bon de Réception #${receipt.id}`} />
 
-            {/* Top Navigation */}
-            <div className="flex justify-between items-center print:hidden">
+            <div className="flex items-center justify-between print:hidden">
                 <Button
                     variant="ghost"
                     size="sm"
-                    className="text-slate-400 hover:text-slate-800 p-0 h-auto"
+                    className="h-auto p-0 text-slate-400 hover:text-slate-800 dark:hover:text-neutral-200"
                     onClick={() => router.get('/receipts')}
                 >
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Retour
                 </Button>
 
-                <div className='space-x-2'>
+                <div className="flex items-center gap-2">
                     <Button
                         onClick={handleScreenshot}
                         variant="outline"
                         size="sm"
                         title="Copy for WhatsApp"
-                        className="h-9 border-slate-200 shadow-sm hover:bg-slate-50 text-slate-500"
+                        className="h-9 border-slate-200 text-slate-500 shadow-sm hover:bg-slate-50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
                     >
                         <Camera className="h-4 w-4" />
                     </Button>
-                    <Button variant="outline" size="icon" onClick={() => window.print()} className="h-9 w-9 border-slate-200">
-                        <Printer className="h-4 w-4 text-slate-600" />
+                    <Button
+                        onClick={() => window.print()}
+                        variant="outline"
+                        size="sm"
+                        className="h-9 border-slate-200 text-slate-500 shadow-sm hover:bg-slate-50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+                    >
+                        <Printer className="h-3 w-3" />
                     </Button>
 
                     <ImportItemsDialog onImport={handleImport} />
@@ -224,83 +224,114 @@ export default function ReceiptShow({ receipt, items }: Props) {
                 </div>
             </div>
 
-            <div className='mt-4  px-2' id="receipt-content">
-                {/* Header: Date & Customer & Boat (Clean & Simple) */}
-                <div className="space-y-4" >
-                    <div className="border-t border-slate-100 pt-4 flex items-center justify-between">
-                        <h1 className="text-lg font-bold tracking-tight text-slate-900">
+            <div className="mt-4 px-2" id="receipt-content">
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between border-t border-slate-100 pt-4 dark:border-neutral-800">
+                        <h1 className="text-lg font-bold tracking-tight text-slate-900 dark:text-neutral-100">
                             {formatDateDisplay(receipt.date)}
                         </h1>
                         <SessionZoneBadge sessionZone={receipt.session_zone} />
                     </div>
-                    <div className="flex justify-between items-start">
+
+                    <div className="flex items-start justify-between">
                         <div className="space-y-1">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-neutral-500">
                                 Client Destination
                             </p>
-                            <p className="text-lg uppercase font-bold text-slate-800">
+                            <p className="text-lg font-bold uppercase text-slate-800 dark:text-neutral-200">
                                 {receipt.customer?.name || 'Client non spécifié'}
                             </p>
                         </div>
-                        {/* Boat: Dynamic rendering based on availability */}
+
                         {receipt.boat?.name && (
-                            <div className="text-right space-y-1">
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                            <div className="space-y-1 text-right">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-neutral-500">
                                     Bateau
                                 </p>
-                                <p className="text-lg font-bold text-slate-900 uppercase">
+                                <p className="text-lg font-bold uppercase text-slate-900 dark:text-neutral-100">
                                     {receipt.boat.name}
                                 </p>
                             </div>
                         )}
                     </div>
                 </div>
-                {/* Bulk Toolbar */}
-                <div className="h-10 my-2">
+
+                <div className="my-2 h-10">
                     {selectedIds.length > 0 && (
-                        <div className="flex items-center gap-6 animate-in fade-in slide-in-from-left-2 print:hidden">
-                            <span className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full">
+                        <div className="flex animate-in items-center gap-3 duration-200 fade-in slide-in-from-left-2 print:hidden">
+                            <span className="rounded bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-600 dark:bg-blue-950/60 dark:text-blue-400">
                                 {selectedIds.length} sélectionnés
                             </span>
-                            <div className="flex gap-4">
-                                <Button variant="ghost" size="sm" className="h-8 bg-destructive/8 text-xs" onClick={() => setSelectedIds([])}>
-                                    <X className="h-4 w-4" /> Annuler
+                            <div className="flex gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 gap-1.5 px-2 text-[10px] font-black uppercase tracking-tighter text-slate-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+                                    onClick={() => setSelectedIds([])}
+                                >
+                                    <X className="h-3.5 w-3.5" /> Annuler
                                 </Button>
-                                <Button variant="outline" size="sm" className="h-8 text-xs" onClick={handleBulkDuplicate}>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 gap-2 text-xs dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                                    onClick={handleBulkDuplicate}
+                                >
                                     <Copy className="h-3.5 w-3.5" /> Dupliquer
                                 </Button>
-                                <Button variant="destructive" size="sm" className="h-8 text-xs" onClick={() => setIsDeleteDialogOpen(true)}>
+                                <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    className="h-8 gap-2 text-xs"
+                                    onClick={() => setIsDeleteDialogOpen(true)}
+                                >
                                     <Trash2 className="h-3.5 w-3.5" /> Supprimer
                                 </Button>
                             </div>
                         </div>
                     )}
                 </div>
-                {/* Table Area (Simple Design) */}
-                <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
-                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd} modifiers={[restrictToVerticalAxis]}>
+
+                <div className="relative overflow-hidden rounded-lg rounded-b-none border border-slate-100 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+                    <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragStart={handleDragStart}
+                        onDragEnd={handleDragEnd}
+                        modifiers={[restrictToVerticalAxis]}
+                    >
                         <Table>
-                            <TableHeader className="bg-slate-50/50 border-b border-slate-200">
-                                <TableRow className="hover:bg-transparent">
+                            <TableHeader className="border-b border-slate-100 bg-slate-50/50 dark:border-neutral-800 dark:bg-neutral-900/50">
+                                <TableRow className="h-11 hover:bg-transparent">
                                     <TableHead className="w-10 print:hidden"></TableHead>
                                     <TableHead className="w-10 print:hidden">
                                         <Checkbox
                                             checked={selectedIds.length === localItems.length && localItems.length > 0}
-                                            onCheckedChange={(checked) => setSelectedIds(checked ? localItems.map(i => i.id) : [])}
+                                            onCheckedChange={(checked) => {
+                                                setSelectedIds(checked ? localItems.map((i) => i.id) : []);
+                                            }}
                                         />
                                     </TableHead>
-                                    <TableHead className="text-center font-bold text-foreground">Caisses</TableHead>
-
-                                    <TableHead className="w-[30%] font-bold text-foreground">Article</TableHead>
-                                    <TableHead className="text-center font-bold text-foreground">Quantité</TableHead>
-                                    <TableHead className="text-center font-bold text-foreground">Prix Unitaire</TableHead>
-                                    <TableHead className="text-center font-bold text-foreground">Montant</TableHead>
-
+                                    <TableHead className="text-center text-[10px] font-black uppercase tracking-tight text-slate-500 dark:text-neutral-400">
+                                        Caisses
+                                    </TableHead>
+                                    <TableHead className="w-[30%] text-[10px] font-black uppercase tracking-tight text-slate-500 dark:text-neutral-400">
+                                        Article
+                                    </TableHead>
+                                    <TableHead className="text-center text-[10px] font-black uppercase tracking-tight text-slate-500 dark:text-neutral-400">
+                                        Quantité
+                                    </TableHead>
+                                    <TableHead className="text-center text-[10px] font-black uppercase tracking-tight text-slate-500 dark:text-neutral-400">
+                                        Prix Unitaire
+                                    </TableHead>
+                                    <TableHead className="text-center text-[10px] font-black uppercase tracking-tight text-slate-500 dark:text-neutral-400">
+                                        Montant
+                                    </TableHead>
                                     <TableHead className="w-12 print:hidden"></TableHead>
                                 </TableRow>
                             </TableHeader>
+
                             <TableBody>
-                                {/* New Item Entry Row */}
                                 <ReceiptItemRow receiptId={receipt.id} items={items} isNew={true} />
                                 <SortableContext items={localItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
                                     {localItems.map((row) => (
@@ -311,35 +342,46 @@ export default function ReceiptShow({ receipt, items }: Props) {
                                             items={items}
                                             selected={selectedIds.includes(row.id)}
                                             onSelectChange={(checked) => {
-                                                setSelectedIds(prev => checked ? [...prev, row.id] : prev.filter(id => id !== row.id));
+                                                setSelectedIds((prev) =>
+                                                    checked ? [...prev, row.id] : prev.filter((id) => id !== row.id),
+                                                );
                                             }}
                                         />
                                     ))}
                                 </SortableContext>
                             </TableBody>
                         </Table>
+
                         <DragOverlay dropAnimation={null}>
                             {activeId ? (
-                                <ReceiptItemDragOverlay items={localItems.filter(item => selectedIds.includes(activeId as number) ? selectedIds.includes(item.id) : item.id === activeId)} />
+                                <ReceiptItemDragOverlay
+                                    items={
+                                        localItems.filter((item) =>
+                                            selectedIds.includes(activeId as number)
+                                                ? selectedIds.includes(item.id)
+                                                : item.id === activeId,
+                                        )
+                                    }
+                                />
                             ) : null}
                         </DragOverlay>
                     </DndContext>
                 </div>
-                {/* Simple Totals (Matches image_fdaed6.png footer) */}
-                <div className="flex flex-col items-end space-y-4 pt-4 pr-2 ">
-                    <div className="flex items-center justify-between gap-6 text-slate-500">
-                        <span className="text-xs text-start font-medium text-slate-400">Total Caisses</span>
-                        <span className="font-bold text-slate-900 text-md">{receipt.total_boxes || 0}</span>
+
+                <div className="flex flex-col items-end space-y-4 pt-4 pr-2">
+                    <div className="flex items-center justify-between gap-6 text-slate-500 dark:text-neutral-400">
+                        <span className="text-xs font-medium text-slate-400 dark:text-neutral-500">Total Caisses</span>
+                        <span className="text-md font-bold text-slate-900 dark:text-neutral-100">{receipt.total_boxes || 0}</span>
                     </div>
                     <div className="flex items-center gap-6">
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-neutral-500">
                             Total Montant
                         </span>
                         <div className="flex items-baseline gap-1">
-                            <span className="text-2xl font-bold text-slate-900 tracking-tight">
+                            <span className="text-2xl font-bold tracking-tight text-slate-900 dark:text-neutral-100">
                                 {(Number(receipt.total_amount) || 0).toLocaleString('fr-FR', { minimumFractionDigits: 0 })}
                             </span>
-                            <span className="text-xs font-bold text-slate-400 uppercase">DH</span>
+                            <span className="text-xs font-bold uppercase text-slate-400 dark:text-neutral-500">DH</span>
                         </div>
                     </div>
                 </div>

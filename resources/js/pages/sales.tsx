@@ -51,10 +51,10 @@ export default function Sales({ sales, customers, sessions }: Props) {
                 {/* Header Section */}
                 <div className="flex flex-col justify-between gap-4 px-2 sm:flex-row sm:items-center">
                     <div>
-                        <h1 className="text-2xl font-black tracking-tight text-slate-900 uppercase">
+                        <h1 className="text-2xl font-black tracking-tight text-slate-900 uppercase dark:text-slate-100">
                             Ventes
                         </h1>
-                        <p className="text-sm font-medium text-muted-foreground">
+                        <p className="text-sm font-medium text-muted-foreground dark:text-slate-400">
                             Gestion des bons de vente et sorties clients.
                         </p>
                     </div>
@@ -66,18 +66,18 @@ export default function Sales({ sales, customers, sessions }: Props) {
                 </div>
 
                 {/* Table Card */}
-                <div className="flex-1 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div className="flex-1 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900/90">
                     <Table>
-                        <TableHeader className="bg-slate-50/50">
-                            <TableRow className="border-b border-slate-200 text-sm hover:bg-transparent">
-                                <TableHead className="w-16 font-bold text-slate-800">ID</TableHead>
-                                <TableHead className="font-bold text-slate-800">Date</TableHead>
-                                <TableHead className="font-bold text-slate-800">Client</TableHead>
-                                <TableHead className="font-bold text-slate-800 text-center">Journnée</TableHead>
-                                <TableHead className="font-bold text-slate-800 text-center">Type</TableHead>
-                                <TableHead className="text-center font-bold text-slate-800">Caisses</TableHead>
-                                <TableHead className="text-center font-bold text-slate-800">Poids</TableHead>
-                                <TableHead className="text-right font-bold text-slate-800">Montant</TableHead>
+                        <TableHeader className="bg-slate-50/50 dark:bg-neutral-800/50">
+                            <TableRow className="border-b border-slate-200 dark:border-neutral-700 text-sm hover:bg-transparent">
+                                <TableHead className="w-16 font-bold text-slate-800 dark:text-slate-200">ID</TableHead>
+                                <TableHead className="font-bold text-slate-800 dark:text-slate-200">Date</TableHead>
+                                <TableHead className="font-bold text-slate-800 dark:text-slate-200">Client</TableHead>
+                                <TableHead className="font-bold text-slate-800 dark:text-slate-200 text-center">Journnée</TableHead>
+                                <TableHead className="font-bold text-slate-800 dark:text-slate-200 text-center">Type</TableHead>
+                                <TableHead className="text-center font-bold text-slate-800 dark:text-slate-200">Caisses</TableHead>
+                                <TableHead className="text-center font-bold text-slate-800 dark:text-slate-200">Poids</TableHead>
+                                <TableHead className="text-right font-bold text-slate-800 dark:text-slate-200">Montant</TableHead>
                                 <TableHead className="w-12"></TableHead>
                             </TableRow>
                         </TableHeader>
@@ -90,7 +90,7 @@ export default function Sales({ sales, customers, sessions }: Props) {
                                         onClick={() => {
                                             handleRowClick(sale.id);
                                         }}
-                                        className="group cursor-pointer border-b border-slate-100 transition-all last:border-0 hover:bg-slate-50"
+                                        className="group cursor-pointer border-b border-slate-100 transition-all last:border-0 hover:bg-slate-50 dark:border-neutral-800 dark:hover:bg-neutral-800/50"
                                     >
                                         <TableCell className="font-mono font-semibold text-slate-900">
                                             #{sale.id}
@@ -115,25 +115,28 @@ export default function Sales({ sales, customers, sessions }: Props) {
                                                 <Badge
                                                     variant="outline"
                                                     className={cn(
-                                                        "inline-flex items-center gap-1 font-bold border transition-colors",
-                                                        // Ila kant open: l'khdar
-                                                        sale.session.status === 'open' && "bg-emerald-50 text-emerald-700 border-emerald-200",
-                                                        // Ila kant closed: l'orange (ola amber)
-                                                        sale.session.status === 'closed' && "bg-amber-50 text-amber-700 border-amber-200"
+                                                        'inline-flex items-center gap-1 font-bold border transition-colors',
+                                                        sale.session.status === 'open' &&
+                                                            'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800',
+                                                        sale.session.status === 'closed' &&
+                                                            'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800',
                                                     )}
                                                 >
-                                                    {/* Kandiro dik l'point sghira dyal status */}
-                                                    <span className={cn(
-                                                        "size-2 rounded-full",
-                                                        sale.session.status === 'open' ? "bg-emerald-500" : "bg-amber-500"
-                                                    )} />
+                                                    <span
+                                                        className={cn(
+                                                            'size-2 rounded-full',
+                                                            sale.session.status === 'open'
+                                                                ? 'bg-emerald-500 dark:bg-emerald-400'
+                                                                : 'bg-amber-500 dark:bg-amber-400',
+                                                        )}
+                                                    />
 
                                                     <span className="text-[11px] uppercase tracking-wider">
                                                         {format(new Date(sale.session.session_date), 'dd/MM/yy')}
                                                     </span>
                                                 </Badge>
                                             ) : (
-                                                <span className="text-xs text-slate-300">-</span>
+                                                <span className="text-xs text-slate-300 dark:text-neutral-600">-</span>
                                             )}
                                         </TableCell>
 
@@ -141,8 +144,10 @@ export default function Sales({ sales, customers, sessions }: Props) {
                                             <Badge
                                                 variant="secondary"
                                                 className={cn(
-                                                    "text-[10px] uppercase font-bold px-2 py-0",
-                                                    sale.type === 'usine' ? "bg-purple-50 text-purple-700 border-purple-100" : "bg-blue-50 text-blue-700 border-blue-100"
+                                                    'text-[10px] uppercase font-bold px-2 py-0',
+                                                    sale.type === 'usine'
+                                                        ? 'bg-purple-50 text-purple-700 border border-purple-100 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-900'
+                                                        : 'bg-blue-50 text-blue-700 border border-blue-100 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-900',
                                                 )}
                                             >
                                                 {sale.type}
@@ -161,7 +166,7 @@ export default function Sales({ sales, customers, sessions }: Props) {
                                             </div>
                                         </TableCell>
 
-                                        <TableCell className="bg-slate-50/30 text-right text-base font-black text-slate-900">
+                                        <TableCell className="bg-slate-50/30 text-right text-base font-black text-slate-900 dark:bg-slate-900/30 dark:text-slate-100">
                                             {new Intl.NumberFormat('fr-FR', {
                                                 minimumFractionDigits: 2,
                                             }).format(Number(sale.amount))}
@@ -195,8 +200,8 @@ export default function Sales({ sales, customers, sessions }: Props) {
                     </Table>
 
                     {/* Pagination */}
-                    <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50/50 px-6 py-4">
-                        <div className="text-xs font-bold tracking-widest text-slate-500 uppercase">
+                    <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50/50 px-6 py-4 dark:border-neutral-800 dark:bg-neutral-800/50">
+                        <div className="text-xs font-bold tracking-widest text-slate-500 uppercase dark:text-slate-400">
                             {sales.total} Ventes au total
                         </div>
 
@@ -215,9 +220,9 @@ export default function Sales({ sales, customers, sessions }: Props) {
                                         variant={link.active ? 'default' : 'outline'}
                                         size="sm"
                                         className={cn(
-                                            'h-9 min-w-9 text-xs font-bold shadow-none transition-all',
+                                            'h-9 min-w-9 text-xs font-bold shadow-none transition-all dark:border-neutral-700 dark:bg-neutral-800 dark:text-slate-200 dark:hover:bg-neutral-700 dark:hover:text-slate-100',
                                             !link.url && 'pointer-events-none cursor-not-allowed opacity-40',
-                                            link.active && 'scale-105 shadow-md',
+                                            link.active && 'scale-105 shadow-md dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90',
                                         )}
                                         asChild={!!link.url}
                                     >

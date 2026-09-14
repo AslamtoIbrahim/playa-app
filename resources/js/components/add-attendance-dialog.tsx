@@ -64,7 +64,7 @@ export default function AddAttendanceDialog({ sessionZones }: Props) {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button size="sm" className="font-bold bg-slate-900 hover:bg-slate-800">
+                <Button size="sm" className="font-bold bg-neutral-900 text-neutral-50 hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200">
                     <Plus className="mr-2 h-4 w-4" /> Nouveau Pointage
                 </Button>
             </DialogTrigger>
@@ -95,7 +95,7 @@ export default function AddAttendanceDialog({ sessionZones }: Props) {
                             <input type="hidden" name="session_zone_id" value={selectedSessionZoneId} />
                             {/* SessionZone Field */}
                             <div className="grid gap-2">
-                                <Label className="text-xs font-bold uppercase text-slate-500">
+                                <Label className="text-xs font-bold uppercase text-neutral-500 dark:text-neutral-400">
                                     Journée & Zone
                                 </Label>
 
@@ -105,15 +105,15 @@ export default function AddAttendanceDialog({ sessionZones }: Props) {
                                             variant="outline"
                                             role="combobox"
                                             className={cn(
-                                                "w-full justify-between font-medium text-left h-auto py-2 border-slate-200 shadow-sm",
+                                                "w-full justify-between font-medium text-left h-auto py-2 border-neutral-200 bg-white text-neutral-900 shadow-sm dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100",
                                                 !selectedSessionZoneId && "text-muted-foreground",
                                                 errors.session_zone_id && "border-destructive"
                                             )}
                                         >
                                             <div className="flex flex-col items-start gap-0.5 overflow-hidden">
                                                 {selectedSessionZoneId ? (
-                                                    <span className="truncate capitalize flex items-center gap-2 text-slate-900">
-                                                        <Clock className="h-4 w-4 text-slate-400" />
+                                                    <span className="truncate capitalize flex items-center gap-2 text-neutral-900 dark:text-neutral-100">
+                                                        <Clock className="h-4 w-4 text-neutral-400 dark:text-neutral-500" />
                                                         {getSessionZoneLabel(selectedSessionZoneId)}
                                                     </span>
                                                 ) : (
@@ -134,7 +134,7 @@ export default function AddAttendanceDialog({ sessionZones }: Props) {
                                                 <CommandGroup>
                                                     {sessionZones.map((sz) => (
                                                         <CommandItem
-                                                            className={cn(commandItemClass, "flex items-center justify-between gap-2")}
+                                                            className={cn(commandItemClass, "flex items-center justify-between gap-2 dark:text-neutral-100")}
                                                             key={sz.id}
                                                             // Valeur de recherche : combine date et nom de zone
                                                             value={`${sz.daily_session?.session_date} ${sz.zone?.name}`}
@@ -151,10 +151,10 @@ export default function AddAttendanceDialog({ sessionZones }: Props) {
                                                                     )}
                                                                 />
                                                                 <div className="flex flex-col">
-                                                                    <span className="font-bold">
+                                                                    <span className="font-bold dark:text-neutral-100">
                                                                         {sz.daily_session ? format(new Date(sz.daily_session.session_date), "dd/MM/yyyy") : 'N/A'}
                                                                     </span>
-                                                                    <span className="text-xs text-slate-700 capitalize font-medium flex items-center gap-1">
+                                                                    <span className="text-xs text-neutral-700 capitalize font-medium flex items-center gap-1 dark:text-neutral-300">
                                                                         <MapPin className="h-3 w-3" /> {sz.zone?.name}
                                                                     </span>
                                                                 </div>
@@ -162,7 +162,7 @@ export default function AddAttendanceDialog({ sessionZones }: Props) {
 
                                                             <span className={cn(
                                                                 "ml-auto text-[10px] px-1.5 py-0.5 rounded uppercase font-bold",
-                                                                sz.daily_session?.status === 'open' ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"
+                                                                sz.daily_session?.status === 'open' ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" : "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300"
                                                             )}>
                                                                 {sz.daily_session?.status}
                                                             </span>
@@ -177,11 +177,11 @@ export default function AddAttendanceDialog({ sessionZones }: Props) {
                                 <InputError message={errors.session_zone_id} />
                             </div>
 
-                            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-2">
+                            <div className="flex justify-end gap-3 pt-4 border-t border-neutral-100 mt-2 dark:border-neutral-800">
                                 <Button
                                     type="submit"
                                     disabled={processing || !selectedSessionZoneId}
-                                    className="w-full font-black uppercase tracking-widest shadow-lg shadow-slate-200"
+                                    className="w-full font-black uppercase tracking-widest shadow-lg shadow-neutral-200 dark:shadow-neutral-950"
                                 >
                                     {processing && <Spinner className="mr-2 h-4 w-4" />}
                                     Confirmer l'ouverture

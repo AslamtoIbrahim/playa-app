@@ -76,15 +76,31 @@ export default function SalesShow({ sale, boats, items }: Props) {
         setActiveId(null);
 
         if (over && active.id !== over.id) {
-            const oldIndex = localItems.findIndex((i) => i.id === active.id);
-            const newIndex = localItems.findIndex((i) => i.id === over.id);
+            const isMovingBatch = selectedIds.includes(active.id as number);
+            let newOrder: SaleItem[];
 
-            const newOrder = arrayMove(localItems, oldIndex, newIndex);
+            if (isMovingBatch) {
+                const movingItems = localItems.filter((item) =>
+                    selectedIds.includes(item.id),
+                );
+                const remainingItems = localItems.filter(
+                    (item) => !selectedIds.includes(item.id),
+                );
+                const overIndexInRemaining = remainingItems.findIndex(
+                    (item) => item.id === over.id,
+                );
+                newOrder = [...remainingItems];
+                newOrder.splice(overIndexInRemaining, 0, ...movingItems);
+            } else {
+                const oldIndex = localItems.findIndex((i) => i.id === active.id);
+                const newIndex = localItems.findIndex((i) => i.id === over.id);
+                newOrder = arrayMove(localItems, oldIndex, newIndex);
+            }
 
             setLocalItems(newOrder);
 
             router.post(reorder(sale.id), {
-                items: newOrder.map((i) => i.id)
+                items: newOrder.map((i) => i.id),
             }, {
                 preserveScroll: true,
                 preserveState: true,
@@ -190,73 +206,81 @@ export default function SalesShow({ sale, boats, items }: Props) {
     };
 
     return (
-        <div className="p-6 space-y-6 max-w-7xl mx-auto bg-white min-h-screen text-slate-900 font-sans">
+        <div className="mx-auto min-h-screen max-w-7xl space-y-6 bg-white p-6 font-sans text-slate-900 dark:bg-neutral-950 dark:text-neutral-100">
             <Head title={`Vente #${sale.id}`} />
 
             <SaleHeader sale={sale} />
             <SaleStatsGrid stats={stats} />
 
-            {/* Header dyal l-Vente (Tqder t-dir component bhal InvoiceHeader) */}
-            <div className="w-full flex justify-end items-center">
-                <div className="flex gap-2 print:hidden">
+            <div className="flex justify-end gap-4 print:hidden">
+                <Button
+                    onClick={handleScreenshot}
+                    variant="outline"
+                    size="sm"
+                    title="Copy for WhatsApp"
+                    className="h-9 border-slate-200 text-slate-500 shadow-sm hover:bg-slate-50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+                >
+                    <Camera className="h-4 w-4" />
+                </Button>
 
-                    <Button
-                        onClick={handleScreenshot}
-                        variant="outline"
-                        size="sm"
-                        className="h-9 border-slate-200 shadow-sm hover:bg-slate-50 text-slate-500"
-                        title="Copy for WhatsApp"
-                    >
-                        <Camera className="h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={handlePrint}
-                        className="h-9 border-slate-200 shadow-sm hover:bg-slate-50 text-slate-500"
-                        title="Print"
-                    >
-                        <Printer className="h-4 w-4" />
-                    </Button>
+                <Button
+                    onClick={handlePrint}
+                    variant="outline"
+                    size="sm"
+                    className="h-9 border-slate-200 text-slate-500 shadow-sm hover:bg-slate-50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+                >
+                    <Printer className="h-3 w-3" />
+                </Button>
 
-                    <ImportItemsDialog onImport={handleImport} />
+                <ImportItemsDialog onImport={handleImport} />
 
-                    <ExportDropdown
-                        onExport={handleExport}
-                    />
-                </div>
+                <ExportDropdown onExport={handleExport} />
             </div>
 
-            {/* Toolbar dyal l-Actions Bulk */}
-            <div className="h-10 flex items-center justify-between">
+            <div className="flex items-center justify-between">
                 {selectedIds.length > 0 ? (
-                    <div className="flex items-center gap-3 animate-in fade-in slide-in-from-left-2 duration-200">
-                        <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                            {selectedIds.length} sélectionnés
-                        </span>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setSelectedIds([])}
-                            className="h-8 text-xs text-slate-500"
-                        >
-                            <X className="h-3 w-3 mr-1" /> Annuler
-                        </Button>
-                        <Button variant="outline" size="sm" className="h-8 text-xs gap-2"
-                            onClick={handleBulkDuplicate}>
-                            <Copy className="h-3.5 w-3.5" /> Dupliquer
-                        </Button>
-                        <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => setIsDeleteDialogOpen(true)}
-                            className="h-8 text-xs gap-2"
-                        >
-                            <Trash2 className="h-3.5 w-3.5" /> Supprimer
-                        </Button>
+                    <div className="flex animate-in items-center gap-3 duration-200 fade-in slide-in-from-left-2">
+                        <div className="flex items-center gap-2">
+                            <span className="rounded bg-neutral-100 px-2 py-1 text-xs font-semibold text-neutral-700 dark:bg-neutral-800 dark:text-neutral-200">
+                                {selectedIds.length} sélectionnés
+                            </span>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 gap-1.5 px-2 text-[10px] font-black tracking-tighter text-slate-500 uppercase transition-colors hover:bg-red-50 hover:text-red-600 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+                                onClick={() => setSelectedIds([])}
+                            >
+                                <X className="h-3.5 w-3.5" /> Annuler
+                            </Button>
+                        </div>
+                        <div className="flex gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 gap-2 text-xs dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                                onClick={handleBulkDuplicate}
+                            >
+                                <Copy className="h-3.5 w-3.5" /> Dupliquer
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                size="sm"
+                                className="h-8 gap-2 text-xs"
+                                onClick={() => setIsDeleteDialogOpen(true)}
+                            >
+                                <Trash2 className="h-3.5 w-3.5" /> Supprimer
+                            </Button>
+                        </div>
                     </div>
-                ) : <div />}
+                ) : (
+                    <div />
+                )}
             </div>
 
-            {/* Table Area */}
-            <div id="sale-content" className="border border-slate-100 rounded-lg overflow-hidden shadow-sm relative bg-white">
+            <div
+                id="sale-content"
+                className="relative overflow-hidden rounded-lg rounded-b-none border border-slate-100 shadow-sm dark:border-neutral-800 dark:bg-neutral-900"
+            >
                 <DndContext
                     sensors={sensors}
                     collisionDetection={closestCenter}
@@ -265,31 +289,54 @@ export default function SalesShow({ sale, boats, items }: Props) {
                     modifiers={[restrictToVerticalAxis]}
                 >
                     <Table>
-                        <TableHeader className="bg-slate-50/50">
+                        <TableHeader className="border-b border-slate-100 bg-slate-50/50 dark:border-neutral-800 dark:bg-neutral-900/50">
                             <TableRow className="h-11 hover:bg-transparent">
                                 <TableHead className="w-8 print:hidden"></TableHead>
                                 <TableHead className="w-10 print:hidden">
                                     <Checkbox
-                                        checked={selectedIds.length === localItems.length && localItems.length > 0}
+                                        className="mt-1 mr-2"
+                                        checked={
+                                            selectedIds.length === localItems.length &&
+                                            localItems.length > 0
+                                        }
                                         onCheckedChange={(checked) => {
-                                            setSelectedIds(checked ? localItems.map(i => i.id) : []);
+                                            if (checked) {
+                                                setSelectedIds(localItems.map((i) => i.id));
+                                            } else {
+                                                setSelectedIds([]);
+                                            }
                                         }}
                                     />
                                 </TableHead>
-                                <TableHead className="text-[10px] font-black uppercase text-slate-500">Bateau</TableHead>
-                                <TableHead className="text-[10px] font-black uppercase text-slate-500">Espèces</TableHead>
-                                <TableHead className="text-center text-[10px] font-black uppercase text-slate-500">Qte/nc</TableHead>
-                                <TableHead className="text-right text-[10px] font-black uppercase text-slate-500">prix unitaire</TableHead>
-                                <TableHead className="text-center text-[10px] font-black uppercase text-slate-500">Unité</TableHead>
-                                <TableHead className="text-center text-[10px] font-black uppercase text-slate-500">Poids</TableHead>
-                                <TableHead className="text-center text-[10px] font-black uppercase text-slate-500">Caisses</TableHead>
-                                <TableHead className="text-right px-6 text-[10px] font-black uppercase text-slate-500">Total DH</TableHead>
+                                <TableHead className="text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
+                                    Bateau
+                                </TableHead>
+                                <TableHead className="text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
+                                    Espèces
+                                </TableHead>
+                                <TableHead className="text-center text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
+                                    Qte / NC
+                                </TableHead>
+                                <TableHead className="text-right text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
+                                    Prix Unitaire
+                                </TableHead>
+                                <TableHead className="text-center text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
+                                    Unité
+                                </TableHead>
+                                <TableHead className="text-center text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
+                                    Poids
+                                </TableHead>
+                                <TableHead className="text-center text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
+                                    Caisses
+                                </TableHead>
+                                <TableHead className="px-6 text-right text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
+                                    Valeur DH
+                                </TableHead>
                                 <TableHead className="w-12 print:hidden"></TableHead>
                             </TableRow>
                         </TableHeader>
 
                         <TableBody>
-                            {/* Row jdida dima l-fouq */}
                             <SaleItemRow
                                 saleId={sale.id}
                                 boats={boats}
@@ -297,7 +344,10 @@ export default function SalesShow({ sale, boats, items }: Props) {
                                 isNew={true}
                             />
 
-                            <SortableContext items={localItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+                            <SortableContext
+                                items={localItems.map((i) => i.id)}
+                                strategy={verticalListSortingStrategy}
+                            >
                                 {localItems.map((row) => (
                                     <SaleItemRow
                                         key={row.id}
@@ -307,9 +357,10 @@ export default function SalesShow({ sale, boats, items }: Props) {
                                         items={items}
                                         selected={selectedIds.includes(row.id)}
                                         onSelectChange={(checked) => {
-                                            setSelectedIds(prev => checked
-                                                ? [...prev, row.id]
-                                                : prev.filter(id => id !== row.id)
+                                            setSelectedIds((prev) =>
+                                                checked
+                                                    ? [...prev, row.id]
+                                                    : prev.filter((id) => id !== row.id),
                                             );
                                         }}
                                     />
@@ -319,15 +370,18 @@ export default function SalesShow({ sale, boats, items }: Props) {
                     </Table>
 
                     <DragOverlay dropAnimation={null}>
-                        {activeId ? (
-                            <SaleItemDragOverlay
-                                items={localItems.filter(i =>
-                                    selectedIds.includes(activeId as number)
-                                        ? selectedIds.includes(i.id)
-                                        : i.id === activeId
-                                )}
-                            />
-                        ) : null}
+                        {activeId
+                            ? (() => {
+                                const isSelected = selectedIds.includes(activeId as number);
+                                const itemsToDisplay = isSelected
+                                    ? localItems.filter((item) =>
+                                        selectedIds.includes(item.id),
+                                    )
+                                    : localItems.filter((item) => item.id === activeId);
+
+                                return <SaleItemDragOverlay items={itemsToDisplay} />;
+                            })()
+                            : null}
                     </DragOverlay>
                 </DndContext>
             </div>
