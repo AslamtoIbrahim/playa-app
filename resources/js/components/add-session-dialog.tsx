@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Calendar } from "@/components/ui/calendar";
-import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
     Dialog,
     DialogContent,
@@ -31,17 +31,8 @@ interface Props {
 export default function AddSessionDialog({ existingDates = [], zones }: Props) {
     const [open, setOpen] = useState<boolean>(false);
     const [date, setDate] = useState<Date>(new Date());
-    const [selectedZones, setSelectedZones] = useState<number[]>([]);
+    const [selectedZoneId, setSelectedZoneId] = useState<string>("");
 
-    const toggleZone = (zoneId: number) => {
-        if (selectedZones.includes(zoneId)) {
-            setSelectedZones(selectedZones.filter((id) => {
-                return id !== zoneId;
-            }));
-        } else {
-            setSelectedZones([...selectedZones, zoneId]);
-        }
-    };
 
     const disabledDays = (day: Date): boolean => {
         const formattedDay = format(day, "yyyy-MM-dd");
@@ -77,7 +68,7 @@ export default function AddSessionDialog({ existingDates = [], zones }: Props) {
                         toast.success('Session ouverte avec succès ! 🚀');
                         setOpen(false);
                         setDate(new Date());
-                        setSelectedZones([]);
+                        setSelectedZoneId("");
                     }}
                     className="space-y-6 pt-4"
                 >
@@ -91,16 +82,13 @@ export default function AddSessionDialog({ existingDates = [], zones }: Props) {
                                     value={date ? format(date, "yyyy-MM-dd") : ""}
                                 />
 
-                                {selectedZones.map((id) => {
-                                    return (
-                                        <input
-                                            key={id}
-                                            type="hidden"
-                                            name="selected_zones[]"
-                                            value={id}
-                                        />
-                                    );
-                                })}
+                                {selectedZoneId && (
+                                    <input
+                                        type="hidden"
+                                        name="selected_zones[]"
+                                        value={selectedZoneId}
+                                    />
+                                )}
 
                                 {/* Date Picker Section */}
                                 <div className="grid gap-2">
@@ -155,49 +143,51 @@ export default function AddSessionDialog({ existingDates = [], zones }: Props) {
                                 <div className="grid gap-3">
                                     <div className="flex items-center justify-between">
                                         <Label className="text-xs font-bold uppercase text-slate-500">
-                                            Zones à inclure ({selectedZones.length})
+                                            Zone de la session
                                         </Label>
                                         <MissingZonePopup />
                                     </div>
 
-
-
                                     <ScrollArea className="h-64 rounded-md border-2 border-slate-100 bg-slate-50/50 p-4 dark:border-neutral-800 dark:bg-neutral-900/50">
-                                        <div className="space-y-2">
+                                        <RadioGroup
+                                            value={selectedZoneId}
+                                            onValueChange={setSelectedZoneId}
+                                            className="space-y-2"
+                                        >
                                             {zones.map((zone) => {
-                                                const isSelected = selectedZones.includes(zone.id);
+                                                const zoneIdStr = zone.id.toString();
+                                                const isSelected = selectedZoneId === zoneIdStr;
 
                                                 return (
-                                                    <div
+                                                    <label
                                                         key={zone.id}
+                                                        htmlFor={`zone-${zone.id}`}
                                                         className={`
-                                                                group flex items-center space-x-3 p-3 rounded-lg border transition-all duration-200
-                                                                ${isSelected
+                                                            group flex items-center space-x-3 p-3 rounded-lg border transition-all duration-200 cursor-pointer select-none
+                                                            ${isSelected
                                                                 ? 'border-primary/40 bg-primary/5 shadow-sm dark:bg-primary/10'
                                                                 : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:border-neutral-700 dark:hover:bg-neutral-800'
-                                                                }  `}
+                                                            }
+                                                        `}
                                                     >
-                                                        <Checkbox
+                                                        <RadioGroupItem
+                                                            value={zoneIdStr}
                                                             id={`zone-${zone.id}`}
-                                                            checked={isSelected}
-                                                            onCheckedChange={() => {
-                                                                return toggleZone(zone.id);
-                                                            }}
                                                             className="transition-transform duration-200 group-hover:scale-110"
                                                         />
 
-                                                        <label
-                                                            htmlFor={`zone-${zone.id}`}
-                                                            className={`flex-1 text-sm font-semibold cursor-pointer select-none transition-colors
-                                                             ${isSelected ? 'text-primary' : 'text-slate-700 dark:text-neutral-300'}  `}
+                                                        <span
+                                                            className={`flex-1 text-sm font-semibold transition-colors
+                                                                ${isSelected ? 'text-primary' : 'text-slate-700 dark:text-neutral-300'}
+                                                            `}
                                                         >
                                                             {zone.name}
-                                                        </label>
+                                                        </span>
 
                                                         {isSelected && (
                                                             <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
                                                         )}
-                                                    </div>
+                                                    </label>
                                                 );
                                             })}
 
@@ -206,14 +196,14 @@ export default function AddSessionDialog({ existingDates = [], zones }: Props) {
                                                     Aucune zone disponible.
                                                 </div>
                                             )}
-                                        </div>
+                                        </RadioGroup>
                                     </ScrollArea>
                                 </div>
 
                                 <div className="flex justify-end gap-3 pt-2">
                                     <Button
                                         type="submit"
-                                        disabled={processing || selectedZones.length === 0}
+                                        disabled={processing || !selectedZoneId}
                                         className="w-full font-bold uppercase tracking-widest py-7 text-md shadow-md"
                                     >
                                         {processing ? (

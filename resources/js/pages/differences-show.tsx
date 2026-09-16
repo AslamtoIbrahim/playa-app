@@ -158,7 +158,7 @@ export default function DifferenceShow({ details, total_boxes, total_amount }: P
                                 <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
                                     <TableHead className="w-[30%] font-bold text-foreground dark:text-neutral-100">Article</TableHead>
                                     <TableHead className="text-center font-bold text-foreground dark:text-neutral-100">Qté</TableHead>
-                                    <TableHead className="text-right font-bold text-foreground dark:text-neutral-100">Réel</TableHead>
+                                    <TableHead className="text-right font-bold text-foreground dark:text-neutral-100">Prix Réel</TableHead>
                                     <TableHead className="text-right font-bold text-foreground dark:text-neutral-100">Prix Unitaire</TableHead>
                                     <TableHead className="text-right font-bold text-foreground dark:text-neutral-100">Montant</TableHead>
                                 </TableRow>
