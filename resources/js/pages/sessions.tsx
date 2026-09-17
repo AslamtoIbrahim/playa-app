@@ -20,14 +20,13 @@ import { CalendarDays, Lock, Unlock } from 'lucide-react';
 interface Props {
     sessions: DailySession[];
     zones: Zone[]; // نضفنا الـ zones هنا
-    existingDates: string[];
+    // existingDates: string[];
 }
 
-export default function Sessions({ sessions, zones, existingDates }: Props) {
+export default function Sessions({ sessions, zones }: Props) {
     const calculateMargin = (sell: number, buy: number) => {
         return sell - buy;
     };
-
 
     const handleRowClick = (sessionId: number) => {
         router.visit(`/sessions/${sessionId}`);
@@ -56,7 +55,7 @@ export default function Sessions({ sessions, zones, existingDates }: Props) {
                         </p>
                     </div>
 
-                    <AddSessionDialog existingDates={existingDates} zones={zones} />
+                    <AddSessionDialog zones={zones} />
                 </div>
 
                 <div className="flex-1 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900/90">
@@ -151,7 +150,6 @@ export default function Sessions({ sessions, zones, existingDates }: Props) {
                                                         <>
                                                             <EditSessionDialog
                                                                 session={session}
-                                                                existingDates={existingDates}
                                                                 zones={zones}
                                                             />
 

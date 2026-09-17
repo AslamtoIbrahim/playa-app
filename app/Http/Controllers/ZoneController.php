@@ -27,7 +27,7 @@ class ZoneController extends Controller
         $existingZone = Zone::withTrashed()->where('name', $request->name)->first();
 
         if ($existingZone) {
-            if (!$existingZone->trashed()) {
+            if (! $existingZone->trashed()) {
                 // تكرار حقيقي: المنطقة موجودة وخدّامة
                 return back()->withErrors(['name' => 'Cette zone existe déjà.']);
             }
@@ -73,6 +73,32 @@ class ZoneController extends Controller
         return redirect()->back()->with('success', 'Zone mise à jour avec succès ! 🔄');
     }
 
+    public function show(Zone $zone)
+    {
+        $zone->load(['sessionZones.dailySession']);
+
+        return Inertia::render('zones-show', [
+            'zone' => $zone,
+            'dailySessions' => $zone->sessionZones->map(function ($sessionZone) {
+                return [
+                    'id' => $sessionZone->dailySession->id ?? null,
+                    'session_date' => $sessionZone->dailySession->session_date ?? null,
+                    'status' => $sessionZone->dailySession->status ?? null,
+                    'total_buy' => $sessionZone->total_buy,
+                    'total_sell' => $sessionZone->total_sell,
+                    'closed_at' => $sessionZone->dailySession->closed_at ?? null,
+                ];
+            }),
+            'existingSessionDates' => $zone->sessionZones()
+                ->with('dailySession')
+                ->get()
+                ->pluck('dailySession.session_date')
+                ->filter()
+                ->values()
+                ->toArray(),
+        ]);
+    }
+
     public function destroy(Zone $zone)
     {
         // التحقق واش المنطقة مرتبطة بـ SessionZones (بما أننا خدمنا بالـ Pivot Table)
@@ -91,3 +117,4 @@ class ZoneController extends Controller
         return redirect()->back()->with('success', "La zone '{$zone->name}' a été archivée. 📁");
     }
 }
+

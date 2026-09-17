@@ -77,7 +77,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('invoices/{invoice}/items/bulk-delete', [InvoiceItemController::class, 'destroyMany'])->name('invoices.items.destroyMany');
     Route::delete('invoices/{invoice}/items/{item}', [InvoiceItemController::class, 'destroy'])->name('invoices.items.destroy');
 
-
     // Difference Management Routes
     Route::prefix('differences')->group(function () {
         Route::get('/', [DifferenceController::class, 'index'])->name('differences');
@@ -93,7 +92,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/bulk-duplicate', [DifferenceController::class, 'duplicateMany'])->name('differences.duplicateMany');
         Route::delete('/bulk-delete', [DifferenceController::class, 'destroyMany'])->name('differences.destroyMany');
     });
-
 
     // Payments Routes (Direct Import Style)
     Route::get('payments', [PaymentController::class, 'index'])->name('payments');
@@ -130,7 +128,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('items', [ItemController::class, 'store'])->name('items.store');
     Route::patch('items/{item}', [ItemController::class, 'update'])->name('items.update');
     Route::delete('items/{item}', [ItemController::class, 'destroy'])->name('items.destroy');
-
 
     // --- Receipts Routes
     Route::get('receipts', [ReceiptController::class, 'index'])->name('receipts');
@@ -192,7 +189,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('workers/{worker}', [WorkerController::class, 'update'])->name('workers.update');
     Route::delete('workers/{worker}', [WorkerController::class, 'destroy'])->name('workers.destroy');
 
-
     // --- Attendances Routes (Header) ---
     Route::get('attendances', [AttendanceController::class, 'index'])->name('attendances');
     Route::post('attendances', [AttendanceController::class, 'store'])->name('attendances.store');
@@ -201,13 +197,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('attendances/{attendance}', [AttendanceController::class, 'destroy'])->name('attendances.destroy');
 
     // --- Attendance Items Routes (Details) ---
-    Route::prefix('attendances/{attendance}/items')->group(function () { {
-            // Bulk Operations
-            Route::post('bulk', [AttendanceItemController::class, 'bulkStore'])->name('attendances.items.bulkStore');
-            Route::delete('bulk', [AttendanceItemController::class, 'bulkDestroy'])->name('attendances.items.bulkDestroy');
-            // Single Store
-            Route::post('/', [AttendanceItemController::class, 'store'])->name('attendances.items.store');
-        }
+    Route::prefix('attendances/{attendance}/items')->group(function () {
+        // Bulk Operations
+        Route::post('bulk', [AttendanceItemController::class, 'bulkStore'])->name('attendances.items.bulkStore');
+        Route::delete('bulk', [AttendanceItemController::class, 'bulkDestroy'])->name('attendances.items.bulkDestroy');
+        // Single Store
+        Route::post('/', [AttendanceItemController::class, 'store'])->name('attendances.items.store');
+
     });
     // Individual Item Operations
     Route::patch('attendance-items/{item}', [AttendanceItemController::class, 'update'])->name('attendances.items.update');
@@ -219,7 +215,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/', [ZoneController::class, 'store'])->name('zones.store');
         Route::patch('/{zone}', [ZoneController::class, 'update'])->name('zones.update');
         Route::delete('/{zone}', [ZoneController::class, 'destroy'])->name('zones.destroy');
+        Route::get('/{zone}', [ZoneController::class, 'show'])->name('zones.show');
+
     });
 });
 
-require __DIR__ . '/settings.php';
+require __DIR__.'/settings.php';

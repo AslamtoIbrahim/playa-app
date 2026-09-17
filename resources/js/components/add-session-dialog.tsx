@@ -24,25 +24,13 @@ import { cn } from "@/lib/utils";
 import MissingZonePopup from '@/components/missing-zone-popup';
 
 interface Props {
-    existingDates?: string[];
     zones: Zone[];
 }
 
-export default function AddSessionDialog({ existingDates = [], zones }: Props) {
+export default function AddSessionDialog({ zones }: Props) {
     const [open, setOpen] = useState<boolean>(false);
     const [date, setDate] = useState<Date>(new Date());
     const [selectedZoneId, setSelectedZoneId] = useState<string>("");
-
-
-    const disabledDays = (day: Date): boolean => {
-        const formattedDay = format(day, "yyyy-MM-dd");
-
-        return existingDates.some((d) => {
-            const pureExistingDate = d.split(' ')[0].split('T')[0];
-
-            return pureExistingDate === formattedDay;
-        });
-    };
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -123,7 +111,6 @@ export default function AddSessionDialog({ existingDates = [], zones }: Props) {
                                                         setDate(d);
                                                     }
                                                 }}
-                                                disabled={disabledDays}
                                                 initialFocus
                                                 locale={fr}
                                                 className="rounded-md border shadow-lg dark:border-neutral-800 dark:bg-neutral-900"
@@ -198,6 +185,13 @@ export default function AddSessionDialog({ existingDates = [], zones }: Props) {
                                             )}
                                         </RadioGroup>
                                     </ScrollArea>
+
+                                    {errors.selected_zones && (
+                                        <p className="text-sm font-bold text-destructive mt-1 flex items-center gap-1">
+                                            <span className="h-1 w-1 rounded-full bg-destructive" />
+                                            {errors.selected_zones}
+                                        </p>
+                                    )}
                                 </div>
 
                                 <div className="flex justify-end gap-3 pt-2">

@@ -13,12 +13,12 @@ return new class extends Migration
     {
         Schema::create('daily_sessions', function (Blueprint $table) {
             $table->id();
-            $table->date('session_date')->unique(); // نهار واحد = حصة واحدة
+            $table->date('session_date'); // Removed unique() to allow multiple sessions per date across different zones
             $table->enum('status', ['open', 'closed'])->default('open');
             $table->decimal('total_buy', 15, 2)->default(0);  // مجموع الشراء
             $table->decimal('total_sell', 15, 2)->default(0); // مجموع البيع
             $table->timestamp('closed_at')->nullable();
-            $table->foreignId('closed_by')->nullable()->constrained('users'); // غادي نربطوه نهار نزيدو الـ Users
+            $table->foreignId('closed_by')->nullable()->constrained('users');
             $table->softDeletes();
             $table->timestamps();
             

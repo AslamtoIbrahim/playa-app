@@ -23,6 +23,16 @@ const mainNavItems: NavItem[] = [
         icon: LayoutGrid,
     },
     {
+        title: 'Zones',
+        href: zones(),
+        icon: MapPin,
+    },
+    {
+        title: 'Journées',
+        href: sessions(),
+        icon: CalendarClock,
+    },
+    {
         title: 'Bureaux',
         href: officeRooms(),
         icon: DoorOpen,
@@ -48,11 +58,6 @@ const mainNavItems: NavItem[] = [
         icon: ShieldCheck,
     },
     {
-        title: 'Journées',
-        href: sessions(),
-        icon: CalendarClock,
-    },
-    {
         title: 'Catégories',
         href: categories(),
         icon: Tags,
@@ -61,11 +66,6 @@ const mainNavItems: NavItem[] = [
         title: 'Articles',
         href: items(),
         icon: Package,
-    },
-    {
-        title: 'Zones',
-        href: zones(),
-        icon: MapPin,
     },
     {
         title: 'Factures',

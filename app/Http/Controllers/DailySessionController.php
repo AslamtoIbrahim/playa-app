@@ -69,7 +69,7 @@ class DailySessionController extends Controller
             'sessions' => $sessions,
             'zones'    => $zones,
             // غادي نحتاجو حتى التواريخ اللي ديجا محجوزة باش نـبلوكيوهم في الـ Calendar
-            'existingDates' => $sessions->pluck('session_date')->toArray(),
+            // 'existingDates' => $sessions->pluck('session_date')->toArray(),
         ]);
     }
 
@@ -137,16 +137,29 @@ class DailySessionController extends Controller
             'session_date' => [
                 'required',
                 'date',
-                \Illuminate\Validation\Rule::unique('daily_sessions', 'session_date')
             ],
             'selected_zones' => 'required|array|min:1', // ضروري يختار منطقة وحدة على الأقل
             'selected_zones.*' => 'exists:zones,id',    // تأكد أن الـ IDs كاينين في جدول zones
         ], [
-            'session_date.unique' => 'Une session existe déjà pour cette date.',
+            'session_date.required' => 'La date de la session est obligatoire.',
             'selected_zones.required' => 'Veuillez sélectionner au moins une zone.',
         ]);
 
-        // 3. التسجيل وسط Transaction لضمان الأمان
+        // 3. Check uniqueness combination of (session_date + zone_id)
+        foreach ($validated['selected_zones'] as $zoneId) {
+            $exists = SessionZone::where('zone_id', $zoneId)
+                ->whereHas('dailySession', function ($q) use ($formattedDate) {
+                    $q->where('session_date', $formattedDate);
+                })
+                ->exists();
+
+            if ($exists) {
+                $zoneName = Zone::find($zoneId)->name ?? 'cette zone';
+                return back()->withErrors(['selected_zones' => "Une journée existe déjà pour la zone '$zoneName' à cette date."]);
+            }
+        }
+
+        // 4. التسجيل وسط Transaction لضمان الأمان
         DB::transaction(function () use ($formattedDate, $validated) {
             // إنشاء الحصة
             $session = DailySession::create([
@@ -167,7 +180,7 @@ class DailySessionController extends Controller
             }
         });
 
-        return redirect()->back()->with('success', 'Session et zones ouvertes avec succès ! 🚀');
+        return redirect()->back()->with('success', 'Journée et zones ouvertes avec succès ! 🚀');
     }
 
     /**
@@ -180,10 +193,25 @@ class DailySessionController extends Controller
         $request->merge(['session_date' => $formattedDate]);
 
         $validated = $request->validate([
-            'session_date'   => 'required|date|unique:daily_sessions,session_date,' . $session->id,
+            'session_date'   => 'required|date',
             'selected_zones' => 'required|array|min:1',
             'selected_zones.*' => 'exists:zones,id',
         ]);
+
+        // Check uniqueness combination of (session_date + zone_id) excluding current session
+        foreach ($validated['selected_zones'] as $zoneId) {
+            $exists = SessionZone::where('zone_id', $zoneId)
+                ->where('daily_session_id', '!=', $session->id)
+                ->whereHas('dailySession', function ($q) use ($formattedDate) {
+                    $q->where('session_date', $formattedDate);
+                })
+                ->exists();
+
+            if ($exists) {
+                $zoneName = Zone::find($zoneId)->name ?? 'cette zone';
+                return back()->withErrors(['selected_zones' => "Une journée existe déjà pour la zone '$zoneName' à cette date."]);
+            }
+        }
 
         // $currentZoneIds = $session->sessionZones()->pluck('zone_id')->toArray();
         $currentZoneIds = $session->sessionZones()->withTrashed()->pluck('zone_id')->toArray();

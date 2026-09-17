@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
     Dialog,
     DialogContent,
@@ -35,11 +35,10 @@ import type { Zone } from '@/types/zone';
 
 interface Props {
     session: DailySession;
-    existingDates?: string[];
     zones: Zone[];
 }
 
-export default function EditSessionDialog({ session, existingDates = [], zones }: Props) {
+export default function EditSessionDialog({ session, zones }: Props) {
     const [open, setOpen] = useState(false);
 
     const [date, setDate] = useState<Date>(
@@ -48,37 +47,10 @@ export default function EditSessionDialog({ session, existingDates = [], zones }
             : session.session_date
     );
 
-    // كنعمروا الـ state بالـ IDs ديال الـ zones اللي كاينين ديجا في الـ session
-    const [selectedZones, setSelectedZones] = useState<number[]>(
-        session.zones?.map((z) => {
-            return z.id;
-        }) || []
+    // كنعمروا الـ state بالـ ID ديال الـ zone اللي كاين في الـ session
+    const [selectedZoneId, setSelectedZoneId] = useState<string>(
+        session.zones && session.zones.length > 0 ? session.zones[0].id.toString() : ""
     );
-
-    const toggleZone = (zoneId: number) => {
-        if (selectedZones.includes(zoneId)) {
-            setSelectedZones(selectedZones.filter((id) => {
-                return id !== zoneId;
-            }));
-        } else {
-            setSelectedZones([...selectedZones, zoneId]);
-        }
-    };
-
-    const disabledDays = (day: Date): boolean => {
-        const formattedDay = format(day, "yyyy-MM-dd");
-
-        const currentSessionDate = format(
-            new Date(session.session_date),
-            "yyyy-MM-dd"
-        );
-
-        return existingDates.some((d) => {
-            const pureExistingDate = d.split(' ')[0].split('T')[0];
-
-            return pureExistingDate === formattedDay && pureExistingDate !== currentSessionDate;
-        });
-    };
 
 
     return (
@@ -120,11 +92,9 @@ export default function EditSessionDialog({ session, existingDates = [], zones }
                                     value={date ? format(date, 'yyyy-MM-dd') : ""}
                                 />
 
-                                {selectedZones.map((id) => {
-                                    return (
-                                        <input key={id} type="hidden" name="selected_zones[]" value={id} />
-                                    );
-                                })}
+                                {selectedZoneId && (
+                                    <input type="hidden" name="selected_zones[]" value={selectedZoneId} />
+                                )}
 
                                 <div className="grid gap-2">
                                     <Label className="text-xs font-bold uppercase text-slate-500 dark:text-neutral-400">
@@ -150,7 +120,6 @@ export default function EditSessionDialog({ session, existingDates = [], zones }
                                                 onSelect={(d) => {
                                                     return d && setDate(d);
                                                 }}
-                                                disabled={disabledDays}
                                                 locale={fr}
                                                 className="rounded-md border shadow-lg dark:border-neutral-800 dark:bg-neutral-900"
                                             />
@@ -160,43 +129,45 @@ export default function EditSessionDialog({ session, existingDates = [], zones }
 
                                 <div className="grid gap-3">
                                     <Label className="text-xs font-bold uppercase text-slate-500 dark:text-neutral-400">
-                                        Zones de travail
+                                        Zone de travail
                                     </Label>
                                     <ScrollArea className="h-48 rounded-md border-2 border-slate-100 bg-slate-50/50 p-4 dark:border-neutral-800 dark:bg-neutral-900/50">
-                                        <div className="space-y-2">
+                                        <RadioGroup
+                                            value={selectedZoneId}
+                                            onValueChange={setSelectedZoneId}
+                                            className="space-y-2"
+                                        >
                                             {zones.map((zone) => {
-                                                const isSelected = selectedZones.includes(zone.id);
+                                                const zoneIdStr = zone.id.toString();
+                                                const isSelected = selectedZoneId === zoneIdStr;
 
                                                 return (
-                                                    <div
+                                                    <label
                                                         key={zone.id}
-                                                        className={`group flex items-center space-x-3 p-3 rounded-lg border transition-all duration-200 ${
+                                                        htmlFor={`edit-zone-${zone.id}`}
+                                                        className={`group flex items-center space-x-3 p-3 rounded-lg border transition-all duration-200 cursor-pointer select-none ${
                                                             isSelected
                                                                 ? 'border-blue-200 bg-blue-50/50 shadow-sm dark:border-blue-900 dark:bg-blue-950/40'
                                                                 : 'border-slate-200 bg-white hover:bg-slate-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:border-neutral-700 dark:hover:bg-neutral-800'
                                                         }`}
                                                     >
-                                                        <Checkbox
+                                                        <RadioGroupItem
+                                                            value={zoneIdStr}
                                                             id={`edit-zone-${zone.id}`}
-                                                            checked={isSelected}
-                                                            onCheckedChange={() => {
-                                                                return toggleZone(zone.id);
-                                                            }}
                                                         />
-                                                        <label
-                                                            htmlFor={`edit-zone-${zone.id}`}
-                                                            className={`flex-1 text-sm font-semibold cursor-pointer ${
+                                                        <span
+                                                            className={`flex-1 text-sm font-semibold ${
                                                                 isSelected
                                                                     ? 'text-blue-700 dark:text-blue-300'
                                                                     : 'text-slate-700 dark:text-neutral-300'
                                                             }`}
                                                         >
                                                             {zone.name}
-                                                        </label>
-                                                    </div>
+                                                        </span>
+                                                    </label>
                                                 );
                                             })}
-                                        </div>
+                                        </RadioGroup>
                                     </ScrollArea>
                                     {errors.selected_zones && (
                                         <p className="text-xs font-bold text-destructive">{errors.selected_zones}</p>
@@ -209,7 +180,7 @@ export default function EditSessionDialog({ session, existingDates = [], zones }
                                     }} disabled={processing}>
                                         Annuler
                                     </Button>
-                                    <Button type="submit" disabled={processing || selectedZones.length === 0} className="min-w-35 font-bold uppercase">
+                                    <Button type="submit" disabled={processing || !selectedZoneId} className="min-w-35 font-bold uppercase">
                                         {processing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Mettre à jour'}
                                     </Button>
                                 </div>

@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/table';
 import { formatDateDisplay } from '@/lib/date';
 import type { Zone } from '@/types/zone';
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { CalendarDays, MapPin } from 'lucide-react';
 
 interface Props {
@@ -53,7 +53,11 @@ export default function Zones({ zones }: Props) {
                             {zones.length > 0 ? (
                                 zones.map((zone) => {
                                     return (
-                                        <TableRow key={zone.id} className="group border-b border-slate-100 bg-white transition-all last:border-0 hover:bg-slate-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800/70">
+                                        <TableRow
+                                            key={zone.id}
+                                            className="group cursor-pointer border-b border-slate-100 bg-white transition-all last:border-0 hover:bg-slate-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800/70"
+                                            onClick={() => router.visit(`/zones/${zone.id}`)}
+                                        >
                                             <TableCell className="font-mono text-sm font-bold text-slate-700 dark:text-neutral-300">
                                                 #{zone.id}
                                             </TableCell>
