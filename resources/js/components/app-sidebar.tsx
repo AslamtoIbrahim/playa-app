@@ -1,6 +1,4 @@
-import { Link } from '@inertiajs/react';
 import { Banknote, BookOpen, Building2, CalendarClock, DoorOpen, FileText, FolderGit2, LayoutGrid, MapPin, Package, Receipt, Scale, ShieldCheck, Ship, ShoppingBag, Tags, User, UserCheck, Users } from 'lucide-react';
-import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -9,9 +7,7 @@ import {
     SidebarContent,
     SidebarFooter,
     SidebarHeader,
-    SidebarMenu,
-    SidebarMenuButton,
-    SidebarMenuItem,
+    SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { customers, boats, categories, dashboard, invoices, items, officeRooms, payments, companies, sessions, differences, receipts, cautions, sales, workers, attendances, zones } from '@/routes';
 import type { NavItem } from '@/types';
@@ -121,16 +117,13 @@ const footerNavItems: NavItem[] = [
 export function AppSidebar() {
     return (
         <Sidebar collapsible="icon" variant="inset">
-            <SidebarHeader >
-                <SidebarMenu>
-                    <SidebarMenuItem>
-                        <SidebarMenuButton size="lg" asChild>
-                            <Link href={dashboard()} prefetch>
-                                <AppLogo />
-                            </Link>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                </SidebarMenu>
+            <SidebarHeader>
+                <div className="flex items-center gap-2">
+                    <SidebarTrigger className="text-sky-500 transition-colors hover:text-sky-600 dark:text-sky-400 dark:hover:text-sky-300" />
+                    <span className="text-sm font-medium group-data-[collapsible=icon]:hidden">
+                        Réduire la barre
+                    </span>
+                </div>
             </SidebarHeader>
 
             <SidebarContent>

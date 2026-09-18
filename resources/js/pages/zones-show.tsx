@@ -189,7 +189,7 @@ export default function ZoneShow({
 ZoneShow.layout = (page: React.ReactNode) => ({
     breadcrumbs: [
         { title: 'Zones', href: '/zones' },
-        { title: 'Détails', href: '#' },
+        { title: 'Journées', href: '/zones' },
     ],
     children: page,
 });

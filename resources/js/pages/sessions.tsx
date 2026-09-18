@@ -43,7 +43,7 @@ export default function Sessions({ sessions, zones }: Props) {
         <>
             <Head title="Sessions Journalières" />
 
-            <div className="flex h-full flex-1 flex-col gap-4 p-4 lg:p-8">
+            <div className="flex bg-amber-300 h-full flex-1 flex-col gap-4 p-4 lg:p-8">
                 <div className="flex flex-col justify-between gap-4 px-2 sm:flex-row sm:items-center">
                     <div>
                         <h1 className="text-2xl font-black tracking-tight text-neutral-900 uppercase dark:text-neutral-100">

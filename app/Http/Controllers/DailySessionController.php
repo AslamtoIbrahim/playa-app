@@ -7,6 +7,8 @@ use App\Models\DailySession;
 use App\Models\Difference;
 use App\Models\Invoice;
 use App\Models\Receipt;
+use App\Models\Attendance;
+use App\Models\Sale;
 use App\Models\SessionZone;
 use App\Models\Zone;
 use Carbon\Carbon;
@@ -77,36 +79,46 @@ class DailySessionController extends Controller
 
     public function show(DailySession $session)
     {
-        // 1. Njibo l-Invoices dyal had l-session m-farqin
+        $session->load(['zones', 'sessionZones']);
+
+        // 1. Achats data
         $purchases = Invoice::where('session_id', $session->id)
             ->where('type', 'purchase')
-            ->with(['items.differences', 'items.receiptItems'])
+            ->with(['items.differences', 'items.receiptItems', 'customer'])
             ->get();
 
-        $sales = Invoice::where('session_id', $session->id)
-            ->where('type', 'sale')
-            ->with(['items.differences', 'items.receiptItems'])
-            ->get();
-
-        // 2. Njibo l-Differences o l-Receipts bla ma n-nsaw l-type (ila kanu direct m-liyyin b session)
         $purchaseDifferences = Difference::whereHas('invoiceItem.invoice', function ($q) use ($session) {
             $q->where('session_id', $session->id)->where('type', 'purchase');
-        })->get();
+        })->with('invoiceItem.invoice')->get();
 
-        $saleDifferences = Difference::whereHas('invoiceItem.invoice', function ($q) use ($session) {
-            $q->where('session_id', $session->id)->where('type', 'sale');
-        })->get();
-
-        // 3. Njibo l-Receipts dyal had l-session
         $purchaseReceipts = Receipt::where('session_id', $session->id)
             ->whereHas('items.invoiceItem.invoice', function ($q) {
                 $q->where('type', 'purchase');
-            })->get();
+            })->with(['items.invoiceItem.invoice', 'customer', 'boat'])->get();
+
+        // 2. Ventes data & tracking
+        $sales = Sale::where('session_id', $session->id)
+            ->with(['customer', 'items.item', 'items.boat'])
+            ->get();
+
+        $saleInvoices = Invoice::where('session_id', $session->id)
+            ->where('type', 'sale')
+            ->with(['items.differences', 'items.receiptItems', 'customer'])
+            ->get();
 
         $saleReceipts = Receipt::where('session_id', $session->id)
             ->whereHas('items.invoiceItem.invoice', function ($q) {
                 $q->where('type', 'sale');
-            })->get();
+            })->with(['items.invoiceItem.invoice', 'customer', 'boat'])->get();
+
+        // 3. Ouvries (Attendance / Workers)
+        $attendances = Attendance::whereHas('sessionZone', function ($q) use ($session) {
+            $q->where('daily_session_id', $session->id);
+        })->with(['items.worker', 'sessionZone.zone'])->get();
+
+        // 4. Totals calculation
+        $totalBuy = $purchases->sum('amount') + $purchaseDifferences->sum('total_diff') + $purchaseReceipts->sum('total_amount');
+        $totalSell = $saleInvoices->sum('amount') + $sales->sum('total_amount') + $saleReceipts->sum('total_amount');
 
         return Inertia::render('sessions-show', [
             'session' => $session,
@@ -114,14 +126,20 @@ class DailySessionController extends Controller
                 'invoices' => $purchases,
                 'differences' => $purchaseDifferences,
                 'receipts' => $purchaseReceipts,
-                'total' => $purchases->sum('amount') + $purchaseDifferences->sum('total_diff') + $purchaseReceipts->sum('total_amount')
+                'total' => $totalBuy,
             ],
             'saleData' => [
-                'invoices' => $sales,
-                'differences' => $saleDifferences,
+                'sales' => $sales,
+                'invoices' => $saleInvoices,
                 'receipts' => $saleReceipts,
-                'total' => $sales->sum('amount') + $saleDifferences->sum('total_diff') + $saleReceipts->sum('total_amount')
-            ]
+                'total' => $totalSell,
+            ],
+            'attendances' => $attendances,
+            'totals' => [
+                'buy' => $totalBuy,
+                'sell' => $totalSell,
+                'margin' => $totalSell - $totalBuy,
+            ],
         ]);
     }
 
