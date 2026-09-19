@@ -11,7 +11,7 @@ interface Props {
 export function InvoiceHeader({ invoice }: Props) {
 
     return (
-        <div className="flex flex-row items-start justify-between border-b pb-8 border-slate-100 dark:border-neutral-800">
+        <div className="flex flex-row items-start justify-between pb-1 border-slate-100 dark:border-neutral-800">
             {/* Left Side: Beneficiary & Caution */}
             <div className="text-left space-y-3">
                 <div className="space-y-1">

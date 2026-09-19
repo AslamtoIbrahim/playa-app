@@ -1,5 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
+import { cn, currency } from '@/lib/utils';
 import {
     CalendarDays,
     ShoppingBag,
@@ -19,8 +19,8 @@ export interface SessionTotalsCardProps {
     className?: string;
 }
 
-const currency = (value: number) =>
-    new Intl.NumberFormat('fr-MA', { style: 'currency', currency: 'MAD' }).format(value);
+// const currency = (value: number) =>
+//     new Intl.NumberFormat('fr-MA', { style: 'currency', currency: 'MAD' }).format(value);
 
 type Stat = {
     label: string;
@@ -67,14 +67,15 @@ export function SessionTotalsCard({
             label: 'Total Achats',
             value: formatCurrency(totals.buy),
             icon: ShoppingCart,
-            iconClass: 'text-orange-500',
+            iconClass: 'text-blue-500',
+            valueClass: 'text-blue-600 dark:text-blue-400',
         },
         {
             label: 'Total Ventes',
             value: formatCurrency(totals.sell),
             icon: ShoppingBag,
-            iconClass: 'text-blue-500',
-            valueClass: 'text-blue-600 dark:text-blue-400',
+            iconClass: 'text-orange-500',
+            valueClass: 'text-orange-600 dark:text-orange-400',
         },
         {
             label: 'Marge Brute',

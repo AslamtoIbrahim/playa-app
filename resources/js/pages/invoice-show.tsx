@@ -18,7 +18,7 @@ import {
     verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { Head, router } from '@inertiajs/react';
-import { Camera, Copy, Printer, Trash2, X } from 'lucide-react';
+import { ArrowLeft, Camera, Copy, Printer, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 
 // UI Components
@@ -264,8 +264,16 @@ export default function InvoiceShow({
     };
 
     return (
-        <div className="mx-auto min-h-screen max-w-7xl space-y-6 bg-white p-6 font-sans text-slate-900 dark:bg-neutral-950 dark:text-neutral-100">
+        <div className="mx-auto min-h-screen max-w-7xl space-y-5 bg-white p-6 font-sans text-slate-900 dark:bg-neutral-950 dark:text-neutral-100">
             <Head title={`Facture ${invoice.invoice_number}`} />
+
+            <button
+                type="button"
+                onClick={() => window.history.back()}
+                className="inline-flex w-fit cursor-pointer items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+            >
+                <ArrowLeft className="h-4 w-4" /> Retour
+            </button>
 
             {/* Header & Stats */}
             <InvoiceHeader invoice={invoice} />

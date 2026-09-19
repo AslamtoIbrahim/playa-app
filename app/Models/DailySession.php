@@ -2,17 +2,16 @@
 
 namespace App\Models;
 
-use App\Models\Invoice;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class DailySession extends Model
 {
-    use SoftDeletes;
-    
     use HasFactory;
+    use SoftDeletes;
 
     protected $fillable = [
         'session_date',
@@ -20,7 +19,7 @@ class DailySession extends Model
         'total_buy',
         'total_sell',
         'closed_at',
-        'closed_by'
+        'closed_by',
     ];
 
     protected $casts = [
@@ -33,17 +32,25 @@ class DailySession extends Model
     /**
      * كاع الفواير المرتبطة بالحصة
      */
-    public function invoices(): HasMany
+    public function invoices(): HasManyThrough
     {
-        return $this->hasMany(Invoice::class, 'session_id');
+        // Pas de session_id sur invoices : on passe par session_zones.
+        return $this->hasManyThrough(
+            Invoice::class,
+            SessionZone::class,
+            'daily_session_id', // FK sur session_zones
+            'session_zone_id',  // FK sur invoices
+            'id',
+            'id'
+        );
     }
 
     /**
      * غير المشتريات (Purchases)
      */
-    public function purchases(): HasMany
+    public function purchases(): HasManyThrough
     {
-        return $this->hasMany(Invoice::class, 'session_id')->where('type', 'purchase');
+        return $this->invoices()->where('invoices.type', 'purchase');
     }
 
     /**
@@ -51,7 +58,8 @@ class DailySession extends Model
      */
     public function sales(): HasMany
     {
-        return $this->hasMany(Invoice::class, 'session_id')->where('type', 'sale');
+        // Les ventes directes gardent bien une colonne session_id sur la table sales.
+        return $this->hasMany(Sale::class, 'session_id');
     }
 
     public function zones()

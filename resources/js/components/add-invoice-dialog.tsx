@@ -201,9 +201,9 @@ export default function AddInvoiceDialog({ billables, officeRooms, sessionZones,
                                                         >
                                                             <Check className={cn("mr-2 h-4 w-4", selectedSessionZoneId === sz.id.toString() ? "opacity-100" : "opacity-0")} />
                                                             <div className="flex flex-col">
-                                                                <span>{sz.zone?.name}</span>
+                                                                <span className='capitalize'>{sz.zone?.name}</span>
                                                                 <span className="text-[10px] text-slate-500">
-                                                                    Session du {sz.daily_session?.session_date ? format(new Date(sz.daily_session.session_date), "dd/MM/yyyy") : 'N/A'}
+                                                                    Journée du {sz.daily_session?.session_date ? format(new Date(sz.daily_session.session_date), "dd/MM/yyyy") : 'N/A'}
                                                                 </span>
                                                             </div>
                                                             <span className={cn(

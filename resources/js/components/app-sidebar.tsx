@@ -1,4 +1,24 @@
-import { Banknote, BookOpen, Building2, CalendarClock, DoorOpen, FileText, FolderGit2, LayoutGrid, MapPin, Package, Receipt, Scale, ShieldCheck, Ship, ShoppingBag, Tags, User, UserCheck, Users } from 'lucide-react';
+import {
+    Banknote,
+    BookOpen,
+    Building2,
+    CalendarClock,
+    DoorOpen,
+    FileText,
+    FolderGit2,
+    LayoutGrid,
+    MapPin,
+    Package,
+    Receipt,
+    Scale,
+    ShieldCheck,
+    Ship,
+    ShoppingBag,
+    Tags,
+    User,
+    UserCheck,
+    Users,
+} from 'lucide-react';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -9,7 +29,25 @@ import {
     SidebarHeader,
     SidebarTrigger,
 } from '@/components/ui/sidebar';
-import { customers, boats, categories, dashboard, invoices, items, officeRooms, payments, companies, sessions, differences, receipts, cautions, sales, workers, attendances, zones } from '@/routes';
+import {
+    customers,
+    boats,
+    categories,
+    dashboard,
+    invoices,
+    items,
+    officeRooms,
+    payments,
+    companies,
+    sessions,
+    differences,
+    receipts,
+    cautions,
+    sales,
+    workers,
+    attendances,
+    zones,
+} from '@/routes';
 import type { NavItem } from '@/types';
 
 const mainNavItems: NavItem[] = [
@@ -27,6 +65,32 @@ const mainNavItems: NavItem[] = [
         title: 'Journées',
         href: sessions(),
         icon: CalendarClock,
+    },
+    {
+        title: 'Factures',
+        href: invoices(),
+        icon: FileText,
+    },
+    {
+        title: 'Pointages',
+        href: attendances(),
+        icon: UserCheck,
+    },
+    {
+        title: 'Ventes',
+        href: sales(),
+        icon: ShoppingBag,
+    },
+
+    {
+        title: 'Bons de Réception',
+        href: receipts(),
+        icon: Receipt,
+    },
+    {
+        title: 'Differences',
+        href: differences(),
+        icon: Scale,
     },
     {
         title: 'Bureaux',
@@ -63,37 +127,13 @@ const mainNavItems: NavItem[] = [
         href: items(),
         icon: Package,
     },
-    {
-        title: 'Factures',
-        href: invoices(),
-        icon: FileText,
-    },
-    {
-        title: 'Ventes',
-        href: sales(),
-        icon: ShoppingBag,
-    },
 
-    {
-        title: 'Bons de Réception',
-        href: receipts(),
-        icon: Receipt,
-    },
-    {
-        title: 'Differences',
-        href: differences(),
-        icon: Scale,
-    },
     {
         title: 'Ouvriers',
         href: workers(),
         icon: Users,
     },
-    {
-        title: 'Pointages',
-        href: attendances(),
-        icon: UserCheck,
-    },
+
     {
         title: 'Paiements',
         href: payments(),
@@ -137,5 +177,3 @@ export function AppSidebar() {
         </Sidebar>
     );
 }
-
-

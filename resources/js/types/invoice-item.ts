@@ -1,5 +1,6 @@
 import { Boat } from './boat';
 import { Difference } from './difference';
+import type { Invoice } from './invoice';
 import { Item } from './item';
 import { ReceiptItem } from './receipt-item';
 
@@ -18,11 +19,11 @@ export interface InvoiceItem {
     updated_at?: string;
     boat?: Boat;
     item?: Item;
+    invoice?: Invoice;
 
     differences?: Difference[];
     receipt_items?: ReceiptItem[];
 }
-
 
 export interface InvoiceItemFormData {
     boat_id: number | string;

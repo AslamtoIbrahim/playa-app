@@ -2,12 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
+use App\Models\Attendance;
 use App\Models\DailySession;
 use App\Models\Difference;
 use App\Models\Invoice;
 use App\Models\Receipt;
-use App\Models\Attendance;
 use App\Models\Sale;
 use App\Models\SessionZone;
 use App\Models\Zone;
@@ -31,17 +30,19 @@ class DailySessionController extends Controller
             ->latest('session_date')
             ->get()
             ->map(function ($session) {
+                // Les factures / bons / pointages sont rattachés au SessionZone, pas directement à la session.
+                $sessionZoneIds = $session->sessionZones()->pluck('id')->all();
 
                 // --- 1. ACHAT (Purchase) ---
-                $purchaseInvoicesTotal = Invoice::where('session_id', $session->id)
+                $purchaseInvoicesTotal = Invoice::whereIn('session_zone_id', $sessionZoneIds)
                     ->where('type', 'purchase')
                     ->sum('amount') ?? 0;
 
-                $purchaseDifferences = Difference::whereHas('invoiceItem.invoice', function ($q) use ($session) {
-                    $q->where('session_id', $session->id)->where('type', 'purchase');
+                $purchaseDifferences = Difference::whereHas('invoiceItem.invoice', function ($q) use ($sessionZoneIds) {
+                    $q->whereIn('session_zone_id', $sessionZoneIds)->where('type', 'purchase');
                 })->sum('total_diff') ?? 0;
 
-                $purchaseReceipts = Receipt::where('session_id', $session->id)
+                $purchaseReceipts = Receipt::whereIn('session_zone_id', $sessionZoneIds)
                     ->whereHas('items.invoiceItem.invoice', function ($q) {
                         $q->where('type', 'purchase');
                     })->sum('total_amount') ?? 0;
@@ -49,76 +50,82 @@ class DailySessionController extends Controller
                 $session->total_buy = $purchaseInvoicesTotal + $purchaseDifferences + $purchaseReceipts;
 
                 // --- 2. VENTE (Sale) ---
-                $saleInvoicesTotal = Invoice::where('session_id', $session->id)
+                $saleInvoicesTotal = Invoice::whereIn('session_zone_id', $sessionZoneIds)
                     ->where('type', 'sale')
                     ->sum('amount') ?? 0;
 
-                $saleDifferences = Difference::whereHas('invoiceItem.invoice', function ($q) use ($session) {
-                    $q->where('session_id', $session->id)->where('type', 'sale');
+                $saleDifferences = Difference::whereHas('invoiceItem.invoice', function ($q) use ($sessionZoneIds) {
+                    $q->whereIn('session_zone_id', $sessionZoneIds)->where('type', 'sale');
                 })->sum('total_diff') ?? 0;
 
-                $saleReceipts = Receipt::where('session_id', $session->id)
+                $saleReceipts = Receipt::whereIn('session_zone_id', $sessionZoneIds)
                     ->whereHas('items.invoiceItem.invoice', function ($q) {
                         $q->where('type', 'sale');
                     })->sum('total_amount') ?? 0;
 
                 $session->total_sell = $saleInvoicesTotal + $saleDifferences + $saleReceipts;
- 
+
                 return $session;
             });
 
         return Inertia::render('sessions', [
             'sessions' => $sessions,
-            'zones'    => $zones,
+            'zones' => $zones,
             // غادي نحتاجو حتى التواريخ اللي ديجا محجوزة باش نـبلوكيوهم في الـ Calendar
             // 'existingDates' => $sessions->pluck('session_date')->toArray(),
         ]);
     }
 
-
-
     public function show(DailySession $session)
     {
-        $session->load(['zones', 'sessionZones']);
+        $session->load(['zones', 'sessionZones.zone']);
+
+        // Les factures / bons / pointages sont rattachés au SessionZone (session_zone_id),
+        // il n'existe plus de colonne session_id sur invoices / receipts / attendances.
+        $sessionZoneIds = $session->sessionZones->pluck('id')->all();
 
         // 1. Achats data
-        $purchases = Invoice::where('session_id', $session->id)
+        $purchases = Invoice::whereIn('session_zone_id', $sessionZoneIds)
             ->where('type', 'purchase')
-            ->with(['items.differences', 'items.receiptItems', 'customer'])
+            ->with(['items.differences', 'items.receiptItems', 'items.item', 'items.boat', 'billable', 'caution', 'sessionZone.zone'])
             ->get();
 
-        $purchaseDifferences = Difference::whereHas('invoiceItem.invoice', function ($q) use ($session) {
-            $q->where('session_id', $session->id)->where('type', 'purchase');
-        })->with('invoiceItem.invoice')->get();
+        $purchaseDifferences = Difference::whereHas('invoiceItem.invoice', function ($q) use ($sessionZoneIds) {
+            $q->whereIn('session_zone_id', $sessionZoneIds)->where('type', 'purchase');
+        })->with(['item', 'customer', 'invoiceItem.invoice', 'invoiceItem.boat'])->get();
 
-        $purchaseReceipts = Receipt::where('session_id', $session->id)
+        $purchaseReceipts = Receipt::whereIn('session_zone_id', $sessionZoneIds)
             ->whereHas('items.invoiceItem.invoice', function ($q) {
                 $q->where('type', 'purchase');
-            })->with(['items.invoiceItem.invoice', 'customer', 'boat'])->get();
+            })->with(['items.invoiceItem.invoice', 'customer', 'boat', 'sessionZone.zone'])->get();
 
         // 2. Ventes data & tracking
         $sales = Sale::where('session_id', $session->id)
             ->with(['customer', 'items.item', 'items.boat'])
             ->get();
 
-        $saleInvoices = Invoice::where('session_id', $session->id)
+        $saleInvoices = Invoice::whereIn('session_zone_id', $sessionZoneIds)
             ->where('type', 'sale')
-            ->with(['items.differences', 'items.receiptItems', 'customer'])
+            ->with(['items.differences', 'items.receiptItems', 'items.item', 'items.boat', 'billable', 'caution', 'sessionZone.zone'])
             ->get();
 
-        $saleReceipts = Receipt::where('session_id', $session->id)
+        $saleDifferences = Difference::whereHas('invoiceItem.invoice', function ($q) use ($sessionZoneIds) {
+            $q->whereIn('session_zone_id', $sessionZoneIds)->where('type', 'sale');
+        })->with(['item', 'customer', 'invoiceItem.invoice', 'invoiceItem.boat'])->get();
+
+        $saleReceipts = Receipt::whereIn('session_zone_id', $sessionZoneIds)
             ->whereHas('items.invoiceItem.invoice', function ($q) {
                 $q->where('type', 'sale');
-            })->with(['items.invoiceItem.invoice', 'customer', 'boat'])->get();
+            })->with(['items.invoiceItem.invoice', 'customer', 'boat', 'sessionZone.zone'])->get();
 
         // 3. Ouvries (Attendance / Workers)
-        $attendances = Attendance::whereHas('sessionZone', function ($q) use ($session) {
-            $q->where('daily_session_id', $session->id);
-        })->with(['items.worker', 'sessionZone.zone'])->get();
+        $attendances = Attendance::whereIn('session_zone_id', $sessionZoneIds)
+            ->with(['items.worker', 'sessionZone.zone'])
+            ->get();
 
         // 4. Totals calculation
         $totalBuy = $purchases->sum('amount') + $purchaseDifferences->sum('total_diff') + $purchaseReceipts->sum('total_amount');
-        $totalSell = $saleInvoices->sum('amount') + $sales->sum('total_amount') + $saleReceipts->sum('total_amount');
+        $totalSell = $saleInvoices->sum('amount') + $saleDifferences->sum('total_diff') + $saleReceipts->sum('total_amount');
 
         return Inertia::render('sessions-show', [
             'session' => $session,
@@ -131,6 +138,7 @@ class DailySessionController extends Controller
             'saleData' => [
                 'sales' => $sales,
                 'invoices' => $saleInvoices,
+                'differences' => $saleDifferences,
                 'receipts' => $saleReceipts,
                 'total' => $totalSell,
             ],
@@ -142,7 +150,6 @@ class DailySessionController extends Controller
             ],
         ]);
     }
-
 
     public function store(Request $request)
     {
@@ -173,6 +180,7 @@ class DailySessionController extends Controller
 
             if ($exists) {
                 $zoneName = Zone::find($zoneId)->name ?? 'cette zone';
+
                 return back()->withErrors(['selected_zones' => "Une journée existe déjà pour la zone '$zoneName' à cette date."]);
             }
         }
@@ -182,18 +190,18 @@ class DailySessionController extends Controller
             // إنشاء الحصة
             $session = DailySession::create([
                 'session_date' => $formattedDate,
-                'status'       => 'open',
-                'total_buy'    => 0,
-                'total_sell'   => 0,
+                'status' => 'open',
+                'total_buy' => 0,
+                'total_sell' => 0,
             ]);
 
             // إنشاء السجلات في الجدول الوسيط SessionZone
             foreach ($validated['selected_zones'] as $zoneId) {
                 SessionZone::create([
                     'daily_session_id' => $session->id,
-                    'zone_id'          => $zoneId,
-                    'total_buy'        => 0,
-                    'total_sell'       => 0,
+                    'zone_id' => $zoneId,
+                    'total_buy' => 0,
+                    'total_sell' => 0,
                 ]);
             }
         });
@@ -206,12 +214,12 @@ class DailySessionController extends Controller
      */
     public function update(Request $request, DailySession $session)
     {
-        $formattedDate = \Carbon\Carbon::parse($request->session_date)->startOfDay()->toDateTimeString();
+        $formattedDate = Carbon::parse($request->session_date)->startOfDay()->toDateTimeString();
 
         $request->merge(['session_date' => $formattedDate]);
 
         $validated = $request->validate([
-            'session_date'   => 'required|date',
+            'session_date' => 'required|date',
             'selected_zones' => 'required|array|min:1',
             'selected_zones.*' => 'exists:zones,id',
         ]);
@@ -227,6 +235,7 @@ class DailySessionController extends Controller
 
             if ($exists) {
                 $zoneName = Zone::find($zoneId)->name ?? 'cette zone';
+
                 return back()->withErrors(['selected_zones' => "Une journée existe déjà pour la zone '$zoneName' à cette date."]);
             }
         }
@@ -240,13 +249,14 @@ class DailySessionController extends Controller
             $zoneStats = $session->sessionZones()->where('zone_id', $zoneId)->first();
 
             // Check if zone has transactions
-            $hasInvoices = \App\Models\Invoice::where('session_id', $session->id)->where('zone_id', $zoneId)->exists();
+            $hasInvoices = Invoice::where('session_id', $session->id)->where('zone_id', $zoneId)->exists();
 
-            $hasReceipts = \App\Models\Receipt::where('session_id', $session->id)
-                ->whereHas('items', fn($q) => $q->where('zone_id', $zoneId))->exists();
+            $hasReceipts = Receipt::where('session_id', $session->id)
+                ->whereHas('items', fn ($q) => $q->where('zone_id', $zoneId))->exists();
 
             if (($zoneStats && ($zoneStats->total_buy > 0 || $zoneStats->total_sell > 0)) || $hasInvoices || $hasReceipts) {
-                $zoneName = \App\Models\Zone::find($zoneId)->name;
+                $zoneName = Zone::find($zoneId)->name;
+
                 return back()->withErrors(['selected_zones' => "Impossible de retirer '$zoneName' : contient des données."]);
             }
         }
@@ -271,13 +281,15 @@ class DailySessionController extends Controller
      */
     public function close(DailySession $session)
     {
-        $invoicesTotal = Invoice::where('session_id', $session->id)->sum('amount') ?? 0;
+        $sessionZoneIds = $session->sessionZones()->pluck('id')->all();
 
-        $differencesTotal = Difference::whereHas('invoiceItem.invoice', function ($query) use ($session) {
-            $query->where('session_id', $session->id);
+        $invoicesTotal = Invoice::whereIn('session_zone_id', $sessionZoneIds)->sum('amount') ?? 0;
+
+        $differencesTotal = Difference::whereHas('invoiceItem.invoice', function ($query) use ($sessionZoneIds) {
+            $query->whereIn('session_zone_id', $sessionZoneIds);
         })->sum('total_diff') ?? 0;
 
-        $receiptsTotal = Receipt::where('session_id', $session->id)->sum('total_amount') ?? 0;
+        $receiptsTotal = Receipt::whereIn('session_zone_id', $sessionZoneIds)->sum('total_amount') ?? 0;
 
         $session->update([
             'status' => 'closed',
@@ -294,12 +306,16 @@ class DailySessionController extends Controller
             return redirect()->back()->with('error', 'Impossible de supprimer une session clôturée. 🔒');
         }
 
-        // Vérification des dépendances (Invoices ou Receipts)
-        $hasActivity = Invoice::where('session_id', $session->id)->exists() ||
-            Receipt::where('session_id', $session->id)->exists();
+        // Vérification des dépendances (Invoices / Receipts / Pointages / Ventes)
+        $sessionZoneIds = $session->sessionZones()->pluck('id')->all();
+
+        $hasActivity = Invoice::whereIn('session_zone_id', $sessionZoneIds)->exists() ||
+            Receipt::whereIn('session_zone_id', $sessionZoneIds)->exists() ||
+            Attendance::whereIn('session_zone_id', $sessionZoneIds)->exists() ||
+            Sale::where('session_id', $session->id)->exists();
 
         if ($hasActivity) {
-            return redirect()->back()->with('error', 'Impossible de supprimer : cette session contient déjà des opérations. ⚠️');
+            return redirect()->back()->with('error', 'Impossible de supprimer : cette session contient déjà des opérations. ️');
         }
 
         $session->delete();

@@ -1,4 +1,4 @@
-import { Building2, Calendar, Lock, Unlock } from 'lucide-react';
+import { Building2, Calendar, CalendarClock, Lock, Unlock } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { formatDateDisplay } from '@/lib/date';
@@ -17,10 +17,11 @@ export function SessionHeader({
         customZoneName || session.zones?.[0]?.name || 'Zone principale';
 
     return (
-        <div className="flex flex-col gap-4 border-b border-neutral-200 pb-3 sm:flex-row sm:items-center sm:justify-between dark:border-neutral-800">
+        <div className="flex flex-col gap-4 border-neutral-200 pb-3 sm:flex-row sm:items-center sm:justify-between dark:border-neutral-800">
             {/* Left side: Title & Zone info */}
             <div className="space-y-1">
-                <h1 className="font-black tracking-tight text-neutral-900 uppercase  dark:text-neutral-100">
+                <h1 className="flex items-center gap-2 font-black tracking-tight text-neutral-900 uppercase  dark:text-neutral-100">
+                    <CalendarClock className="h-4 w-4" />
                     La Journée
                 </h1>
 

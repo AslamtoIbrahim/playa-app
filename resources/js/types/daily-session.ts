@@ -1,7 +1,7 @@
-import { Difference } from "./difference";
-import { Invoice } from "./invoice";
-import { Receipt } from "./receipt";
-import { Zone } from "./zone";
+import { Difference } from './difference';
+import { Invoice } from './invoice';
+import { Receipt } from './receipt';
+import { Zone } from './zone';
 
 export type SessionStatus = 'open' | 'closed';
 
