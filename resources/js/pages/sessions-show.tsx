@@ -7,12 +7,12 @@ import { SessionHeader } from '@/components/sessison-header';
 import { formatDateDisplay } from '@/lib/date';
 import type { Attendance } from '@/types/attendance';
 import type { DailySession, SessionGroupData } from '@/types/daily-session';
-import type { Sale } from '@/types/sale';
+import type { SessionSaleData } from '@/types/sale';
 
 interface Props {
     session: DailySession & { zones?: { id: number; name: string }[] };
     purchaseData: SessionGroupData;
-    saleData: SessionGroupData & { sales?: Sale[] };
+    saleData: SessionSaleData;
     attendances: Attendance[];
     totals: {
         buy: number;
@@ -63,7 +63,6 @@ function SessionShow({
                 purchaseData={purchaseData}
                 saleData={saleData}
                 attendances={attendances}
-                totals={totals}
                 formatCurrency={formatCurrency}
             />
         </div>
