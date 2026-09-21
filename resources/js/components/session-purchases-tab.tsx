@@ -6,6 +6,7 @@ import type { SessionGroupData } from '@/types/daily-session';
 import { SessionAttendancesTable } from './session-attendances-table';
 import { SessionDifferencesTable } from './session-differences-table';
 import { SessionInvoicesTable } from './session-invoices-table';
+import type { SessionInvoiceAddContextInput } from './session-invoices-table';
 import { SessionReceiptsTable } from './session-receipts-table';
 import { SessionTableShell } from './session-table-shell';
 
@@ -13,6 +14,8 @@ export interface SessionPurchasesTabProps {
     purchaseData: SessionGroupData;
     attendances: Attendance[];
     formatCurrency: (amount: number) => string;
+    /** Contexte de la journée : création + actions de ligne sur les factures. */
+    invoiceContext?: SessionInvoiceAddContextInput | null;
 }
 
 function ChargesPlaceholder() {
@@ -29,6 +32,7 @@ export function SessionPurchasesTab({
     purchaseData,
     attendances,
     formatCurrency,
+    invoiceContext = null,
 }: SessionPurchasesTabProps) {
     const purchaseSubTabClass = cn(
         'h-10 cursor-pointer rounded-lg border border-transparent px-4 text-sm font-medium',
@@ -107,6 +111,12 @@ export function SessionPurchasesTab({
                     invoices={purchaseData.invoices}
                     formatCurrency={formatCurrency}
                     emptyMessage="Aucune facture d'achat trouvée pour cette session."
+                    title="Factures d'achat"
+                    invoiceContext={
+                        invoiceContext
+                            ? { ...invoiceContext, type: 'purchase' }
+                            : null
+                    }
                 />
             </TabsContent>
 

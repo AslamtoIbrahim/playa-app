@@ -3,9 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Attendance;
+use App\Models\Caution;
+use App\Models\Company;
+use App\Models\Customer;
 use App\Models\DailySession;
 use App\Models\Difference;
 use App\Models\Invoice;
+use App\Models\OfficeRoom;
 use App\Models\Receipt;
 use App\Models\Sale;
 use App\Models\SessionZone;
@@ -127,6 +131,20 @@ class DailySessionController extends Controller
         $totalBuy = $purchases->sum('amount') + $purchaseDifferences->sum('total_diff') + $purchaseReceipts->sum('total_amount');
         $totalSell = $saleInvoices->sum('amount') + $saleDifferences->sum('total_diff') + $saleReceipts->sum('total_amount');
 
+        // 5. Données du dialogue de création de facture.
+        //    La journée, la zone et la date sont déjà connues : on n'envoie que le reste.
+        $customers = Customer::select('id', 'name')->get()->map(fn ($customer) => [
+            'id' => $customer->id,
+            'name' => $customer->name,
+            'type' => Customer::class,
+        ]);
+
+        $companies = Company::select('id', 'name')->get()->map(fn ($company) => [
+            'id' => $company->id,
+            'name' => $company->name,
+            'type' => Company::class,
+        ]);
+
         return Inertia::render('sessions-show', [
             'session' => $session,
             'purchaseData' => [
@@ -148,6 +166,14 @@ class DailySessionController extends Controller
                 'sell' => $totalSell,
                 'margin' => $totalSell - $totalBuy,
             ],
+
+            // Données du dialogue de création de facture depuis la journée
+            'billables' => $customers->concat($companies),
+            'officeRooms' => OfficeRoom::all(['id', 'name', 'city']),
+            'cautions' => Caution::select('id', 'name', 'owner_id', 'owner_type')->get(),
+            'sessionZones' => $session->sessionZones()
+                ->with(['zone:id,name', 'dailySession:id,session_date'])
+                ->get(['id', 'daily_session_id', 'zone_id']),
         ]);
     }
 

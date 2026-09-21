@@ -13,11 +13,22 @@ export const sessionTableHeaderClass =
 
 export interface SessionTableShellProps {
     children: ReactNode;
+    /** Barre d'outils affichée au-dessus du tableau (titre, actions...). */
+    header?: ReactNode;
 }
 
-export function SessionTableShell({ children }: SessionTableShellProps) {
+export function SessionTableShell({
+    children,
+    header,
+}: SessionTableShellProps) {
     return (
         <div className="min-h-72 overflow-hidden rounded-xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+            {header ? (
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 bg-neutral-50/70 px-4 py-3 dark:border-neutral-800 dark:bg-neutral-950/40">
+                    {header}
+                </div>
+            ) : null}
+
             {children}
         </div>
     );

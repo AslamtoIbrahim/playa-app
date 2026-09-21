@@ -1,6 +1,10 @@
 import { router } from '@inertiajs/react';
-import { ShieldCheck } from 'lucide-react';
+import { Lock, Plus, ShieldCheck } from 'lucide-react';
 
+import AddInvoiceDialog from '@/components/add-invoice-dialog';
+import DeleteInvoiceDialog from '@/components/delete-invoice-dialog';
+import EditInvoiceDialog from '@/components/edit-invoice-dialog';
+import { Button } from '@/components/ui/button';
 import {
     Table,
     TableBody,
@@ -10,7 +14,11 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { show as showInvoice } from '@/routes/invoices';
-import type { Invoice } from '@/types/invoice';
+import type { Caution } from '@/types/caution';
+import type { SessionStatus } from '@/types/daily-session';
+import type { Billable, Invoice } from '@/types/invoice';
+import type { OfficeRoom } from '@/types/office-room';
+import type { SessionZone } from '@/types/session-zone';
 
 import {
     SessionEmptyRow,
@@ -18,23 +26,101 @@ import {
     sessionTableHeaderClass,
 } from './session-table-shell';
 
+/**
+ * Contexte de la journée courante : il alimente le dialogue de création et les
+ * actions de ligne (modifier / archiver).
+ * La session, la zone et la date étant déjà connues, seuls le compte et le
+ * bureau restent à saisir à la création.
+ */
+export interface SessionInvoiceAddContext {
+    type: 'sale' | 'purchase';
+    sessionDate: string;
+    sessionStatus: SessionStatus;
+    sessionZones: SessionZone[];
+    billables: Billable[];
+    officeRooms: OfficeRoom[];
+    cautions: Caution[];
+}
+
+export type SessionInvoiceAddContextInput = Omit<
+    SessionInvoiceAddContext,
+    'type'
+>;
+
 export interface SessionInvoicesTableProps {
     invoices: Invoice[];
     formatCurrency: (amount: number) => string;
     emptyMessage: string;
+    /**
+     * Quand fourni : affiche la barre d'outils (bouton de création) ainsi que
+     * les icônes de modification / archivage sur chaque ligne.
+     */
+    invoiceContext?: SessionInvoiceAddContext | null;
+    title?: string;
 }
 
 export function SessionInvoicesTable({
     invoices,
     formatCurrency,
     emptyMessage,
+    invoiceContext,
+    title = 'Factures',
 }: SessionInvoicesTableProps) {
     const handleRowClick = (invoiceId: number): void => {
         router.visit(showInvoice.url(invoiceId));
     };
 
+    const canAddInvoice = invoiceContext?.sessionStatus === 'open';
+
     return (
-        <SessionTableShell>
+        <SessionTableShell
+            header={
+                invoiceContext ? (
+                    <>
+                        <span className="text-xs font-bold tracking-wide text-neutral-500 uppercase dark:text-neutral-400">
+                            {title} ({invoices.length})
+                        </span>
+
+                        {canAddInvoice ? (
+                            <AddInvoiceDialog
+                                billables={invoiceContext.billables}
+                                officeRooms={invoiceContext.officeRooms}
+                                cautions={invoiceContext.cautions}
+                                sessionZones={invoiceContext.sessionZones}
+                                lockedSessionZoneIds={invoiceContext.sessionZones.map(
+                                    (sessionZone) => sessionZone.id,
+                                )}
+                                lockedDate={invoiceContext.sessionDate}
+                                lockedType={invoiceContext.type}
+                                redirectTo="session"
+                                title={
+                                    invoiceContext.type === 'purchase'
+                                        ? "Nouvelle Facture d'Achat"
+                                        : 'Nouvelle Facture de Vente'
+                                }
+                                description="La journée, la zone et la date sont déjà définies : choisissez le compte et le bureau."
+                                trigger={
+                                    <Button size="sm" className="font-bold">
+                                        <Plus className="mr-2 h-4 w-4" />{' '}
+                                        Ajouter une Facture
+                                    </Button>
+                                }
+                            />
+                        ) : (
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                disabled
+                                className="font-bold dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400"
+                            >
+                                <Lock className="mr-2 h-4 w-4" /> Journée
+                                clôturée
+                            </Button>
+                        )}
+                    </>
+                ) : null
+            }
+        >
             <Table>
                 <TableHeader className={sessionTableHeaderClass}>
                     <TableRow>
@@ -44,7 +130,11 @@ export function SessionInvoicesTable({
 
                         <TableHead className="text-center">NC</TableHead>
 
+                        <TableHead className="text-center">Poids Kg</TableHead>
+
                         <TableHead className="text-right">Montant</TableHead>
+
+                        <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
 
@@ -88,13 +178,52 @@ export function SessionInvoicesTable({
                                     {invoice.boxes || 0}
                                 </TableCell>
 
+                                <TableCell className="text-center font-bold text-neutral-700 dark:text-neutral-300">
+                                    {invoice.weight || 0}{' '}
+                                </TableCell>
+
                                 <TableCell className="text-right font-mono font-semibold">
                                     {formatCurrency(invoice.amount)}
+                                </TableCell>
+
+                                <TableCell
+                                    className="text-right"
+                                    onClick={(event) => {
+                                        event.stopPropagation();
+                                    }}
+                                >
+                                    {invoiceContext ? (
+                                        <div className="flex items-center justify-end gap-1">
+                                            <EditInvoiceDialog
+                                                invoice={invoice}
+                                                billables={
+                                                    invoiceContext.billables
+                                                }
+                                                sessionZones={
+                                                    invoiceContext.sessionZones
+                                                }
+                                                cautions={
+                                                    invoiceContext.cautions
+                                                }
+                                                officeRooms={
+                                                    invoiceContext.officeRooms
+                                                }
+                                            />
+
+                                            <DeleteInvoiceDialog
+                                                invoiceId={invoice.id}
+                                                invoiceNumber={
+                                                    invoice.invoice_number
+                                                }
+                                                amount={invoice.amount}
+                                            />
+                                        </div>
+                                    ) : null}
                                 </TableCell>
                             </TableRow>
                         ))
                     ) : (
-                        <SessionEmptyRow colSpan={5}>
+                        <SessionEmptyRow colSpan={7}>
                             {emptyMessage}
                         </SessionEmptyRow>
                     )}

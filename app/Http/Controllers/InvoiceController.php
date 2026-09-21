@@ -25,23 +25,22 @@ class InvoiceController extends Controller
             ->latest()
             ->paginate(10);
 
-        $customers = Customer::select('id', 'name')->get()->map(fn($c) => [
-            'id'   => $c->id,
+        $customers = Customer::select('id', 'name')->get()->map(fn ($c) => [
+            'id' => $c->id,
             'name' => $c->name,
             'type' => Customer::class,
         ]);
 
-        $companies = Company::select('id', 'name')->get()->map(fn($c) => [
-            'id'   => $c->id,
+        $companies = Company::select('id', 'name')->get()->map(fn ($c) => [
+            'id' => $c->id,
             'name' => $c->name,
             'type' => Company::class,
         ]);
 
-
         return Inertia::render('invoices', [
-            'invoices'    => $invoices,
+            'invoices' => $invoices,
 
-            'billables'   => $customers->concat($companies),
+            'billables' => $customers->concat($companies),
 
             'officeRooms' => OfficeRoom::all(['id', 'name', 'city']),
 
@@ -50,7 +49,7 @@ class InvoiceController extends Controller
             })
                 ->with([
                     'zone:id,name',           // كنطلعو لجدول المناطق ونجيبو غير السمية
-                    'dailySession:id,session_date'    // كنطلعو للحصة ونجيبو غير التاريخ
+                    'dailySession:id,session_date',    // كنطلعو للحصة ونجيبو غير التاريخ
                 ])
                 ->latest()
                 ->get(), // خليه يجيب كاع السجلات (بما فيها الـ IDs ديال الربط)
@@ -65,54 +64,63 @@ class InvoiceController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'date'           => 'required|date',
-            'type'           => 'required|in:sale,purchase',
-            'billable_id'    => 'required|integer',
-            'billable_type'  => 'required|string|in:App\Models\Customer,App\Models\Company',
-            'session_zone_id'     => 'required|exists:session_zones,id', // Changed from session_id to session_zone_id and daily_sessions to session_zones
+            'date' => 'required|date',
+            'type' => 'required|in:sale,purchase',
+            'billable_id' => 'required|integer',
+            'billable_type' => 'required|string|in:App\Models\Customer,App\Models\Company',
+            'session_zone_id' => 'required|exists:session_zones,id', // Changed from session_id to session_zone_id and daily_sessions to session_zones
             'office_room_id' => 'required|exists:office_rooms,id',
-            'caution_id'     => 'required|exists:cautions,id',
+            'caution_id' => 'nullable|exists:cautions,id',
+            'redirect_to' => 'nullable|string|in:session',
         ]);
 
         // hna status kayna f daily_session table
         $sessionZone = SessionZone::with('dailySession')->findOrFail($validated['session_zone_id']); // Changed from DailySession and session_id
 
         if ($sessionZone->dailySession->status === 'closed') { // Changed $session to $sessionZone
-            return back()->withErrors(['session_zone_id' => "Action impossible : La session est clôturée."]); // Changed session_id to session_zone_id
+            return back()->withErrors(['session_zone_id' => 'Action impossible : La session est clôturée.']); // Changed session_id to session_zone_id
         }
 
-        return DB::transaction(function () use ($validated, $request) {
+        return DB::transaction(function () use ($validated, $request, $sessionZone) {
             $year = now()->year;
 
             $lastInvoice = Invoice::withTrashed()
-                ->where('invoice_number', 'like', $year . '%')
+                ->where('invoice_number', 'like', $year.'%')
                 ->selectRaw('MAX(CAST(invoice_number AS INTEGER)) as max_val')
                 ->first();
 
             $maxNumber = $lastInvoice ? $lastInvoice->max_val : null;
 
-            $nextNumber = $maxNumber ? ($maxNumber + 1) : ($year . '00001');
+            $nextNumber = $maxNumber ? ($maxNumber + 1) : ($year.'00001');
 
             while (Invoice::withTrashed()->where('invoice_number', $nextNumber)->exists()) {
                 $nextNumber++;
             }
 
             $invoice = Invoice::create([
-                'date'           => $validated['date'],
-                'type'           => $validated['type'],
-                'billable_id'    => $validated['billable_id'],
-                'billable_type'  => $validated['billable_type'],
-                'session_zone_id'     => $validated['session_zone_id'], // Changed from session_id to session_zone_id
+                'date' => $validated['date'],
+                'type' => $validated['type'],
+                'billable_id' => $validated['billable_id'],
+                'billable_type' => $validated['billable_type'],
+                'session_zone_id' => $validated['session_zone_id'], // Changed from session_id to session_zone_id
                 'office_room_id' => $validated['office_room_id'],
-                'caution_id'     => $validated['caution_id'] ?? null,
-                'invoice_number' => (int)$nextNumber,
-                'created_by'     => $request->user()->id,
-                'status'         => 'pending',
-                'amount'         => 0,
-                'tva'            => 0,
-                'boxes'          => 0,
-                'weight'         => 0,
+                'caution_id' => $validated['caution_id'] ?? null,
+                'invoice_number' => (int) $nextNumber,
+                'created_by' => $request->user()->id,
+                'status' => 'pending',
+                'amount' => 0,
+                'tva' => 0,
+                'boxes' => 0,
+                'weight' => 0,
             ]);
+
+            // Depuis la page d'une journée, on revient sur la journée pour
+            // enchaîner les saisies : la fiche facture reste accessible en
+            // cliquant sur la ligne du tableau.
+            if (($validated['redirect_to'] ?? null) === 'session') {
+                return redirect()->route('sessions.show', $sessionZone->daily_session_id)
+                    ->with('success', "Facture #{$nextNumber} créée avec succès.");
+            }
 
             return redirect()->route('invoices.show', $invoice->id)
                 ->with('success', "Facture #{$nextNumber} créée avec succès.");
@@ -125,24 +133,24 @@ class InvoiceController extends Controller
     public function update(Request $request, Invoice $invoice)
     {
         $validated = $request->validate([
-            'date'           => 'required|date',
-            'billable_id'    => 'required|integer',
-            'billable_type'  => 'required|string|in:App\Models\Customer,App\Models\Company',
+            'date' => 'required|date',
+            'billable_id' => 'required|integer',
+            'billable_type' => 'required|string|in:App\Models\Customer,App\Models\Company',
             'office_room_id' => 'required|exists:office_rooms,id',
-            'session_zone_id'     => 'required|exists:session_zones,id', // Changed from session_id to session_zone_id and daily_sessions to session_zones
-            'caution_id'     => 'required|exists:cautions,id',
-            'status'         => 'required|string',
+            'session_zone_id' => 'required|exists:session_zones,id', // Changed from session_id to session_zone_id and daily_sessions to session_zones
+            'caution_id' => 'nullable|exists:cautions,id',
+            'status' => 'required|string',
         ]);
 
         $sessionZone = SessionZone::findOrFail($validated['session_zone_id']); // Changed from DailySession and session_id
 
-        if ($sessionZone->dailySession->status === 'closed' && $invoice->session_zone_id !== (int)$validated['session_zone_id']) {
-            return back()->withErrors(['session_zone_id' => "Transfert impossible : La session principale cible est clôturée."]);
+        if ($sessionZone->dailySession->status === 'closed' && $invoice->session_zone_id !== (int) $validated['session_zone_id']) {
+            return back()->withErrors(['session_zone_id' => 'Transfert impossible : La session principale cible est clôturée.']);
         }
 
         $invoice->update($validated);
 
-        return back()->with('success', "Facture mise à jour avec succès.");
+        return back()->with('success', 'Facture mise à jour avec succès.');
     }
 
     /**
@@ -158,20 +166,30 @@ class InvoiceController extends Controller
             'items.boat',
             'items.differences.customer',
             'sessionZone.dailySession', // Changed 'session' to 'sessionZone'
-             'sessionZone.zone',
-            'items.receiptItems' => function ($q) { {
-                    $q->where('type', 'commission')
-                        ->where('real_price', '>', 0)
-                        ->with('receipt.customer');
-                }
-            }
+            'sessionZone.zone',
+            'items.receiptItems' => function ($q) {
+                $q->where('type', 'commission')
+                    ->where('real_price', '>', 0)
+                    ->with('receipt.customer');
+
+            },
         ]);
 
+        // Retour explicite : vers la journée si la facture y est rattachée,
+        // sinon vers la liste des factures. (Le schéma rend session_zone_id
+        // obligatoire : ce fallback n'est là que par robustesse.)
+        $session = $invoice->sessionZone?->dailySession;
+
+        $backUrl = $session
+            ? route('sessions.show', [$session->id])
+            : route('invoices');
+
         return Inertia::render('invoice-show', [
-            'invoice'   => $invoice,
-            'boats'     => Boat::all(['id', 'name']),
-            'items'     => Item::all(['id', 'name']),
+            'invoice' => $invoice,
+            'boats' => Boat::all(['id', 'name']),
+            'items' => Item::all(['id', 'name']),
             'customers' => Customer::all(['id', 'name']),
+            'backUrl' => $backUrl,
         ]);
     }
 
@@ -182,7 +200,7 @@ class InvoiceController extends Controller
     {
         // Sécurité : Ne pas supprimer une facture qui contient déjà des calculs/montants
         if ($invoice->amount > 0) {
-            return back()->with('error', "Suppression impossible : Cette facture contient déjà des montants.");
+            return back()->with('error', 'Suppression impossible : Cette facture contient déjà des montants.');
         }
 
         try {
@@ -191,7 +209,7 @@ class InvoiceController extends Controller
                 $invoice->delete();
             });
 
-            return back()->with('success', "La facture a été archivée avec succès.");
+            return back()->with('success', 'La facture a été archivée avec succès.');
         } catch (\Exception $e) {
             return back()->with('error', "Une erreur est survenue lors de l'archivage.");
         }

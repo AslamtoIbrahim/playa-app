@@ -34,10 +34,12 @@ export default function DeleteInvoiceDialog({ invoiceId, invoiceNumber, amount, 
         router.delete(destroy(invoiceId).url, {
             onSuccess: (page) => {
                 const flash = page.props.flash as any;
+
                 if (flash?.success) {
                     toast.success(flash.success);
                     setOpen(false);
                 }
+
                 if (flash?.error) {
                     toast.error(flash.error, {
                         duration: 6000,
@@ -57,7 +59,9 @@ export default function DeleteInvoiceDialog({ invoiceId, invoiceNumber, amount, 
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
+                        aria-label="Archiver la facture"
+                        title="Archiver la facture"
+                        className="h-8 w-8 text-red-500 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-500/10 dark:hover:text-red-300"
                     >
                         <Trash2 className="h-4 w-4" />
                     </Button>

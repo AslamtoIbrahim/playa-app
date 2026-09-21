@@ -11,6 +11,7 @@ use App\Models\Difference;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Item;
+use App\Models\OfficeRoom;
 use App\Models\Receipt;
 use App\Models\ReceiptItem;
 use App\Models\SessionZone;
@@ -240,5 +241,39 @@ test('la liste des sessions calcule les totaux via le SessionZone', function () 
             ->where('sessions.0.id', $data['session']->id)
             ->where('sessions.0.total_buy', fn ($total) => (float) $total === 1600.0)
             ->where('sessions.0.total_sell', 0)
+        );
+});
+
+test('la page de la journée expose les données du dialogue de création de facture', function () {
+    $data = createSessionWithTransactions();
+    $user = User::factory()->create();
+
+    $officeRoom = OfficeRoom::create(['name' => 'Bureau Test', 'city' => 'casablanca']);
+
+    $this->actingAs($user)
+        ->get(route('sessions.show', $data['session']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('sessions-show')
+            // Comptes : client et/ou société
+            ->has('billables', 1)
+            ->where('billables.0.name', 'Client test')
+            ->where('billables.0.type', Customer::class)
+            // Bureaux : la ville est normalisée par l'accessor du modèle
+            ->has('officeRooms', 1)
+            ->where('officeRooms.0.id', $officeRoom->id)
+            ->where('officeRooms.0.city', 'Casablanca')
+            // Cautions : rattachées au compte de la facture
+            ->has('cautions', 1)
+            ->where('cautions.0.owner_id', $data['customer']->id)
+            ->where('cautions.0.owner_type', Customer::class)
+            // Zones de la journée : remplacent le choix session/zone du dialogue
+            ->has('sessionZones', 1)
+            ->where('sessionZones.0.id', $data['sessionZone']->id)
+            ->where('sessionZones.0.zone_id', $data['zone']->id)
+            ->where(
+                'sessionZones.0.daily_session.session_date',
+                fn ($date) => str_starts_with((string) $date, $data['session']->session_date->toDateString()),
+            )
         );
 });

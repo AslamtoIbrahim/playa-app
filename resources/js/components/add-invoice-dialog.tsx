@@ -1,21 +1,18 @@
-import { Form, Link } from '@inertiajs/react';
-import { format } from "date-fns";
-import { ArrowRight, Calendar as CalendarIcon, Check, ChevronsUpDown, Plus } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { Form } from '@inertiajs/react';
+import { format } from 'date-fns';
+import { Calendar as CalendarIcon, Plus } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
+import BillableCombobox from '@/components/billable-combobox';
+import CautionCombobox from '@/components/caution-combobox';
 import InputError from '@/components/input-error';
-import MissingCustomerCompanyPopup from '@/components/missing-customer-company-popup';
-import MissingOfficePopup from '@/components/missing-office-popup';
+import OfficeRoomCombobox from '@/components/office-room-combobox';
+import SessionZoneBadge from '@/components/receipt-session-zone-badge';
+import SessionZoneCombobox from '@/components/session-zone-combobox';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList,
-} from "@/components/ui/command";
 import {
     Dialog,
     DialogContent,
@@ -23,76 +20,149 @@ import {
     DialogHeader,
     DialogTitle,
     DialogTrigger,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
-import { cn, commandItemClass } from "@/lib/utils";
+import { formatDateDisplay } from '@/lib/date';
+import { filterCautionsByBillable } from '@/lib/invoice';
+import { cn } from '@/lib/utils';
 import { store } from '@/routes/invoices';
-import { Caution } from '@/types/caution';
-import { Billable } from '@/types/invoice';
-import { OfficeRoom } from '@/types/office-room';
-import { SessionZone } from '@/types/session-zone';
+import type { Caution } from '@/types/caution';
+import type { Billable } from '@/types/invoice';
+import type { OfficeRoom } from '@/types/office-room';
+import type { SessionZone } from '@/types/session-zone';
 import { Calendar } from './ui/calendar';
 
-interface Props {
+export interface AddInvoiceDialogProps {
     billables: Billable[];
     officeRooms: OfficeRoom[];
-    sessionZones: SessionZone[];
     cautions: Caution[];
+    /** Journées / zones disponibles. Inutile quand `lockedSessionZoneIds` est fourni. */
+    sessionZones?: SessionZone[];
+    /**
+     * Journée courante : quand fourni, la session/zone n'est plus choisissable.
+     * Plusieurs ids = journée multi-zones (un sélecteur restreint est alors affiché).
+     */
+    lockedSessionZoneIds?: number[];
+    /** Date imposée par le contexte (ISO ou `yyyy-MM-dd`). */
+    lockedDate?: string;
+    /** Type de flux imposé par le contexte (onglet Achats / Ventes). */
+    lockedType?: 'sale' | 'purchase';
+    trigger?: ReactNode;
+    title?: string;
+    description?: string;
+    /** Renvoie vers la journée après création au lieu de la fiche facture. */
+    redirectTo?: 'session';
 }
 
-export default function AddInvoiceDialog({ billables, officeRooms, sessionZones, cautions }: Props) {
+/**
+ * Convertit une date ISO (`2026-09-21T00:00:00.000000Z`) en `yyyy-MM-dd`
+ * sans passer par le fuseau horaire du navigateur.
+ */
+const toInputDate = (value: string): string => value.split('T')[0];
+
+export default function AddInvoiceDialog({
+    billables,
+    officeRooms,
+    cautions,
+    sessionZones,
+    lockedSessionZoneIds,
+    lockedDate,
+    lockedType,
+    trigger,
+    title = 'Nouvelle Facture',
+    description = "Créez l'entête de la facture. Vous serez redirigé pour ajouter les articles.",
+    redirectTo,
+}: AddInvoiceDialogProps) {
     const [open, setOpen] = useState<boolean>(false);
 
-    const [billableComboOpen, setBillableComboOpen] = useState<boolean>(false);
-    const [officeComboOpen, setOfficeComboOpen] = useState<boolean>(false);
-    const [sessionZoneComboOpen, setSessionZoneComboOpen] = useState<boolean>(false);
-    const [cautionComboOpen, setCautionComboOpen] = useState<boolean>(false);
-    const [billableSearch, setBillableSearch] = useState('');
-    const [officeSearch, setOfficeSearch] = useState('');
+    const isSessionZoneLocked = Boolean(lockedSessionZoneIds?.length);
+    const isDateLocked = Boolean(lockedDate);
+    const isTypeLocked = Boolean(lockedType);
+    const isLockedContext = isSessionZoneLocked || isDateLocked || isTypeLocked;
 
-    const [selectedBillable, setSelectedBillable] = useState<Billable | null>(null);
-    const [selectedOfficeId, setSelectedOfficeId] = useState<string>("");
-    const [selectedSessionZoneId, setSelectedSessionZoneId] = useState<string>("");
-    const [selectedCautionId, setSelectedCautionId] = useState<string>("");
-    const [invoiceType, setInvoiceType] = useState<string>("purchase");
+    const allowedSessionZones = isSessionZoneLocked
+        ? (sessionZones ?? []).filter((sessionZone) =>
+              lockedSessionZoneIds?.includes(sessionZone.id),
+          )
+        : (sessionZones ?? []);
+
+    const [selectedBillable, setSelectedBillable] = useState<Billable | null>(
+        null,
+    );
+    const [selectedOfficeId, setSelectedOfficeId] = useState<string>('');
+    const [selectedCautionId, setSelectedCautionId] = useState<string>('');
+    const [selectedSessionZoneId, setSelectedSessionZoneId] = useState<string>(
+        () =>
+            lockedSessionZoneIds?.length
+                ? lockedSessionZoneIds[0].toString()
+                : '',
+    );
+    const [invoiceType, setInvoiceType] = useState<string>(
+        lockedType ?? 'purchase',
+    );
     const [date, setDate] = useState<Date>(new Date());
 
-    const filteredCautions = useMemo(() => {
-        if (!selectedBillable) {
-            return [];
+    const filteredCautions = filterCautionsByBillable(
+        cautions,
+        selectedBillable,
+    );
+
+    const selectedSessionZone =
+        allowedSessionZones.find(
+            (sessionZone) =>
+                sessionZone.id.toString() === selectedSessionZoneId,
+        ) ?? null;
+
+    const dateValue = lockedDate
+        ? toInputDate(lockedDate)
+        : format(date, 'yyyy-MM-dd');
+
+    const showSessionZoneSelect =
+        !isSessionZoneLocked || allowedSessionZones.length > 1;
+
+    const resetContextState = (): void => {
+        if (!isSessionZoneLocked) {
+            setSelectedSessionZoneId('');
         }
 
-        return cautions.filter((c) => {
-            const isSameId = Number(c.owner_id) === Number(selectedBillable.id);
-            const isSameType = c.owner_type === selectedBillable.type || 
-                               c.owner_type.includes(selectedBillable.type!.replace(/\\/g, '\\\\'));
+        if (!isDateLocked) {
+            setDate(new Date());
+        }
 
-            return isSameId && isSameType;
-        });
-    }, [selectedBillable, cautions]);
-
-    // Helper pour trouver la session zone sélectionnée
-    const currentSessionZone = useMemo(() => 
-        sessionZones.find((sz) => sz.id.toString() === selectedSessionZoneId),
-    [selectedSessionZoneId, sessionZones]);
+        if (!isTypeLocked) {
+            setInvoiceType('purchase');
+        }
+    };
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button size="sm" className="font-bold">
-                    <Plus className="mr-2 h-4 w-4" /> Ajouter une Facture
-                </Button>
+                {trigger ?? (
+                    <Button size="sm" className="font-bold">
+                        <Plus className="mr-2 h-4 w-4" /> Ajouter une Facture
+                    </Button>
+                )}
             </DialogTrigger>
 
             <DialogContent className="sm:max-w-106.25">
                 <DialogHeader>
-                    <DialogTitle className="uppercase font-black text-slate-900">Nouvelle Facture</DialogTitle>
-                    <DialogDescription>
-                        Créez l'entête de la facture. Vous serez redirigé pour ajouter les articles.
-                    </DialogDescription>
+                    <DialogTitle className="font-black text-slate-900 uppercase dark:text-neutral-100">
+                        {title}
+                    </DialogTitle>
+                    <DialogDescription>{description}</DialogDescription>
                 </DialogHeader>
 
                 <Form
@@ -101,290 +171,222 @@ export default function AddInvoiceDialog({ billables, officeRooms, sessionZones,
                         toast.success('Facture créée avec succès !');
                         setOpen(false);
                         setSelectedBillable(null);
-                        setSelectedOfficeId("");
-                        setSelectedSessionZoneId("");
-                        setSelectedCautionId("");
-                        setInvoiceType("purchase");
-                        setDate(new Date());
+                        setSelectedOfficeId('');
+                        setSelectedCautionId('');
+                        resetContextState();
                     }}
                     className="space-y-4 pt-4"
                 >
                     {({ processing, errors }) => (
                         <>
-                            <input type="hidden" name="billable_id" value={selectedBillable?.id || ""} />
-                            <input type="hidden" name="billable_type" value={selectedBillable?.type || ""} />
-                            <input type="hidden" name="office_room_id" value={selectedOfficeId} />
-                            <input type="hidden" name="session_zone_id" value={selectedSessionZoneId} />
-                            <input type="hidden" name="caution_id" value={selectedCautionId} />
-                            <input type="hidden" name="type" value={invoiceType} />
-                            <input type="hidden" name="date" value={date ? format(date, "yyyy-MM-dd") : ""} />
+                            <input
+                                type="hidden"
+                                name="billable_id"
+                                value={selectedBillable?.id || ''}
+                            />
+                            <input
+                                type="hidden"
+                                name="billable_type"
+                                value={selectedBillable?.type || ''}
+                            />
+                            <input
+                                type="hidden"
+                                name="office_room_id"
+                                value={selectedOfficeId}
+                            />
+                            <input
+                                type="hidden"
+                                name="session_zone_id"
+                                value={selectedSessionZoneId}
+                            />
+                            <input
+                                type="hidden"
+                                name="caution_id"
+                                value={selectedCautionId}
+                            />
+                            <input
+                                type="hidden"
+                                name="type"
+                                value={invoiceType}
+                            />
+                            <input
+                                type="hidden"
+                                name="date"
+                                value={dateValue}
+                            />
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="grid gap-2">
-                                    <Label className="text-xs font-bold uppercase text-slate-500">Type de flux</Label>
-                                    <Select value={invoiceType} onValueChange={setInvoiceType}>
-                                        <SelectTrigger className="font-medium">
-                                            <SelectValue placeholder="Sélectionner" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="purchase">Achat</SelectItem>
-                                            <SelectItem value="sale">Vente</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                    <InputError message={errors.type} />
-                                </div>
+                            {redirectTo === 'session' && (
+                                <input
+                                    type="hidden"
+                                    name="redirect_to"
+                                    value="session"
+                                />
+                            )}
 
-                                <div className="grid gap-2">
-                                    <Label className="text-xs font-bold uppercase text-slate-500">Date Facture</Label>
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                            <Button
+                            {isLockedContext && (
+                                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-neutral-200 bg-neutral-50/70 px-3 py-2 dark:border-neutral-800 dark:bg-neutral-950/40">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        {isDateLocked && (
+                                            <Badge
                                                 variant="outline"
-                                                className={cn("w-full justify-start text-left font-medium", !date && "text-muted-foreground")}
+                                                className="gap-1.5 border-neutral-200 bg-white px-2 py-0.5 dark:border-neutral-700 dark:bg-neutral-900"
                                             >
-                                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                                {date ? format(date, "dd/MM/yyyy") : <span>Choisir</span>}
-                                            </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0">
-                                            <Calendar
-                                                mode="single"
-                                                selected={date}
-                                                onSelect={(d) => d && setDate(d)}
-                                                initialFocus
-                                            />
-                                        </PopoverContent>
-                                    </Popover>
-                                    <InputError message={errors.date} />
-                                </div>
-                            </div>
-
-                            <div className="grid gap-2">
-                                <div className="flex items-center justify-between">
-                                    <Label className="text-xs font-bold uppercase text-slate-500">Session & Zone d'affectation</Label>
-                                    <Link href="/sessions" className="text-[12px] text-blue-600 hover:underline flex items-center gap-1">
-                                        Gérer les sessions <ArrowRight className="h-2 w-2" />
-                                    </Link>
-                                </div>
-                                <Popover open={sessionZoneComboOpen} onOpenChange={setSessionZoneComboOpen}>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            variant="outline"
-                                            role="combobox"
-                                            className={cn(
-                                                "w-full justify-between font-medium", 
-                                                !selectedSessionZoneId && "text-muted-foreground", 
-                                                errors.session_zone_id && "border-destructive"
-                                            )}
-                                        >
-                                            {currentSessionZone
-                                                ? `${format(new Date(currentSessionZone.daily_session?.session_date || ""), "dd/MM/yyyy")} - ${currentSessionZone.zone?.name}`
-                                                : "Choisir la session/zone..."}
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                        <Command>
-                                            <CommandInput placeholder="Rechercher une zone ou date..." />
-                                            <CommandList>
-                                                <CommandEmpty>Aucun résultat trouvé.</CommandEmpty>
-                                                <CommandGroup>
-                                                    {sessionZones.map((sz) => (
-                                                        <CommandItem
-                                                            className={commandItemClass}
-                                                            key={sz.id}
-                                                            value={`${sz.daily_session?.session_date} ${sz.zone?.name}`}
-                                                            onSelect={() => {
-                                                                setSelectedSessionZoneId(sz.id.toString());
-                                                                setSessionZoneComboOpen(false);
-                                                            }}
-                                                        >
-                                                            <Check className={cn("mr-2 h-4 w-4", selectedSessionZoneId === sz.id.toString() ? "opacity-100" : "opacity-0")} />
-                                                            <div className="flex flex-col">
-                                                                <span className='capitalize'>{sz.zone?.name}</span>
-                                                                <span className="text-[10px] text-slate-500">
-                                                                    Journée du {sz.daily_session?.session_date ? format(new Date(sz.daily_session.session_date), "dd/MM/yyyy") : 'N/A'}
-                                                                </span>
-                                                            </div>
-                                                            <span className={cn(
-                                                                "ml-auto text-[10px] uppercase px-1.5 py-0.5 rounded-sm",
-                                                                sz.daily_session?.status === 'open' ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-700"
-                                                            )}>
-                                                                {sz.daily_session?.status}
-                                                            </span>
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
-                                <InputError message={errors.session_zone_id} />
-                            </div>
-
-                            {/* Reste du formulaire (Client, Caution, Bureau) inchangé */}
-                            <div className="grid gap-2">
-                                <Label className="text-xs font-bold uppercase text-slate-500">Compte / Client</Label>
-                                <Popover open={billableComboOpen} onOpenChange={setBillableComboOpen}>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            variant="outline"
-                                            role="combobox"
-                                            className={cn("w-full justify-between font-medium", !selectedBillable && "text-muted-foreground", errors.billable_id && "border-destructive")}
-                                        >
-                                            {selectedBillable ? selectedBillable.name : "Sélectionner un compte..."}
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                        <Command>
-                                            <div className="flex items-center gap-2 p-2">
-                                                <CommandInput
-                                                    placeholder="Rechercher..."
-                                                    value={billableSearch}
-                                                    onValueChange={setBillableSearch}
-                                                    className="h-9 flex-1 p-0"
-                                                />
-                                                {billableSearch.trim() &&
-                                                    !billables.some((item) =>
-                                                        item.name.toLowerCase().includes(billableSearch.trim().toLowerCase()),
-                                                    ) && (
-                                                        <MissingCustomerCompanyPopup
-                                                            initialName={billableSearch.trim()}
-                                                        />
+                                                <CalendarIcon className="h-3 w-3 text-neutral-400 dark:text-neutral-500" />
+                                                <span className="text-xs font-bold text-neutral-700 dark:text-neutral-300">
+                                                    {formatDateDisplay(
+                                                        dateValue,
                                                     )}
-                                            </div>
-                                            <CommandList>
-                                                <CommandEmpty>Aucun résultat trouvé.</CommandEmpty>
-                                                <CommandGroup>
-                                                    {billables.map((item) => (
-                                                        <CommandItem
-                                                            className={commandItemClass}
-                                                            key={`${item.type}-${item.id}`}
-                                                            value={item.name}
-                                                            onSelect={() => {
-                                                                setSelectedBillable(item);
-                                                                setSelectedCautionId("");
-                                                                setBillableComboOpen(false);
-                                                            }}
-                                                        >
-                                                            <Check className={cn("mr-2 h-4 w-4", selectedBillable?.id === item.id && selectedBillable?.type === item.type ? "opacity-100" : "opacity-0")} />
-                                                            {item.name}
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
-                                <InputError message={errors.billable_id} />
-                            </div>
+                                                </span>
+                                            </Badge>
+                                        )}
 
-                            <div className="grid gap-2">
-                                <Label className="text-xs font-bold uppercase text-slate-500">Caution associée</Label>
-                                <Popover open={cautionComboOpen} onOpenChange={setCautionComboOpen}>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            variant="outline"
-                                            role="combobox"
-                                            disabled={!selectedBillable}
-                                            className={cn(
-                                                "w-full justify-between font-medium",
-                                                !selectedCautionId && "text-muted-foreground",
-                                                errors.caution_id && "border-destructive"
-                                            )}
-                                        >
-                                            {selectedCautionId
-                                                ? filteredCautions.find((c) => c.id.toString() === selectedCautionId)?.name
-                                                : selectedBillable ? "Sélectionner une caution..." : "Sélectionnez d'abord un compte"}
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                        <Command>
-                                            <CommandInput placeholder="Rechercher une caution..." />
-                                            <CommandList>
-                                                <CommandEmpty>Aucune caution trouvée.</CommandEmpty>
-                                                <CommandGroup>
-                                                    {filteredCautions.map((caution) => (
-                                                        <CommandItem
-                                                            className={commandItemClass}
-                                                            key={caution.id}
-                                                            value={caution.name}
-                                                            onSelect={() => {
-                                                                setSelectedCautionId(caution.id.toString());
-                                                                setCautionComboOpen(false);
-                                                            }}
-                                                        >
-                                                            <Check className={cn("mr-2 h-4 w-4", selectedCautionId === caution.id.toString() ? "opacity-100" : "opacity-0")} />
-                                                            {caution.name}
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
-                                <InputError message={errors.caution_id} />
-                            </div>
+                                        {isTypeLocked && (
+                                            <Badge
+                                                variant="outline"
+                                                className={cn(
+                                                    'px-2 py-0.5 text-xs font-semibold',
+                                                    invoiceType === 'purchase'
+                                                        ? 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-400'
+                                                        : 'border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-900/50 dark:bg-orange-950/40 dark:text-orange-400',
+                                                )}
+                                            >
+                                                {invoiceType === 'purchase'
+                                                    ? 'Achat'
+                                                    : 'Vente'}
+                                            </Badge>
+                                        )}
+                                    </div>
 
-                            <div className="grid gap-2">
-                                <Label className="text-xs font-bold uppercase text-slate-500">Bureau / Ville</Label>
-                                <Popover open={officeComboOpen} onOpenChange={setOfficeComboOpen}>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            variant="outline"
-                                            role="combobox"
-                                            className={cn("w-full justify-between font-medium", !selectedOfficeId && "text-muted-foreground", errors.office_room_id && "border-destructive")}
-                                        >
-                                            {selectedOfficeId
-                                                ? officeRooms.find((r) => r.id.toString() === selectedOfficeId)?.city
-                                                : "Sélectionner un bureau..."}
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                        <Command>
-                                            <div className="flex items-center gap-2 p-2">
-                                                <CommandInput
-                                                    placeholder="Rechercher un bureau..."
-                                                    value={officeSearch}
-                                                    onValueChange={setOfficeSearch}
-                                                    className="h-9 flex-1 p-0"
-                                                />
-                                                {officeSearch.trim() &&
-                                                    !officeRooms.some((room) =>
-                                                        `${room.name} ${room.city}`.toLowerCase().includes(officeSearch.trim().toLowerCase()),
-                                                    ) && <MissingOfficePopup />}
-                                            </div>
-                                            <CommandList>
-                                                <CommandEmpty>Aucun bureau trouvé.</CommandEmpty>
-                                                <CommandGroup>
-                                                    {officeRooms.map((room) => (
-                                                        <CommandItem
-                                                            className={commandItemClass}
-                                                            key={room.id}
-                                                            value={room.name + " " + room.city}
-                                                            onSelect={() => {
-                                                                setSelectedOfficeId(room.id.toString());
-                                                                setOfficeComboOpen(false);
-                                                            }}
-                                                        >
-                                                            <Check className={cn("mr-2 h-4 w-4", selectedOfficeId === room.id.toString() ? "opacity-100" : "opacity-0")} />
-                                                            {room.name} ({room.city})
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
-                                <InputError message={errors.office_room_id} />
-                            </div>
+                                    {isSessionZoneLocked && (
+                                        <SessionZoneBadge
+                                            sessionZone={selectedSessionZone}
+                                        />
+                                    )}
+                                </div>
+                            )}
+
+                            {(!isTypeLocked || !isDateLocked) && (
+                                <div className="grid grid-cols-2 gap-4">
+                                    {!isTypeLocked && (
+                                        <div className="grid gap-2">
+                                            <Label className="text-xs font-bold text-slate-500 uppercase dark:text-neutral-400">
+                                                Type de flux
+                                            </Label>
+                                            <Select
+                                                value={invoiceType}
+                                                onValueChange={setInvoiceType}
+                                            >
+                                                <SelectTrigger className="font-medium">
+                                                    <SelectValue placeholder="Sélectionner" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="purchase">
+                                                        Achat
+                                                    </SelectItem>
+                                                    <SelectItem value="sale">
+                                                        Vente
+                                                    </SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            <InputError message={errors.type} />
+                                        </div>
+                                    )}
+
+                                    {!isDateLocked && (
+                                        <div className="grid gap-2">
+                                            <Label className="text-xs font-bold text-slate-500 uppercase dark:text-neutral-400">
+                                                Date Facture
+                                            </Label>
+                                            <Popover>
+                                                <PopoverTrigger asChild>
+                                                    <Button
+                                                        variant="outline"
+                                                        className="w-full justify-start text-left font-medium data-[state=open]:bg-neutral-100 dark:data-[state=open]:bg-neutral-800"
+                                                    >
+                                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                                        {format(
+                                                            date,
+                                                            'dd/MM/yyyy',
+                                                        )}
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-auto p-0">
+                                                    <Calendar
+                                                        mode="single"
+                                                        selected={date}
+                                                        onSelect={(
+                                                            selectedDate,
+                                                        ) => {
+                                                            if (selectedDate) {
+                                                                setDate(
+                                                                    selectedDate,
+                                                                );
+                                                            }
+                                                        }}
+                                                        initialFocus
+                                                    />
+                                                </PopoverContent>
+                                            </Popover>
+                                            <InputError message={errors.date} />
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {showSessionZoneSelect && (
+                                <SessionZoneCombobox
+                                    sessionZones={allowedSessionZones}
+                                    value={selectedSessionZoneId}
+                                    onChange={setSelectedSessionZoneId}
+                                    error={errors.session_zone_id}
+                                    label={
+                                        isSessionZoneLocked
+                                            ? "Zone d'affectation"
+                                            : "Session & Zone d'affectation"
+                                    }
+                                    placeholder={
+                                        isSessionZoneLocked
+                                            ? 'Choisir la zone...'
+                                            : 'Choisir la session/zone...'
+                                    }
+                                    showManageLink={!isSessionZoneLocked}
+                                />
+                            )}
+
+                            <BillableCombobox
+                                billables={billables}
+                                value={selectedBillable}
+                                onChange={(billable) => {
+                                    setSelectedBillable(billable);
+                                    setSelectedCautionId('');
+                                }}
+                                error={errors.billable_id}
+                            />
+
+                            <CautionCombobox
+                                cautions={filteredCautions}
+                                billable={selectedBillable}
+                                value={selectedCautionId}
+                                onChange={setSelectedCautionId}
+                                error={errors.caution_id}
+                            />
+
+                            <OfficeRoomCombobox
+                                officeRooms={officeRooms}
+                                value={selectedOfficeId}
+                                onChange={setSelectedOfficeId}
+                                error={errors.office_room_id}
+                            />
 
                             <div className="flex justify-end gap-3 pt-4">
-                                <Button type="submit" disabled={processing} className="w-full font-bold uppercase tracking-wider">
-                                    {processing && <Spinner className="mr-2 h-4 w-4" />}
+                                <Button
+                                    type="submit"
+                                    disabled={processing}
+                                    className="w-full font-bold tracking-wider uppercase"
+                                >
+                                    {processing && (
+                                        <Spinner className="mr-2 h-4 w-4" />
+                                    )}
                                     Enregistrer la Facture
                                 </Button>
                             </div>

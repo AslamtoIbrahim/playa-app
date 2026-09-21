@@ -68,6 +68,8 @@ interface Props {
     boats: Boat[];
     items: Item[];
     customers: Customer[];
+    /** URL de retour explicite fournie par le backend (journée liée ou liste). */
+    backUrl: string;
 }
 
 export default function InvoiceShow({
@@ -75,6 +77,7 @@ export default function InvoiceShow({
     boats,
     items,
     customers,
+    backUrl,
 }: Props) {
     // --- State Management (Manual Synchronization) ---
     const [localItems, setLocalItems] = useState<InvoiceItem[]>(
@@ -269,7 +272,7 @@ export default function InvoiceShow({
 
             <button
                 type="button"
-                onClick={() => window.history.back()}
+                onClick={() => router.visit(backUrl)}
                 className="inline-flex w-fit cursor-pointer items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"
             >
                 <ArrowLeft className="h-4 w-4" /> Retour
@@ -366,7 +369,7 @@ export default function InvoiceShow({
                                         className="mt-1 mr-2"
                                         checked={
                                             selectedIds.length ===
-                                            localItems.length &&
+                                                localItems.length &&
                                             localItems.length > 0
                                         }
                                         onCheckedChange={(checked) => {
@@ -414,7 +417,7 @@ export default function InvoiceShow({
                                 boats={boats}
                                 items={items}
                                 isNew={true}
-                                onOpenDifference={() => { }} // New row doesn't need this
+                                onOpenDifference={() => {}} // New row doesn't need this
                             />
 
                             <SortableContext
@@ -434,8 +437,8 @@ export default function InvoiceShow({
                                                 checked
                                                     ? [...prev, row.id]
                                                     : prev.filter(
-                                                        (id) => id !== row.id,
-                                                    ),
+                                                          (id) => id !== row.id,
+                                                      ),
                                             );
                                         }}
                                         onOpenDifference={handleOpenDifference}
@@ -448,23 +451,23 @@ export default function InvoiceShow({
                     <DragOverlay dropAnimation={null}>
                         {activeId
                             ? (() => {
-                                const isSelected = selectedIds.includes(
-                                    activeId as number,
-                                );
-                                const itemsToDisplay = isSelected
-                                    ? localItems.filter((item) =>
-                                        selectedIds.includes(item.id),
-                                    )
-                                    : localItems.filter(
-                                        (item) => item.id === activeId,
-                                    );
+                                  const isSelected = selectedIds.includes(
+                                      activeId as number,
+                                  );
+                                  const itemsToDisplay = isSelected
+                                      ? localItems.filter((item) =>
+                                            selectedIds.includes(item.id),
+                                        )
+                                      : localItems.filter(
+                                            (item) => item.id === activeId,
+                                        );
 
-                                return (
-                                    <InvoiceItemDragOverlay
-                                        items={itemsToDisplay}
-                                    />
-                                );
-                            })()
+                                  return (
+                                      <InvoiceItemDragOverlay
+                                          items={itemsToDisplay}
+                                      />
+                                  );
+                              })()
                             : null}
                     </DragOverlay>
                 </DndContext>

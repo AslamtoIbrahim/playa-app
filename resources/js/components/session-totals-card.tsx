@@ -43,7 +43,9 @@ function StatCard({ label, value, icon: Icon, iconClass, valueClass, mono = true
             <CardContent>
                 <div
                     className={cn(
-                        mono ? 'font-mono text-2xl font-black' : 'text-lg font-bold',
+                        mono
+                            ? 'min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-mono text-base font-black sm:text-lg'
+                            : 'text-lg font-bold',
                         valueClass ?? 'text-neutral-900 dark:text-neutral-100',
                     )}
                 >

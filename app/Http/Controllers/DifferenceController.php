@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Models\Boat;
 use App\Models\Customer;
 use App\Models\Difference;
 use App\Models\InvoiceItem;
+use App\Models\ReceiptItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -70,23 +70,23 @@ class DifferenceController extends Controller
             $customer = Customer::find($row->customer_id);
             $boat = Boat::find($row->boat_id);
 
-            if (!$customer || !$boat) {
+            if (! $customer || ! $boat) {
                 return null;
             }
 
-            return (object)[
-                'customer_id'       => $row->customer_id,
-                'boat_id'           => $row->boat_id,
-                'invoice_date'      => $row->invoice_date,
-                'total_diff_amount' => (float)$row->total_diff_amount,
-                'items_count'       => (int)$row->total_items,
-                'customer'          => $customer,
-                'boat_name'         => $boat->name,
+            return (object) [
+                'customer_id' => $row->customer_id,
+                'boat_id' => $row->boat_id,
+                'invoice_date' => $row->invoice_date,
+                'total_diff_amount' => (float) $row->total_diff_amount,
+                'items_count' => (int) $row->total_items,
+                'customer' => $customer,
+                'boat_name' => $boat->name,
             ];
         })->filter()->values();
 
         return Inertia::render('differences', [
-            'reports' => $reports
+            'reports' => $reports,
         ]);
     }
 
@@ -105,11 +105,11 @@ class DifferenceController extends Controller
                     })->where('boat_id', $boatId);
                 });
             })
-            ->with(['item', 'invoiceItem.invoice', 'invoiceItem.boat', 'customer'])
+            ->with(['item', 'invoiceItem.invoice.sessionZone.dailySession', 'invoiceItem.boat', 'customer'])
             ->get();
 
         // 2. جلب الـ ReceiptItems
-        $rawReceipts = \App\Models\ReceiptItem::whereHas('receipt', function ($q) use ($customerId, $date, $boatId) {
+        $rawReceipts = ReceiptItem::whereHas('receipt', function ($q) use ($customerId, $date, $boatId) {
             $q->where('customer_id', $customerId)
                 ->whereDate('date', $date)
                 ->where('boat_id', $boatId);
@@ -119,21 +119,21 @@ class DifferenceController extends Controller
 
         // 3. تحويل الـ Receipts لـ Format موحد (Objects)
         $mappedReceipts = $rawReceipts->map(function ($ri) {
-            return (object)[
-                'id' => 'r' . $ri->id,
+            return (object) [
+                'id' => 'r'.$ri->id,
                 'is_extra' => true,
                 'type' => $ri->type,
-                'item' => $ri->item ?? (object)['id' => 0, 'name' => 'COMMISSION'],
+                'item' => $ri->item ?? (object) ['id' => 0, 'name' => 'COMMISSION'],
                 'customer' => $ri->receipt->customer ?? null,
                 'boxes' => $ri->box ?? 0,
                 'unit_count' => $ri->unit_count,
                 'real_price' => $ri->real_price,
                 'total_diff' => $ri->unit_count * $ri->real_price,
-                'invoiceItem' => (object)[
+                'invoiceItem' => (object) [
                     'unit_price' => 0,
                     'boat' => $ri->receipt->boat ?? null,
-                    'invoice' => null
-                ]
+                    'invoice' => null,
+                ],
             ];
         });
 
@@ -141,6 +141,7 @@ class DifferenceController extends Controller
         $allDetails = $rawDifferences->map(function ($d) {
             $d->is_extra = false;
             $d->type = $d->type ?? 'diff';
+
             return $d;
         })->concat($mappedReceipts);
 
@@ -158,16 +159,18 @@ class DifferenceController extends Controller
                 ? $detail->invoiceItem->unit_price
                 : 'extra';
             $type = $detail->type ?? 'diff';
-            return $itemId . '-' . $detail->real_price . '-' . $priceKey . '-' . ($detail->is_extra ? 'e' : 'd') . '-' . $type;
+
+            return $itemId.'-'.$detail->real_price.'-'.$priceKey.'-'.($detail->is_extra ? 'e' : 'd').'-'.$type;
         })->map(function ($group) {
             $first = $group->first();
+
             // رجعنا كلشي Object باش السورتينغ يخدم بلا مشاكل
-            return (object)[
+            return (object) [
                 'id' => $first->id,
                 'is_extra' => $first->is_extra,
                 'type' => $first->type ?? 'diff',
                 'customer' => $first->customer,
-                'invoice_item' => (object)[
+                'invoice_item' => (object) [
                     'unit_price' => $first->invoiceItem->unit_price ?? 0,
                     'item' => $first->item,
                     'boat' => $first->invoiceItem->boat ?? null,
@@ -183,18 +186,47 @@ class DifferenceController extends Controller
         // 6. الترتيب (تم التصحيح هنا: كنخدمو بـ Object Syntax -> )
         $sortedDetails = $groupedDetails->sortBy(function ($item) {
             $name = strtolower($item->invoice_item->item->name ?? 'zzz');
-            if (str_contains($name, 'poulpe')) return 1;
-            if (str_contains($name, 'calam')) return 2;
-            if (str_contains($name, 'seiche')) return 3;
-            if (str_contains($name, 'commission')) return 5;
+            if (str_contains($name, 'poulpe')) {
+                return 1;
+            }
+            if (str_contains($name, 'calam')) {
+                return 2;
+            }
+            if (str_contains($name, 'seiche')) {
+                return 3;
+            }
+            if (str_contains($name, 'commission')) {
+                return 5;
+            }
+
             return 4;
         })->values();
+
+        // Retour explicite : le rapport peut mélanger plusieurs journées
+        // (même client/bateau/date mais session_zones différentes) ou ne
+        // contenir que des réceptions. On ne pointe vers la journée que si
+        // une seule session unique se dégage des données ; sinon on retombe
+        // sur la liste des différences avec le contexte du rapport.
+        $sessionIds = $rawDifferences
+            ->map(fn ($d) => $d->invoiceItem?->invoice?->sessionZone?->dailySession?->id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        $backUrl = $sessionIds->count() === 1
+            ? route('sessions.show', [$sessionIds->first()])
+            : route('differences', [
+                'customer_id' => $customerId,
+                'date' => $date,
+                'boat_id' => $boatId,
+            ]);
 
         return Inertia::render('differences-show', [
             'details' => $sortedDetails,
             'total_boxes' => $totalBoxesOverall,
             'total_amount' => $totalAmount,
-            'current_boat' => $allDetails->first()->invoiceItem->boat ?? null
+            'current_boat' => $allDetails->first()->invoiceItem->boat ?? null,
+            'backUrl' => $backUrl,
         ]);
     }
 
@@ -202,11 +234,11 @@ class DifferenceController extends Controller
     {
         $validated = $request->validate([
             'invoice_item_id' => 'nullable|exists:invoice_items,id', // أصبح اختيارياً للـ Hortax
-            'customer_id'    => 'required|exists:customers,id',
-            'item_id'        => 'required|exists:items,id',
-            'unit_count'     => 'required|numeric|min:0.01',
-            'real_price'     => 'required|numeric',
-            'boxes'          => 'nullable|integer|min:0',
+            'customer_id' => 'required|exists:customers,id',
+            'item_id' => 'required|exists:items,id',
+            'unit_count' => 'required|numeric|min:0.01',
+            'real_price' => 'required|numeric',
+            'boxes' => 'nullable|integer|min:0',
         ]);
 
         return DB::transaction(function () use ($validated) {
@@ -230,14 +262,14 @@ class DifferenceController extends Controller
 
             $newDiff = Difference::create([
                 'invoice_item_id' => $validated['invoice_item_id'],
-                'customer_id'    => $validated['customer_id'],
-                'item_id'        => $validated['item_id'],
-                'unit_count'     => $validated['unit_count'],
-                'real_price'     => $validated['real_price'],
-                'boxes'          => $validated['boxes'] ?? 0,
-                'amount'         => $validated['unit_count'] * $validated['real_price'],
-                'total_diff'     => $totalDiff,
-                'position'       => $lastPos + 1,
+                'customer_id' => $validated['customer_id'],
+                'item_id' => $validated['item_id'],
+                'unit_count' => $validated['unit_count'],
+                'real_price' => $validated['real_price'],
+                'boxes' => $validated['boxes'] ?? 0,
+                'amount' => $validated['unit_count'] * $validated['real_price'],
+                'total_diff' => $totalDiff,
+                'position' => $lastPos + 1,
             ]);
 
             return back()->with('success', 'Répartition enregistrée ! ✅');
@@ -247,12 +279,12 @@ class DifferenceController extends Controller
     public function update(Request $request, Difference $difference)
     {
         $validated = $request->validate([
-            'unit_count'  => 'nullable|numeric|min:0.01',
-            'real_price'  => 'nullable|numeric',
+            'unit_count' => 'nullable|numeric|min:0.01',
+            'real_price' => 'nullable|numeric',
             'customer_id' => 'nullable|exists:customers,id',
-            'item_id'     => 'nullable|exists:items,id',
-            'boxes'       => 'nullable|integer|min:0',
-            'position'    => 'nullable|integer',
+            'item_id' => 'nullable|exists:items,id',
+            'boxes' => 'nullable|integer|min:0',
+            'position' => 'nullable|integer',
         ]);
 
         return DB::transaction(function () use ($validated, $difference) {
@@ -270,7 +302,7 @@ class DifferenceController extends Controller
                     ->sum('unit_count');
 
                 if ($newCount > ($invoiceItem->unit_count - $otherDist)) {
-                    return back()->with('error', "Quantité invalide !");
+                    return back()->with('error', 'Quantité invalide !');
                 }
 
                 $totalDiff = ($newPrice - $invoiceItem->unit_price) * $newCount;
@@ -278,13 +310,13 @@ class DifferenceController extends Controller
 
             $difference->update([
                 'customer_id' => $validated['customer_id'] ?? $difference->customer_id,
-                'item_id'     => $validated['item_id'] ?? $difference->item_id,
-                'unit_count'  => $newCount,
-                'real_price'  => $newPrice,
-                'boxes'       => $validated['boxes'] ?? $difference->boxes,
-                'amount'      => $newCount * $newPrice,
-                'total_diff'  => $totalDiff,
-                'position'    => $validated['position'] ?? $difference->position,
+                'item_id' => $validated['item_id'] ?? $difference->item_id,
+                'unit_count' => $newCount,
+                'real_price' => $newPrice,
+                'boxes' => $validated['boxes'] ?? $difference->boxes,
+                'amount' => $newCount * $newPrice,
+                'total_diff' => $totalDiff,
+                'position' => $validated['position'] ?? $difference->position,
             ]);
 
             return back()->with('success', 'Mise à jour réussie ! ✅');
@@ -295,7 +327,7 @@ class DifferenceController extends Controller
     {
         $validated = $request->validate([
             'ids' => 'required|array',
-            'ids.*' => 'exists:differences,id'
+            'ids.*' => 'exists:differences,id',
         ]);
 
         DB::transaction(function () use ($validated) {
@@ -311,6 +343,7 @@ class DifferenceController extends Controller
     {
         $validated = $request->validate(['ids' => 'required|array', 'ids.*' => 'exists:differences,id']);
         Difference::whereIn('id', $validated['ids'])->delete();
+
         return back()->with('success', 'Suppressions réussies ! ✅');
     }
 
@@ -322,12 +355,13 @@ class DifferenceController extends Controller
             $items = Difference::whereIn('id', $validated['ids'])->orderBy('position')->get();
 
             foreach ($items as $item) {
-                // Duplicate Logic (Checking if stock allows can be complex here, 
+                // Duplicate Logic (Checking if stock allows can be complex here,
                 // typically we duplicate with 0 or same count and let user adjust)
                 $new = $item->replicate();
                 $new->position = Difference::where('invoice_item_id', $item->invoice_item_id)->max('position') + 1;
                 $new->save();
             }
+
             return back()->with('success', 'Duplication réussie ! ✅');
         });
     }
@@ -341,7 +375,7 @@ class DifferenceController extends Controller
 
         return back()->with([
             'success' => 'Supprimé ! ✅',
-            'updated_item' => $fullItem
+            'updated_item' => $fullItem,
         ]);
     }
 }

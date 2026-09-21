@@ -11,7 +11,7 @@ import {
     ShieldCheck,
     Building2,
 } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -39,6 +39,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
+import { filterCautionsByBillable } from '@/lib/invoice';
 import { cn, commandItemClass } from '@/lib/utils';
 
 import { update } from '@/routes/invoices';
@@ -91,19 +92,7 @@ export default function EditInvoiceDialog({
 
     const [date, setDate] = useState<Date>(parseISO(invoice.date));
 
-    const filteredCautions = useMemo(() => {
-        if (!selectedBillable) {
-            return [];
-        }
-
-        return cautions.filter((c) => {
-            const isSameId = Number(c.owner_id) === Number(selectedBillable.id);
-            const isSameType = c.owner_type === selectedBillable.type ||
-                c.owner_type.includes(selectedBillable.type!.replace(/\\/g, '\\\\'));
-
-            return isSameId && isSameType;
-        });
-    }, [selectedBillable, cautions]);
+    const filteredCautions = filterCautionsByBillable(cautions, selectedBillable);
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -112,7 +101,9 @@ export default function EditInvoiceDialog({
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-blue-500 hover:bg-blue-50 hover:text-blue-700"
+                        aria-label="Modifier la facture"
+                        title="Modifier la facture"
+                        className="h-8 w-8 text-blue-500 hover:bg-blue-50 hover:text-blue-700 dark:text-blue-400 dark:hover:bg-blue-500/10 dark:hover:text-blue-300"
                     >
                         <Pencil className="h-4 w-4" />
                     </Button>
