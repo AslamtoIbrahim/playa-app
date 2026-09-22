@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Attendance;
+use App\Models\Boat;
 use App\Models\Caution;
 use App\Models\Company;
 use App\Models\Customer;
@@ -98,9 +99,18 @@ class DailySessionController extends Controller
             $q->whereIn('session_zone_id', $sessionZoneIds)->where('type', 'purchase');
         })->with(['item', 'customer', 'invoiceItem.invoice', 'invoiceItem.boat'])->get();
 
+        // Les bons sans lien facture sont visibles côté achats : bons vides
+        // (à peine créés) et bons à saisie directe (items sans invoice_item_id).
         $purchaseReceipts = Receipt::whereIn('session_zone_id', $sessionZoneIds)
-            ->whereHas('items.invoiceItem.invoice', function ($q) {
-                $q->where('type', 'purchase');
+            ->where(function ($q) {
+                $q->where(function ($q2) {
+                    $q2->whereDoesntHave('items')
+                        ->orWhereHas('items', function ($i) {
+                            $i->whereNull('invoice_item_id');
+                        });
+                })->orWhereHas('items.invoiceItem.invoice', function ($q2) {
+                    $q2->where('type', 'purchase');
+                });
             })->with(['items.invoiceItem.invoice', 'customer', 'boat', 'sessionZone.zone'])->get();
 
         // 2. Ventes data & tracking
@@ -174,6 +184,10 @@ class DailySessionController extends Controller
             'sessionZones' => $session->sessionZones()
                 ->with(['zone:id,name', 'dailySession:id,session_date'])
                 ->get(['id', 'daily_session_id', 'zone_id']),
+
+            // Données du dialogue de création de bon de réception depuis la journée
+            'customers' => Customer::all(['id', 'name']),
+            'boats' => Boat::all(['id', 'name']),
         ]);
     }
 

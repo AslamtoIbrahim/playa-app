@@ -6,6 +6,7 @@ import { SessionDifferencesTable } from './session-differences-table';
 import { SessionInvoicesTable } from './session-invoices-table';
 import type { SessionInvoiceAddContextInput } from './session-invoices-table';
 import { SessionReceiptsTable } from './session-receipts-table';
+import type { SessionReceiptAddContextInput } from './session-receipts-table';
 import { SessionSalesTable } from './session-sales-table';
 
 export interface SessionSalesTabProps {
@@ -13,12 +14,15 @@ export interface SessionSalesTabProps {
     formatCurrency: (amount: number) => string;
     /** Contexte de la journée : création + actions de ligne sur les factures. */
     invoiceContext?: SessionInvoiceAddContextInput | null;
+    /** Contexte de la journée : création + actions de ligne sur les bons de réception. */
+    receiptContext?: SessionReceiptAddContextInput | null;
 }
 
 export function SessionSalesTab({
     saleData,
     formatCurrency,
     invoiceContext = null,
+    receiptContext = null,
 }: SessionSalesTabProps) {
     const saleSubTabClass = cn(
         'h-10 cursor-pointer rounded-lg border border-transparent px-5 text-sm font-medium',
@@ -107,6 +111,7 @@ export function SessionSalesTab({
                     receipts={saleData.receipts}
                     formatCurrency={formatCurrency}
                     emptyMessage="Aucune vente avec destination réception trouvée."
+                    receiptContext={receiptContext}
                 />
             </TabsContent>
 

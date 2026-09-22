@@ -2,12 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
-use App\Models\Customer;
-use App\Models\SessionZone;
 use App\Models\Boat;
+use App\Models\Customer;
 use App\Models\Item;
 use App\Models\Receipt;
+use App\Models\SessionZone;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -35,10 +34,10 @@ class ReceiptController extends Controller
         $boats = Boat::all(['id', 'name']);
 
         return Inertia::render('receipts', [
-            'receipts'  => $receipts,
+            'receipts' => $receipts,
             'customers' => $customers,
             'sessionZones' => $sessionZones,
-            'boats'     => $boats,
+            'boats' => $boats,
         ]);
     }
 
@@ -48,31 +47,40 @@ class ReceiptController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'date'        => 'required|date',
+            'date' => 'required|date',
             'customer_id' => 'required|exists:customers,id',
-            'session_zone_id'  => 'required|exists:session_zones,id',
-            'boat_id'     => 'nullable|exists:boats,id',
+            'session_zone_id' => 'required|exists:session_zones,id',
+            'boat_id' => 'nullable|exists:boats,id',
+            'redirect_to' => 'nullable|string|in:session',
         ]);
 
         $sessionZone = SessionZone::with('dailySession')->findOrFail($validated['session_zone_id']);
 
         if ($sessionZone->dailySession->status === 'closed') {
-            return back()->withErrors(['session_zone_id' => "Action impossible : La session الرئيسية  مغلقة."]);
+            return back()->withErrors(['session_zone_id' => 'Action impossible : La session الرئيسية  مغلقة.']);
         }
 
-        return DB::transaction(function () use ($validated) {
+        return DB::transaction(function () use ($validated, $sessionZone) {
             $receipt = Receipt::create([
-                'date'         => $validated['date'],
-                'customer_id'  => $validated['customer_id'],
-                'session_zone_id'   => $validated['session_zone_id'],
-                'boat_id'      => $validated['boat_id'] ?? null,
-                'quantity'     => 0,
+                'date' => $validated['date'],
+                'customer_id' => $validated['customer_id'],
+                'session_zone_id' => $validated['session_zone_id'],
+                'boat_id' => $validated['boat_id'] ?? null,
+                'quantity' => 0,
                 'total_amount' => 0,
-                'total_boxes'  => 0,
+                'total_boxes' => 0,
             ]);
 
+            // Depuis la page d'une journée, on revient sur la journée pour
+            // enchaîner les saisies : la fiche du bon reste accessible en
+            // cliquant sur la ligne du tableau.
+            if (($validated['redirect_to'] ?? null) === 'session') {
+                return redirect()->route('sessions.show', $sessionZone->daily_session_id)
+                    ->with('success', 'Bon créé avec succès.');
+            }
+
             return redirect()->route('receipts.show', $receipt->id)
-                ->with('success', "Bon créé avec succès.");
+                ->with('success', 'Bon créé avec succès.');
         });
     }
 
@@ -85,7 +93,7 @@ class ReceiptController extends Controller
 
         return Inertia::render('receipts-show', [
             'receipt' => $receipt,
-            'items'   => Item::all(['id', 'name']),
+            'items' => Item::all(['id', 'name']),
         ]);
     }
 
@@ -95,21 +103,21 @@ class ReceiptController extends Controller
     public function update(Request $request, Receipt $receipt)
     {
         $validated = $request->validate([
-            'date'        => 'required|date',
+            'date' => 'required|date',
             'customer_id' => 'required|exists:customers,id',
-            'session_zone_id'  => 'required|exists:session_zones,id',
-            'boat_id'     => 'nullable|exists:boats,id',
+            'session_zone_id' => 'required|exists:session_zones,id',
+            'boat_id' => 'nullable|exists:boats,id',
         ]);
 
         $sessionZone = SessionZone::with('dailySession')->findOrFail($validated['session_zone_id']);
 
-        if ($sessionZone->dailySession->status === 'closed' && $receipt->session_zone_id !== (int)$validated['session_zone_id']) {
-            return back()->withErrors(['session_zone_id' => "Transfert impossible : La session الرئيسية  المستهدفة مغلقة."]);
+        if ($sessionZone->dailySession->status === 'closed' && $receipt->session_zone_id !== (int) $validated['session_zone_id']) {
+            return back()->withErrors(['session_zone_id' => 'Transfert impossible : La session الرئيسية  المستهدفة مغلقة.']);
         }
 
         $receipt->update($validated);
 
-        return back()->with('success', "Bon mis à jour.");
+        return back()->with('success', 'Bon mis à jour.');
     }
 
     /**
@@ -118,7 +126,7 @@ class ReceiptController extends Controller
     public function destroy(Receipt $receipt)
     {
         if ($receipt->items()->count() > 0 || $receipt->total_amount > 0) {
-            return back()->with('error', "Suppression impossible : Ce bon contient des données.");
+            return back()->with('error', 'Suppression impossible : Ce bon contient des données.');
         }
 
         try {
@@ -130,11 +138,11 @@ class ReceiptController extends Controller
 
             DB::commit();
 
-            return back()->with('success', "Le bon a été archivé avec succès.");
+            return back()->with('success', 'Le bon a été archivé avec succès.');
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return back()->with('error', "Erreur technique : " . $e->getMessage());
+            return back()->with('error', 'Erreur technique : '.$e->getMessage());
         }
     }
 }

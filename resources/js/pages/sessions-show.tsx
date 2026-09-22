@@ -6,10 +6,13 @@ import { sessions } from '@/routes';
 import SessionTotalsCard from '@/components/session-totals-card';
 import SessionTransactions from '@/components/session-transactions';
 import type { SessionInvoiceAddContextInput } from '@/components/session-invoices-table';
+import type { SessionReceiptAddContextInput } from '@/components/session-receipts-table';
 import { SessionHeader } from '@/components/sessison-header';
 import { formatDateDisplay } from '@/lib/date';
 import type { Attendance } from '@/types/attendance';
+import type { Boat } from '@/types/boat';
 import type { Caution } from '@/types/caution';
+import type { Customer } from '@/types/customer';
 import type { DailySession, SessionGroupData } from '@/types/daily-session';
 import type { Billable } from '@/types/invoice';
 import type { OfficeRoom } from '@/types/office-room';
@@ -31,6 +34,9 @@ interface Props {
     officeRooms: OfficeRoom[];
     cautions: Caution[];
     sessionZones: SessionZone[];
+    /** Données nécessaires au dialogue de création de bon de réception (client, bateau). */
+    customers: Customer[];
+    boats: Boat[];
 }
 
 function SessionShow({
@@ -43,6 +49,8 @@ function SessionShow({
     officeRooms,
     cautions,
     sessionZones,
+    customers,
+    boats,
 }: Props) {
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('fr-FR', {
@@ -61,6 +69,16 @@ function SessionShow({
         billables,
         officeRooms,
         cautions,
+    };
+
+    // Contexte des bons de réception : la session, la zone et la date étant
+    // déjà connues, seuls le client et le bateau restent à saisir.
+    const receiptContext: SessionReceiptAddContextInput = {
+        sessionDate: session.session_date,
+        sessionStatus: session.status,
+        sessionZones,
+        customers,
+        boats,
     };
 
     return (
@@ -93,6 +111,7 @@ function SessionShow({
                 attendances={attendances}
                 formatCurrency={formatCurrency}
                 invoiceContext={invoiceContext}
+                receiptContext={receiptContext}
             />
         </div>
     );

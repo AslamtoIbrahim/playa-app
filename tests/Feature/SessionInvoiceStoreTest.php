@@ -4,6 +4,7 @@ use App\Models\Customer;
 use App\Models\DailySession;
 use App\Models\Invoice;
 use App\Models\OfficeRoom;
+use App\Models\Receipt;
 use App\Models\SessionZone;
 use App\Models\User;
 use App\Models\Zone;
@@ -106,4 +107,40 @@ test('la création est refusée quand la journée est clôturée', function () {
         ->assertSessionHasErrors('session_zone_id');
 
     expect(Invoice::count())->toBe(0);
+});
+
+test('un bon de réception est créé depuis la journée et renvoie sur la journée', function () {
+    $context = prepareInvoiceContext();
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->post(route('receipts.store'), [
+            'date' => $context['session']->session_date->toDateString(),
+            'customer_id' => $context['customer']->id,
+            'session_zone_id' => $context['sessionZone']->id,
+            'boat_id' => '',
+            'redirect_to' => 'session',
+        ])
+        ->assertRedirect(route('sessions.show', $context['session']->id));
+
+    $receipt = Receipt::firstOrFail();
+
+    expect($receipt->session_zone_id)->toBe($context['sessionZone']->id)
+        ->and($receipt->customer_id)->toBe($context['customer']->id)
+        ->and($receipt->boat_id)->toBeNull()
+        ->and($receipt->total_amount)->toBe(0);
+});
+
+test('sans contexte journée, un bon renvoie vers sa fiche', function () {
+    $context = prepareInvoiceContext();
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->post(route('receipts.store'), [
+            'date' => $context['session']->session_date->toDateString(),
+            'customer_id' => $context['customer']->id,
+            'session_zone_id' => $context['sessionZone']->id,
+            'boat_id' => '',
+        ])
+        ->assertRedirect(route('receipts.show', Receipt::firstOrFail()->id));
 });

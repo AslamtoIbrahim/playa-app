@@ -149,6 +149,7 @@ function createSessionWithTransactions(): array
         'receipt',
         'attendance',
         'customer',
+        'boat',
     );
 }
 
@@ -275,5 +276,12 @@ test('la page de la journée expose les données du dialogue de création de fac
                 'sessionZones.0.daily_session.session_date',
                 fn ($date) => str_starts_with((string) $date, $data['session']->session_date->toDateString()),
             )
+            // Données du dialogue de création de bon de réception
+            ->has('customers', 1)
+            ->where('customers.0.id', $data['customer']->id)
+            ->where('customers.0.name', 'Client test')
+            ->has('boats', 1)
+            ->where('boats.0.id', $data['boat']->id)
+            ->where('boats.0.name', 'Bateau test')
         );
 });
