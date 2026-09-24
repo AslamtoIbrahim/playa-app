@@ -1,4 +1,9 @@
-import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+} from '@/components/ui/card';
 import { cn, currency } from '@/lib/utils';
 import {
     CalendarDays,
@@ -9,7 +14,13 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
-export type SessionTotals = { buy: number; sell: number; margin: number };
+export type SessionTotals = {
+    buy: number;
+    sell: number;
+    margin: number;
+    /** Part ouvriers (masse salariale des pointages) incluse dans le total d'achat. */
+    attendance?: number;
+};
 export type SessionStatus = 'open' | 'closed';
 
 export interface SessionTotalsCardProps {
@@ -28,10 +39,20 @@ type Stat = {
     icon: LucideIcon;
     iconClass: string;
     valueClass?: string;
+    /** Précision affichée sous la valeur (ex. part ouvriers du total d'achat). */
+    hint?: string;
     mono?: boolean;
 };
 
-function StatCard({ label, value, icon: Icon, iconClass, valueClass, mono = true }: Stat) {
+function StatCard({
+    label,
+    value,
+    icon: Icon,
+    iconClass,
+    valueClass,
+    hint,
+    mono = true,
+}: Stat) {
     return (
         <Card className="border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -44,13 +65,19 @@ function StatCard({ label, value, icon: Icon, iconClass, valueClass, mono = true
                 <div
                     className={cn(
                         mono
-                            ? 'min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-mono text-base font-black sm:text-lg'
+                            ? 'min-w-0 overflow-hidden font-mono text-base font-black text-ellipsis whitespace-nowrap sm:text-lg'
                             : 'text-lg font-bold',
                         valueClass ?? 'text-neutral-900 dark:text-neutral-100',
                     )}
                 >
                     {value}
                 </div>
+
+                {hint ? (
+                    <p className="mt-1 text-xs font-semibold text-neutral-500 dark:text-neutral-400">
+                        {hint}
+                    </p>
+                ) : null}
             </CardContent>
         </Card>
     );
@@ -63,6 +90,7 @@ export function SessionTotalsCard({
     className,
 }: SessionTotalsCardProps) {
     const up = totals.margin >= 0;
+    const attendance = totals.attendance ?? 0;
 
     const stats: Stat[] = [
         {
@@ -71,6 +99,12 @@ export function SessionTotalsCard({
             icon: ShoppingCart,
             iconClass: 'text-blue-500',
             valueClass: 'text-blue-600 dark:text-blue-400',
+            // Le total d'achat intègre la masse salariale des pointages : on
+            // affiche cette part pour que le montant reste vérifiable.
+            hint:
+                attendance > 0
+                    ? `dont ouvriers : ${formatCurrency(attendance)}`
+                    : undefined,
         },
         {
             label: 'Total Ventes',
@@ -99,7 +133,12 @@ export function SessionTotalsCard({
     ];
 
     return (
-        <div className={cn('grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4', className)}>
+        <div
+            className={cn(
+                'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4',
+                className,
+            )}
+        >
             {stats.map((stat) => (
                 <StatCard key={stat.label} {...stat} />
             ))}

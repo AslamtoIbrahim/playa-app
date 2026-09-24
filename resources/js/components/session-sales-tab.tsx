@@ -2,6 +2,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import type { SessionSaleData } from '@/types/sale';
 
+import { groupDifferencesByReport } from '@/lib/differences';
+
 import { SessionDifferencesTable } from './session-differences-table';
 import { SessionInvoicesTable } from './session-invoices-table';
 import type { SessionInvoiceAddContextInput } from './session-invoices-table';
@@ -24,6 +26,8 @@ export function SessionSalesTab({
     invoiceContext = null,
     receiptContext = null,
 }: SessionSalesTabProps) {
+    const differenceReports = groupDifferencesByReport(saleData.differences);
+
     const saleSubTabClass = cn(
         'h-10 cursor-pointer rounded-lg border border-transparent px-5 text-sm font-medium',
         'bg-transparent text-neutral-500 shadow-none transition-colors',
@@ -74,7 +78,7 @@ export function SessionSalesTab({
                     >
                         Différences
                         <span className="ml-2 text-xs opacity-70">
-                            {saleData.differences.length}
+                            {differenceReports.length}
                         </span>
                     </TabsTrigger>
 

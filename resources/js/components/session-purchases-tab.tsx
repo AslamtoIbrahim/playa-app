@@ -4,6 +4,9 @@ import type { Attendance } from '@/types/attendance';
 import type { SessionGroupData } from '@/types/daily-session';
 
 import { SessionAttendancesTable } from './session-attendances-table';
+import type { SessionAttendanceAddContextInput } from './session-attendances-table';
+import { groupDifferencesByReport } from '@/lib/differences';
+
 import { SessionDifferencesTable } from './session-differences-table';
 import { SessionInvoicesTable } from './session-invoices-table';
 import type { SessionInvoiceAddContextInput } from './session-invoices-table';
@@ -19,6 +22,8 @@ export interface SessionPurchasesTabProps {
     invoiceContext?: SessionInvoiceAddContextInput | null;
     /** Contexte de la journée : création + actions de ligne sur les bons de réception. */
     receiptContext?: SessionReceiptAddContextInput | null;
+    /** Contexte de la journée : création d'une feuille de pointage pour les zones de la journée. */
+    attendanceContext?: SessionAttendanceAddContextInput | null;
 }
 
 function ChargesPlaceholder() {
@@ -37,7 +42,12 @@ export function SessionPurchasesTab({
     formatCurrency,
     invoiceContext = null,
     receiptContext = null,
+    attendanceContext = null,
 }: SessionPurchasesTabProps) {
+    const differenceReports = groupDifferencesByReport(
+        purchaseData.differences ?? [],
+    );
+
     const purchaseSubTabClass = cn(
         'h-10 cursor-pointer rounded-lg border border-transparent px-4 text-sm font-medium',
         'bg-transparent text-neutral-500 shadow-none transition-colors',
@@ -85,7 +95,7 @@ export function SessionPurchasesTab({
                     >
                         Différences
                         <span className="ml-2 text-xs opacity-70">
-                            {purchaseData.differences?.length ?? 0}
+                            {differenceReports.length}
                         </span>
                     </TabsTrigger>
 
@@ -149,6 +159,7 @@ export function SessionPurchasesTab({
                     attendances={attendances}
                     formatCurrency={formatCurrency}
                     emptyMessage="Aucun pointage d'ouvriers trouvé pour cette session."
+                    attendanceContext={attendanceContext}
                 />
             </TabsContent>
 

@@ -4,7 +4,9 @@ import { ArrowLeft } from 'lucide-react';
 import { sessions } from '@/routes';
 
 import SessionTotalsCard from '@/components/session-totals-card';
+import type { SessionTotals } from '@/components/session-totals-card';
 import SessionTransactions from '@/components/session-transactions';
+import type { SessionAttendanceAddContextInput } from '@/components/session-attendances-table';
 import type { SessionInvoiceAddContextInput } from '@/components/session-invoices-table';
 import type { SessionReceiptAddContextInput } from '@/components/session-receipts-table';
 import { SessionHeader } from '@/components/sessison-header';
@@ -24,11 +26,7 @@ interface Props {
     purchaseData: SessionGroupData;
     saleData: SessionSaleData;
     attendances: Attendance[];
-    totals: {
-        buy: number;
-        sell: number;
-        margin: number;
-    };
+    totals: SessionTotals;
     /** Données nécessaires au dialogue de création de facture (compte, bureau, caution). */
     billables: Billable[];
     officeRooms: OfficeRoom[];
@@ -74,11 +72,21 @@ function SessionShow({
     // Contexte des bons de réception : la session, la zone et la date étant
     // déjà connues, seuls le client et le bateau restent à saisir.
     const receiptContext: SessionReceiptAddContextInput = {
+        sessionId: session.id,
         sessionDate: session.session_date,
         sessionStatus: session.status,
         sessionZones,
         customers,
         boats,
+    };
+
+    // Contexte des feuilles de pointage : la journée et ses zones étant déjà
+    // connues, la création ouvre directement la feuille pour pointer.
+    const attendanceContext: SessionAttendanceAddContextInput = {
+        sessionId: session.id,
+        sessionDate: session.session_date,
+        sessionStatus: session.status,
+        sessionZones,
     };
 
     return (
@@ -112,6 +120,7 @@ function SessionShow({
                 formatCurrency={formatCurrency}
                 invoiceContext={invoiceContext}
                 receiptContext={receiptContext}
+                attendanceContext={attendanceContext}
             />
         </div>
     );

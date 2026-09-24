@@ -32,6 +32,7 @@ import {
  * déjà connues, seuls le client et le bateau restent à saisir à la création.
  */
 export interface SessionReceiptAddContext {
+    sessionId: number;
     sessionDate: string;
     sessionStatus: SessionStatus;
     sessionZones: SessionZone[];
@@ -64,7 +65,14 @@ export function SessionReceiptsTable({
 
     // Ouvrir la fiche du bon : c'est là que les articles sont saisis.
     const handleRowClick = (receiptId: number): void => {
-        router.visit(showReceipt.url(receiptId));
+        router.visit(
+            showReceipt.url(
+                receiptId,
+                receiptContext
+                    ? { query: { from_session: receiptContext.sessionId } }
+                    : undefined,
+            ),
+        );
     };
 
     return (

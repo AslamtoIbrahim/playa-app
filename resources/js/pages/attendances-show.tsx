@@ -1,5 +1,6 @@
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import {
+    ArrowLeft,
     Calendar,
     Camera,
     Clock,
@@ -7,7 +8,7 @@ import {
     Printer,
     Trash2,
     Users,
-    Wallet
+    Wallet,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -16,7 +17,7 @@ import {
     Card,
     CardDescription,
     CardHeader,
-    CardTitle
+    CardTitle,
 } from '@/components/ui/card';
 import {
     Table,
@@ -48,11 +49,14 @@ import { format } from 'date-fns/format';
 interface Props {
     attendance: Attendance;
     availableWorkers: Worker[];
+    /** URL de retour explicite fournie par le backend (journée liée ou liste). */
+    backUrl: string;
 }
 
 export default function AttendancesShow({
     attendance,
     availableWorkers,
+    backUrl,
 }: Props) {
     const [isAddDialogOpen, setIsAddDialogOpen] = useState<boolean>(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -83,6 +87,15 @@ export default function AttendancesShow({
         <div className="mx-auto w-[90%] space-y-6 p-4 lg:w-[50%]">
             <Head title={`Pointage #${attendance.id}`} />
 
+            <Button
+                variant="ghost"
+                size="sm"
+                className="h-auto w-fit p-0 text-sm font-medium text-muted-foreground hover:text-foreground print:hidden"
+                onClick={() => router.get(backUrl)}
+            >
+                <ArrowLeft className="mr-2 h-4 w-4" /> Retour
+            </Button>
+
             {/* Header Section */}
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
                 <div className="space-y-1">
@@ -95,7 +108,8 @@ export default function AttendancesShow({
                         variant="outline"
                         className={cn(
                             'flex items-center gap-1.5 border px-3 py-1 font-bold shadow-sm',
-                            attendance.sessionZone?.status === 'open'
+                            attendance.session_zone?.daily_session?.status ===
+                                'open'
                                 ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300'
                                 : 'border-neutral-200 bg-neutral-50 text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400',
                         )}
@@ -103,19 +117,22 @@ export default function AttendancesShow({
                         <Clock
                             className={cn(
                                 'h-3.5 w-3.5',
-                                attendance.sessionZone?.status === 'open'
+                                attendance.session_zone?.daily_session
+                                    ?.status === 'open'
                                     ? 'text-emerald-500'
                                     : 'text-neutral-400 dark:text-neutral-600',
                             )}
                         />
                         <span className="text-[11px] tracking-wider uppercase">
-                            {attendance.sessionZone?.session_date
+                            {attendance.session_zone?.daily_session
+                                ?.session_date
                                 ? format(
-                                    new Date(
-                                        attendance.sessionZone?.session_date,
-                                    ),
-                                    'dd-MM-yyyy',
-                                )
+                                      new Date(
+                                          attendance.session_zone.daily_session
+                                              .session_date,
+                                      ),
+                                      'dd-MM-yyyy',
+                                  )
                                 : '---'}
                         </span>
                     </Badge>
@@ -138,8 +155,9 @@ export default function AttendancesShow({
             <div className="grid grid-cols-1 gap-6 md:grid-cols-3 print:hidden">
                 <Card className="border-none bg-neutral-100 shadow-sm transition-colors hover:bg-neutral-200 dark:bg-neutral-900 dark:hover:bg-neutral-800">
                     <CardHeader className="pb-2">
-                        <CardDescription className="flex items-center gap-2 text-xs font-bold tracking-widest text-neutral-500 dark:text-neutral-400 uppercase">
-                            <Users className="h-3 w-3 text-neutral-500 dark:text-neutral-400" /> Total Ouvriers
+                        <CardDescription className="flex items-center gap-2 text-xs font-bold tracking-widest text-neutral-500 uppercase dark:text-neutral-400">
+                            <Users className="h-3 w-3 text-neutral-500 dark:text-neutral-400" />{' '}
+                            Total Ouvriers
                         </CardDescription>
 
                         <CardTitle className="text-2xl font-black text-neutral-800 dark:text-neutral-100">
@@ -150,8 +168,9 @@ export default function AttendancesShow({
 
                 <Card className="border-none bg-neutral-100 shadow-sm transition-colors hover:bg-neutral-200 dark:bg-neutral-900 dark:hover:bg-neutral-800">
                     <CardHeader className="pb-2">
-                        <CardDescription className="flex items-center gap-2 text-xs font-bold tracking-widest text-neutral-500 dark:text-neutral-400 uppercase">
-                            <Wallet className="h-3 w-3 text-neutral-500 dark:text-neutral-400" /> Masse Salariale
+                        <CardDescription className="flex items-center gap-2 text-xs font-bold tracking-widest text-neutral-500 uppercase dark:text-neutral-400">
+                            <Wallet className="h-3 w-3 text-neutral-500 dark:text-neutral-400" />{' '}
+                            Masse Salariale
                         </CardDescription>
 
                         <CardTitle className="text-2xl font-black text-green-600 dark:text-green-400">
@@ -186,7 +205,8 @@ export default function AttendancesShow({
                         onClick={() => setDeleteDialogOpen(true)}
                         className="border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950 print:hidden"
                     >
-                        <Trash2 className="mr-2 h-4 w-4 text-red-600 dark:text-red-400" /> Vider la liste
+                        <Trash2 className="mr-2 h-4 w-4 text-red-600 dark:text-red-400" />{' '}
+                        Vider la liste
                     </Button>
                 )}
 
@@ -218,7 +238,7 @@ export default function AttendancesShow({
             {/* Attendance Table */}
             <Card
                 id="worker-content"
-                className="overflow-hidden border-neutral-200 text-neutral-700 shadow-sm dark:border-neutral-800 dark:text-neutral-200 [&_tbody_tr]:border-neutral-200 dark:[&_tbody_tr]:border-neutral-800 [&_tbody_td]:text-neutral-700 dark:[&_tbody_td]:text-neutral-200 [&_tbody_td_*]:text-inherit [&_tbody_[data-slot=badge]]:border-neutral-300 [&_tbody_[data-slot=badge]]:bg-neutral-100 [&_tbody_[data-slot=badge]]:text-neutral-700 dark:[&_tbody_[data-slot=badge]]:border-neutral-700 dark:[&_tbody_[data-slot=badge]]:bg-neutral-800 dark:[&_tbody_[data-slot=badge]]:text-neutral-200"
+                className="overflow-hidden border-neutral-200 text-neutral-700 shadow-sm dark:border-neutral-800 dark:text-neutral-200 [&_tbody_[data-slot=badge]]:border-neutral-300 [&_tbody_[data-slot=badge]]:bg-neutral-100 [&_tbody_[data-slot=badge]]:text-neutral-700 dark:[&_tbody_[data-slot=badge]]:border-neutral-700 dark:[&_tbody_[data-slot=badge]]:bg-neutral-800 dark:[&_tbody_[data-slot=badge]]:text-neutral-200 [&_tbody_td]:text-neutral-700 dark:[&_tbody_td]:text-neutral-200 [&_tbody_td_*]:text-inherit [&_tbody_tr]:border-neutral-200 dark:[&_tbody_tr]:border-neutral-800"
             >
                 <Table>
                     <TableHeader className="bg-neutral-50 dark:bg-neutral-900">
@@ -252,7 +272,7 @@ export default function AttendancesShow({
                             <TableRow>
                                 <TableCell
                                     colSpan={4}
-                                    className="h-32 text-center text-neutral-400 dark:text-neutral-600 italic"
+                                    className="h-32 text-center text-neutral-400 italic dark:text-neutral-600"
                                 >
                                     Aucun ouvrier pointé pour le moment.
                                 </TableCell>

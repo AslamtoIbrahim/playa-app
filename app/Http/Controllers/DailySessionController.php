@@ -38,37 +38,12 @@ class DailySessionController extends Controller
                 // Les factures / bons / pointages sont rattachés au SessionZone, pas directement à la session.
                 $sessionZoneIds = $session->sessionZones()->pluck('id')->all();
 
-                // --- 1. ACHAT (Purchase) ---
-                $purchaseInvoicesTotal = Invoice::whereIn('session_zone_id', $sessionZoneIds)
-                    ->where('type', 'purchase')
-                    ->sum('amount') ?? 0;
+                // Totaux de la journée : factures + différences + réceptions
+                // (+ masse salariale des ouvriers côté achats).
+                $totals = $this->sessionTotals($sessionZoneIds);
 
-                $purchaseDifferences = Difference::whereHas('invoiceItem.invoice', function ($q) use ($sessionZoneIds) {
-                    $q->whereIn('session_zone_id', $sessionZoneIds)->where('type', 'purchase');
-                })->sum('total_diff') ?? 0;
-
-                $purchaseReceipts = Receipt::whereIn('session_zone_id', $sessionZoneIds)
-                    ->whereHas('items.invoiceItem.invoice', function ($q) {
-                        $q->where('type', 'purchase');
-                    })->sum('total_amount') ?? 0;
-
-                $session->total_buy = $purchaseInvoicesTotal + $purchaseDifferences + $purchaseReceipts;
-
-                // --- 2. VENTE (Sale) ---
-                $saleInvoicesTotal = Invoice::whereIn('session_zone_id', $sessionZoneIds)
-                    ->where('type', 'sale')
-                    ->sum('amount') ?? 0;
-
-                $saleDifferences = Difference::whereHas('invoiceItem.invoice', function ($q) use ($sessionZoneIds) {
-                    $q->whereIn('session_zone_id', $sessionZoneIds)->where('type', 'sale');
-                })->sum('total_diff') ?? 0;
-
-                $saleReceipts = Receipt::whereIn('session_zone_id', $sessionZoneIds)
-                    ->whereHas('items.invoiceItem.invoice', function ($q) {
-                        $q->where('type', 'sale');
-                    })->sum('total_amount') ?? 0;
-
-                $session->total_sell = $saleInvoicesTotal + $saleDifferences + $saleReceipts;
+                $session->total_buy = $totals['buy'];
+                $session->total_sell = $totals['sell'];
 
                 return $session;
             });
@@ -138,8 +113,9 @@ class DailySessionController extends Controller
             ->get();
 
         // 4. Totals calculation
-        $totalBuy = $purchases->sum('amount') + $purchaseDifferences->sum('total_diff') + $purchaseReceipts->sum('total_amount');
-        $totalSell = $saleInvoices->sum('amount') + $saleDifferences->sum('total_diff') + $saleReceipts->sum('total_amount');
+        //    Le total d'achat inclut la masse salariale des pointages (charge
+        //    ouvriers) : c'est la même formule que la liste des journées.
+        $totals = $this->sessionTotals($sessionZoneIds);
 
         // 5. Données du dialogue de création de facture.
         //    La journée, la zone et la date sont déjà connues : on n'envoie que le reste.
@@ -161,20 +137,22 @@ class DailySessionController extends Controller
                 'invoices' => $purchases,
                 'differences' => $purchaseDifferences,
                 'receipts' => $purchaseReceipts,
-                'total' => $totalBuy,
+                'total' => $totals['buy'],
             ],
             'saleData' => [
                 'sales' => $sales,
                 'invoices' => $saleInvoices,
                 'differences' => $saleDifferences,
                 'receipts' => $saleReceipts,
-                'total' => $totalSell,
+                'total' => $totals['sell'],
             ],
             'attendances' => $attendances,
             'totals' => [
-                'buy' => $totalBuy,
-                'sell' => $totalSell,
-                'margin' => $totalSell - $totalBuy,
+                'buy' => $totals['buy'],
+                'sell' => $totals['sell'],
+                'margin' => $totals['margin'],
+                // Détail de la part ouvriers du total d'achat (masse salariale).
+                'attendance' => $totals['attendance'],
             ],
 
             // Données du dialogue de création de facture depuis la journée
@@ -182,7 +160,7 @@ class DailySessionController extends Controller
             'officeRooms' => OfficeRoom::all(['id', 'name', 'city']),
             'cautions' => Caution::select('id', 'name', 'owner_id', 'owner_type')->get(),
             'sessionZones' => $session->sessionZones()
-                ->with(['zone:id,name', 'dailySession:id,session_date'])
+                ->with(['zone:id,name', 'dailySession:id,session_date,status'])
                 ->get(['id', 'daily_session_id', 'zone_id']),
 
             // Données du dialogue de création de bon de réception depuis la journée
@@ -323,21 +301,84 @@ class DailySessionController extends Controller
     {
         $sessionZoneIds = $session->sessionZones()->pluck('id')->all();
 
-        $invoicesTotal = Invoice::whereIn('session_zone_id', $sessionZoneIds)->sum('amount') ?? 0;
-
-        $differencesTotal = Difference::whereHas('invoiceItem.invoice', function ($query) use ($sessionZoneIds) {
-            $query->whereIn('session_zone_id', $sessionZoneIds);
-        })->sum('total_diff') ?? 0;
-
-        $receiptsTotal = Receipt::whereIn('session_zone_id', $sessionZoneIds)->sum('total_amount') ?? 0;
+        // Même formule que la fiche de la journée : les montants figés à la
+        // clôture correspondent exactement à ce qui était affiché.
+        $totals = $this->sessionTotals($sessionZoneIds);
 
         $session->update([
             'status' => 'closed',
-            'total_sell' => $invoicesTotal + $differencesTotal + $receiptsTotal,
+            'total_buy' => $totals['buy'],
+            'total_sell' => $totals['sell'],
             'closed_at' => now(),
         ]);
 
         return redirect()->back()->with('success', 'Session clôturée avec succès ! 🔒');
+    }
+
+    /**
+     * Totaux financiers d'une journée.
+     *
+     * Le total d'achat cumule les factures d'achat, leurs différences et les
+     * bons de réception, puis y ajoute la masse salariale des pointages : les
+     * ouvriers sont une charge de la journée. Le total de vente suit la même
+     * logique côté vente, sans charge.
+     *
+     * @param  array<int, int>  $sessionZoneIds
+     * @return array{purchase: float, sale: float, attendance: float, buy: float, sell: float, margin: float}
+     */
+    private function sessionTotals(array $sessionZoneIds): array
+    {
+        $purchaseInvoices = (float) Invoice::whereIn('session_zone_id', $sessionZoneIds)
+            ->where('type', 'purchase')
+            ->sum('amount');
+
+        $purchaseDifferences = (float) Difference::whereHas('invoiceItem.invoice', function ($q) use ($sessionZoneIds) {
+            $q->whereIn('session_zone_id', $sessionZoneIds)->where('type', 'purchase');
+        })->sum('total_diff');
+
+        // Les bons sans lien facture (bons vides ou à saisie directe) sont
+        // comptés côté achats, comme dans l'onglet Réceptions.
+        $purchaseReceipts = (float) Receipt::whereIn('session_zone_id', $sessionZoneIds)
+            ->where(function ($q) {
+                $q->where(function ($q2) {
+                    $q2->whereDoesntHave('items')
+                        ->orWhereHas('items', function ($i) {
+                            $i->whereNull('invoice_item_id');
+                        });
+                })->orWhereHas('items.invoiceItem.invoice', function ($q2) {
+                    $q2->where('type', 'purchase');
+                });
+            })->sum('total_amount');
+
+        $saleInvoices = (float) Invoice::whereIn('session_zone_id', $sessionZoneIds)
+            ->where('type', 'sale')
+            ->sum('amount');
+
+        $saleDifferences = (float) Difference::whereHas('invoiceItem.invoice', function ($q) use ($sessionZoneIds) {
+            $q->whereIn('session_zone_id', $sessionZoneIds)->where('type', 'sale');
+        })->sum('total_diff');
+
+        $saleReceipts = (float) Receipt::whereIn('session_zone_id', $sessionZoneIds)
+            ->whereHas('items.invoiceItem.invoice', function ($q) {
+                $q->where('type', 'sale');
+            })->sum('total_amount');
+
+        // Masse salariale des feuilles de pointage (les pointages supprimés,
+        // donc soft-deleted, sont automatiquement exclus).
+        $attendanceWages = (float) Attendance::whereIn('session_zone_id', $sessionZoneIds)->sum('total_wage');
+
+        $purchase = $purchaseInvoices + $purchaseDifferences + $purchaseReceipts;
+        $sale = $saleInvoices + $saleDifferences + $saleReceipts;
+        $buy = $purchase + $attendanceWages;
+
+        return [
+            'purchase' => $purchase,
+            'sale' => $sale,
+            'attendance' => $attendanceWages,
+            'buy' => $buy,
+            'sell' => $sale,
+            'margin' => $sale - $buy,
+        ];
     }
 
     public function destroy(DailySession $session)

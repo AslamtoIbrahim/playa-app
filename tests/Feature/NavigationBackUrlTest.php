@@ -8,6 +8,7 @@ use App\Models\Difference;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Item;
+use App\Models\Receipt;
 use App\Models\SessionZone;
 use App\Models\User;
 use App\Models\Zone;
@@ -80,6 +81,26 @@ function createInvoiceInSession(string $zoneName, string $date, array $context):
     return $invoice;
 }
 
+function createReceiptInSession(DailySession $session, Customer $customer): Receipt
+{
+    $zone = Zone::create(['name' => 'Agadir '.uniqid()]);
+    $sessionZone = SessionZone::create([
+        'daily_session_id' => $session->id,
+        'zone_id' => $zone->id,
+        'total_buy' => 0,
+        'total_sell' => 0,
+    ]);
+
+    return Receipt::create([
+        'date' => $session->session_date->toDateString(),
+        'customer_id' => $customer->id,
+        'session_zone_id' => $sessionZone->id,
+        'quantity' => 0,
+        'total_amount' => 0,
+        'total_boxes' => 0,
+    ]);
+}
+
 function createNavigationContext(): array
 {
     $user = User::factory()->create();
@@ -122,6 +143,47 @@ test('la page facture ne peut pas exister hors journée : le fallback liste rest
     // secours du contrôleur pointe bien vers la liste des factures ; elle
     // n'est atteignable que si le schéma évolue.
     expect(route('invoices'))->toBe(url('/invoices'));
+});
+
+test('la page bon de réception retourne vers la liste par défaut', function () {
+    $context = createNavigationContext();
+    $session = DailySession::create([
+        'session_date' => '2026-06-01',
+        'status' => 'open',
+        'total_buy' => 0,
+        'total_sell' => 0,
+    ]);
+    $receipt = createReceiptInSession($session, $context['customer']);
+
+    $this->actingAs($context['user'])
+        ->get(route('receipts.show', $receipt))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('receipts-show')
+            ->where('backUrl', route('receipts'))
+        );
+});
+
+test('la page bon de réception retourne à la journée dont elle vient', function () {
+    $context = createNavigationContext();
+    $session = DailySession::create([
+        'session_date' => '2026-06-01',
+        'status' => 'open',
+        'total_buy' => 0,
+        'total_sell' => 0,
+    ]);
+    $receipt = createReceiptInSession($session, $context['customer']);
+
+    $this->actingAs($context['user'])
+        ->get(route('receipts.show', [
+            'receipt' => $receipt,
+            'from_session' => $session->id,
+        ]))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('receipts-show')
+            ->where('backUrl', route('sessions.show', [$session->id]))
+        );
 });
 
 test('le rapport de différences pointe vers la journée quand une session unique se dégage', function () {

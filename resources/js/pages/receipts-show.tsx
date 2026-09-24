@@ -37,9 +37,11 @@ interface Props {
         items: ReceiptItem[],
     };
     items: Item[]; // article Calamr G ....
+    /** URL de retour explicite fournie par le backend (journée liée ou liste). */
+    backUrl: string;
 }
 
-export default function ReceiptShow({ receipt, items }: Props) {
+export default function ReceiptShow({ receipt, items, backUrl }: Props) {
     const [localItems, setLocalItems] = useState<ReceiptItem[]>(receipt.items || []);
 
     const [prevItems, setPrevItems] = useState(receipt.items);
@@ -193,7 +195,7 @@ export default function ReceiptShow({ receipt, items }: Props) {
                     variant="ghost"
                     size="sm"
                     className="h-auto p-0 text-slate-400 hover:text-slate-800 dark:hover:text-neutral-200"
-                    onClick={() => router.get('/receipts')}
+                    onClick={() => router.get(backUrl)}
                 >
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Retour

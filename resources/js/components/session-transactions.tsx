@@ -6,6 +6,7 @@ import type { SessionSaleData } from '@/types/sale';
 
 import { SessionPurchasesTab } from './session-purchases-tab';
 import { SessionSalesTab } from './session-sales-tab';
+import type { SessionAttendanceAddContextInput } from './session-attendances-table';
 import type { SessionInvoiceAddContextInput } from './session-invoices-table';
 import type { SessionReceiptAddContextInput } from './session-receipts-table';
 
@@ -18,6 +19,8 @@ export interface SessionTransactionsProps {
     invoiceContext?: SessionInvoiceAddContextInput | null;
     /** Contexte de la journée (session, zone, date, client, bateau) transmis aux tableaux de bons. */
     receiptContext?: SessionReceiptAddContextInput | null;
+    /** Contexte de la journée (session, zones, date) transmis au tableau des pointages. */
+    attendanceContext?: SessionAttendanceAddContextInput | null;
 }
 
 /*
@@ -32,6 +35,7 @@ export function SessionTransactions({
     formatCurrency,
     invoiceContext = null,
     receiptContext = null,
+    attendanceContext = null,
 }: SessionTransactionsProps) {
     const mainTabClass = cn(
         'cursor-pointer rounded-xl border bg-white px-6 py-2 text-base font-semibold shadow-none',
@@ -92,6 +96,7 @@ export function SessionTransactions({
                         formatCurrency={formatCurrency}
                         invoiceContext={invoiceContext}
                         receiptContext={receiptContext}
+                        attendanceContext={attendanceContext}
                     />
                 </TabsContent>
 

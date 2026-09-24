@@ -179,14 +179,18 @@ test('la page show renvoie les données rattachées au SessionZone', function ()
             ->has('attendances', 1)
             ->has('attendances.0.items', 1)
             // Totaux achat = factures (1000) + différences (100) + réceptions (500)
-            ->where('purchaseData.total', fn ($total) => (float) $total === 1600.0)
-            ->where('totals.buy', fn ($total) => (float) $total === 1600.0)
+            //                  + masse salariale des pointages (200)
+            ->where('totals.attendance', fn ($total) => (float) $total === 200.0)
+            ->where('purchaseData.total', fn ($total) => (float) $total === 1800.0)
+            ->where('totals.buy', fn ($total) => (float) $total === 1800.0)
             // Aucune vente dans cette session
             ->has('saleData.invoices', 0)
             ->has('saleData.receipts', 0)
             ->has('saleData.differences', 0)
             ->has('saleData.sales', 0)
             ->where('totals.sell', 0)
+            // Les ouvriers sont une charge : la marge en tient compte.
+            ->where('totals.margin', fn ($total) => (float) $total === -1800.0)
         );
 });
 
@@ -240,7 +244,7 @@ test('la liste des sessions calcule les totaux via le SessionZone', function () 
             ->component('sessions')
             ->has('sessions', 1)
             ->where('sessions.0.id', $data['session']->id)
-            ->where('sessions.0.total_buy', fn ($total) => (float) $total === 1600.0)
+            ->where('sessions.0.total_buy', fn ($total) => (float) $total === 1800.0)
             ->where('sessions.0.total_sell', 0)
         );
 });

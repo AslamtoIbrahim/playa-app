@@ -87,13 +87,22 @@ class ReceiptController extends Controller
     /**
      * Afficher les détails d'un bon
      */
-    public function show(Receipt $receipt)
+    public function show(Request $request, Receipt $receipt)
     {
         $receipt->load(['customer', 'sessionZone.dailySession', 'sessionZone.zone', 'boat', 'items.item']);
+
+        $session = $receipt->sessionZone?->dailySession;
+        $openedFromSession = $session !== null
+            && $request->integer('from_session') === $session->id;
+
+        $backUrl = $openedFromSession
+            ? route('sessions.show', [$session->id])
+            : route('receipts');
 
         return Inertia::render('receipts-show', [
             'receipt' => $receipt,
             'items' => Item::all(['id', 'name']),
+            'backUrl' => $backUrl,
         ]);
     }
 

@@ -118,7 +118,7 @@ export function useAttendanceExport() {
             );
 
             doc.text(
-                `Session: ${attendance.sessionZone?.status || '-'}`,
+                `Session: ${attendance.session_zone?.daily_session?.status || '-'}`,
                 160,
                 34,
             );
