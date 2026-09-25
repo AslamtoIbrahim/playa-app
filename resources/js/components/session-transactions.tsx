@@ -1,4 +1,5 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useSessionTabs } from '../hooks/use-session-tabs';
 import { cn } from '@/lib/utils';
 import type { Attendance } from '@/types/attendance';
 import type { SessionGroupData } from '@/types/daily-session';
@@ -11,6 +12,7 @@ import type { SessionInvoiceAddContextInput } from './session-invoices-table';
 import type { SessionReceiptAddContextInput } from './session-receipts-table';
 
 export interface SessionTransactionsProps {
+    sessionId: number;
     purchaseData: SessionGroupData;
     saleData: SessionSaleData;
     attendances: Attendance[];
@@ -29,6 +31,7 @@ export interface SessionTransactionsProps {
 |--------------------------------------------------------------------------
 */
 export function SessionTransactions({
+    sessionId,
     purchaseData,
     saleData,
     attendances,
@@ -37,6 +40,15 @@ export function SessionTransactions({
     receiptContext = null,
     attendanceContext = null,
 }: SessionTransactionsProps) {
+    const {
+        main: activeMainTab,
+        purchase: activePurchaseTab,
+        sales: activeSalesTab,
+        setMainTab,
+        setPurchaseTab,
+        setSalesTab,
+    } = useSessionTabs(sessionId);
+
     const mainTabClass = cn(
         'cursor-pointer rounded-xl border bg-white px-6 py-2 text-base font-semibold shadow-none',
         'transition-colors data-[state=active]:shadow-none',
@@ -45,7 +57,11 @@ export function SessionTransactions({
 
     return (
         <section className="w-full">
-            <Tabs defaultValue="achats" className="flex w-full flex-col gap-2">
+            <Tabs
+                value={activeMainTab}
+                onValueChange={setMainTab}
+                className="flex w-full flex-col gap-2"
+            >
                 {/* Main tabs: always at the top */}
                 <TabsList className="grid h-auto w-full grid-cols-2 gap-3 bg-transparent p-0 sm:gap-5">
                     <TabsTrigger
@@ -91,6 +107,8 @@ export function SessionTransactions({
                     className="mt-0 w-full rounded-2xl border border-blue-200 bg-white p-4 sm:p-6 dark:border-blue-500/30 dark:bg-neutral-900"
                 >
                     <SessionPurchasesTab
+                        activeTab={activePurchaseTab}
+                        onTabChange={setPurchaseTab}
                         purchaseData={purchaseData}
                         attendances={attendances}
                         formatCurrency={formatCurrency}
@@ -106,6 +124,8 @@ export function SessionTransactions({
                     className="mt-0 w-full rounded-2xl border border-orange-200 bg-white p-4 sm:p-6 dark:border-orange-500/30 dark:bg-neutral-900"
                 >
                     <SessionSalesTab
+                        activeTab={activeSalesTab}
+                        onTabChange={setSalesTab}
                         saleData={saleData}
                         formatCurrency={formatCurrency}
                         invoiceContext={invoiceContext}

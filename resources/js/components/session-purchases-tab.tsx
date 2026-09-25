@@ -1,4 +1,5 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import type { SessionPurchaseTab } from '../hooks/use-session-tabs';
 import { cn } from '@/lib/utils';
 import type { Attendance } from '@/types/attendance';
 import type { SessionGroupData } from '@/types/daily-session';
@@ -12,9 +13,12 @@ import { SessionInvoicesTable } from './session-invoices-table';
 import type { SessionInvoiceAddContextInput } from './session-invoices-table';
 import { SessionReceiptsTable } from './session-receipts-table';
 import type { SessionReceiptAddContextInput } from './session-receipts-table';
+import { SessionTabTotalHint } from './session-tab-total-hint';
 import { SessionTableShell } from './session-table-shell';
 
 export interface SessionPurchasesTabProps {
+    activeTab: SessionPurchaseTab;
+    onTabChange: (value: string) => void;
     purchaseData: SessionGroupData;
     attendances: Attendance[];
     formatCurrency: (amount: number) => string;
@@ -37,6 +41,8 @@ function ChargesPlaceholder() {
 }
 
 export function SessionPurchasesTab({
+    activeTab,
+    onTabChange,
     purchaseData,
     attendances,
     formatCurrency,
@@ -48,74 +54,125 @@ export function SessionPurchasesTab({
         purchaseData.differences ?? [],
     );
 
+    const invoicesTotal = purchaseData.invoices.reduce(
+        (sum, invoice) => sum + Number(invoice.amount ?? 0),
+        0,
+    );
+    const receiptsTotal = purchaseData.receipts.reduce(
+        (sum, receipt) => sum + Number(receipt.total_amount ?? 0),
+        0,
+    );
+    const differencesTotal = (purchaseData.differences ?? []).reduce(
+        (sum, difference) => sum + Number(difference.total_diff ?? 0),
+        0,
+    );
+    const attendancesTotal = attendances.reduce(
+        (sum, attendance) => sum + Number(attendance.total_wage ?? 0),
+        0,
+    );
+
     const purchaseSubTabClass = cn(
         'h-10 cursor-pointer rounded-lg border border-transparent px-4 text-sm font-medium',
         'bg-transparent text-neutral-500 shadow-none transition-colors',
         'hover:bg-blue-50 hover:text-blue-700',
-        'data-[state=active]:border-blue-500',
-        'data-[state=active]:bg-blue-50',
-        'data-[state=active]:text-blue-700',
-        'data-[state=active]:shadow-none',
+        'aria-selected:border-blue-500',
+        'aria-selected:bg-blue-50',
+        'aria-selected:text-blue-700',
+        'aria-selected:shadow-none',
         'dark:text-neutral-400',
         'dark:hover:bg-blue-500/10',
         'dark:hover:text-blue-400',
-        'dark:data-[state=active]:border-blue-500',
-        'dark:data-[state=active]:bg-blue-500/10',
-        'dark:data-[state=active]:text-blue-400',
+        'dark:aria-selected:border-blue-500',
+        'dark:aria-selected:bg-blue-500/10',
+        'dark:aria-selected:text-blue-400',
     );
 
     return (
-        <Tabs defaultValue="factures" className="flex w-full flex-col gap-6">
+        <Tabs
+            value={activeTab}
+            onValueChange={onTabChange}
+            className="flex w-full flex-col gap-6"
+        >
             {/* Achats sub-tabs */}
             <div className="mb-5 overflow-x-auto">
                 <TabsList className="flex h-auto w-full min-w-max justify-between gap-2 bg-transparent p-0">
-                    <TabsTrigger
-                        value="factures"
-                        className={purchaseSubTabClass}
+                    <SessionTabTotalHint
+                        total={invoicesTotal}
+                        formatCurrency={formatCurrency}
+                        tone="blue"
                     >
-                        Factures
-                        <span className="ml-2 text-xs opacity-70">
-                            {purchaseData.invoices.length}
-                        </span>
-                    </TabsTrigger>
+                        <TabsTrigger
+                            value="factures"
+                            className={purchaseSubTabClass}
+                        >
+                            Factures
+                            <span className="ml-2 text-xs opacity-70">
+                                {purchaseData.invoices.length}
+                            </span>
+                        </TabsTrigger>
+                    </SessionTabTotalHint>
 
-                    <TabsTrigger
-                        value="receipts"
-                        className={purchaseSubTabClass}
+                    <SessionTabTotalHint
+                        total={receiptsTotal}
+                        formatCurrency={formatCurrency}
+                        tone="blue"
                     >
-                        Réceptions
-                        <span className="ml-2 text-xs opacity-70">
-                            {purchaseData.receipts.length}
-                        </span>
-                    </TabsTrigger>
+                        <TabsTrigger
+                            value="receipts"
+                            className={purchaseSubTabClass}
+                        >
+                            Réceptions
+                            <span className="ml-2 text-xs opacity-70">
+                                {purchaseData.receipts.length}
+                            </span>
+                        </TabsTrigger>
+                    </SessionTabTotalHint>
 
-                    <TabsTrigger
-                        value="differences"
-                        className={purchaseSubTabClass}
+                    <SessionTabTotalHint
+                        total={differencesTotal}
+                        formatCurrency={formatCurrency}
+                        tone="blue"
                     >
-                        Différences
-                        <span className="ml-2 text-xs opacity-70">
-                            {differenceReports.length}
-                        </span>
-                    </TabsTrigger>
+                        <TabsTrigger
+                            value="differences"
+                            className={purchaseSubTabClass}
+                        >
+                            Différences
+                            <span className="ml-2 text-xs opacity-70">
+                                {differenceReports.length}
+                            </span>
+                        </TabsTrigger>
+                    </SessionTabTotalHint>
 
-                    <TabsTrigger
-                        value="ouvriers"
-                        className={purchaseSubTabClass}
+                    <SessionTabTotalHint
+                        total={attendancesTotal}
+                        formatCurrency={formatCurrency}
+                        tone="blue"
                     >
-                        Ouvriers
-                        <span className="ml-2 text-xs opacity-70">
-                            {attendances.length}
-                        </span>
-                    </TabsTrigger>
+                        <TabsTrigger
+                            value="ouvriers"
+                            className={purchaseSubTabClass}
+                        >
+                            Ouvriers
+                            <span className="ml-2 text-xs opacity-70">
+                                {attendances.length}
+                            </span>
+                        </TabsTrigger>
+                    </SessionTabTotalHint>
 
-                    <TabsTrigger
-                        value="charges"
-                        className={purchaseSubTabClass}
+                    <SessionTabTotalHint
+                        total={0}
+                        formatCurrency={formatCurrency}
+                        tone="blue"
                     >
-                        Charges
-                        <span className="ml-2 text-xs opacity-70">0</span>
-                    </TabsTrigger>
+                        <TabsTrigger
+                            value="charges"
+                            className={purchaseSubTabClass}
+                        >
+                            Charges
+                            <span className="ml-2 text-xs opacity-70">0</span>
+                        </TabsTrigger>
+                    </SessionTabTotalHint>
                 </TabsList>
             </div>
 

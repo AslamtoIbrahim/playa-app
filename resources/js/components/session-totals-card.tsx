@@ -90,7 +90,7 @@ export function SessionTotalsCard({
     className,
 }: SessionTotalsCardProps) {
     const up = totals.margin >= 0;
-    const attendance = totals.attendance ?? 0;
+    // const attendance = totals.attendance ?? 0;
 
     const stats: Stat[] = [
         {
@@ -99,12 +99,7 @@ export function SessionTotalsCard({
             icon: ShoppingCart,
             iconClass: 'text-blue-500',
             valueClass: 'text-blue-600 dark:text-blue-400',
-            // Le total d'achat intègre la masse salariale des pointages : on
-            // affiche cette part pour que le montant reste vérifiable.
-            hint:
-                attendance > 0
-                    ? `dont ouvriers : ${formatCurrency(attendance)}`
-                    : undefined,
+          
         },
         {
             label: 'Total Ventes',

@@ -114,6 +114,8 @@ function SessionShow({
 
             {/* Main Tabs: Achats & Ventes */}
             <SessionTransactions
+                key={session.id}
+                sessionId={session.id}
                 purchaseData={purchaseData}
                 saleData={saleData}
                 attendances={attendances}

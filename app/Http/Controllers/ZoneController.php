@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Concerns\CalculatesSessionTotals;
+use App\Models\SessionZone;
 use App\Models\Zone;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -9,6 +11,8 @@ use Inertia\Inertia;
 
 class ZoneController extends Controller
 {
+    use CalculatesSessionTotals;
+
     public function index()
     {
         return Inertia::render('zones', [
@@ -75,23 +79,34 @@ class ZoneController extends Controller
 
     public function show(Zone $zone)
     {
-        $zone->load(['sessionZones.dailySession']);
+        // Les colonnes session_zones.total_buy / total_sell ne sont jamais
+        // alimentées : on recalcule les totaux depuis les factures, bons,
+        // différences et pointages rattachés au SessionZone, avec la même
+        // formule que la fiche de la journée. Les journées les plus récentes
+        // sont affichées en premier.
+        $sessionZones = $zone->sessionZones()
+            ->with('dailySession')
+            ->get()
+            ->sortByDesc(
+                fn (SessionZone $sessionZone) => $sessionZone->dailySession?->session_date?->getTimestamp() ?? 0,
+            )
+            ->values();
 
         return Inertia::render('zones-show', [
             'zone' => $zone,
-            'dailySessions' => $zone->sessionZones->map(function ($sessionZone) {
+            'dailySessions' => $sessionZones->map(function (SessionZone $sessionZone) {
+                $totals = $this->sessionTotals([$sessionZone->id]);
+
                 return [
-                    'id' => $sessionZone->dailySession->id ?? null,
-                    'session_date' => $sessionZone->dailySession->session_date ?? null,
-                    'status' => $sessionZone->dailySession->status ?? null,
-                    'total_buy' => $sessionZone->total_buy,
-                    'total_sell' => $sessionZone->total_sell,
-                    'closed_at' => $sessionZone->dailySession->closed_at ?? null,
+                    'id' => $sessionZone->dailySession?->id,
+                    'session_date' => $sessionZone->dailySession?->session_date,
+                    'status' => $sessionZone->dailySession?->status,
+                    'total_buy' => $totals['buy'],
+                    'total_sell' => $totals['sell'],
+                    'closed_at' => $sessionZone->dailySession?->closed_at,
                 ];
             }),
-            'existingSessionDates' => $zone->sessionZones()
-                ->with('dailySession')
-                ->get()
+            'existingSessionDates' => $sessionZones
                 ->pluck('dailySession.session_date')
                 ->filter()
                 ->values()
@@ -117,4 +132,3 @@ class ZoneController extends Controller
         return redirect()->back()->with('success', "La zone '{$zone->name}' a été archivée. 📁");
     }
 }
-
