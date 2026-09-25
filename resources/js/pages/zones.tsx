@@ -76,7 +76,10 @@ export default function Zones({ zones }: Props) {
                                                 </div>
                                             </TableCell>
 
-                                            <TableCell className="text-center">
+                                            <TableCell
+                                                className="text-center"
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
                                                 <div className="flex justify-center gap-2">
                                                     <EditZoneDialog
                                                         zone={zone}
