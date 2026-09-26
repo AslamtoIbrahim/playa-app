@@ -180,7 +180,11 @@ const mainNavGroups: NavGroup[] = [
 
 export function AppSidebar() {
     return (
-        <Sidebar collapsible="icon" variant="inset">
+        <Sidebar
+            collapsible="icon"
+            variant="inset"
+            className="**:data-[active=true]:bg-sky-100 **:data-[active=true]:text-sky-700 dark:**:data-[active=true]:bg-sky-950 dark:**:data-[active=true]:text-sky-300"
+        >
             <SidebarHeader>
                 <div className="flex items-center gap-2">
                     <SidebarTrigger className="text-sky-500 transition-colors hover:text-sky-600 dark:text-sky-400 dark:hover:text-sky-300" />
