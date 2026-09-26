@@ -1,11 +1,38 @@
+import { NavMain } from '@/components/nav-main';
+import { NavUser } from '@/components/nav-user';
+import {
+    Sidebar,
+    SidebarContent,
+    SidebarFooter,
+    SidebarHeader,
+    SidebarTrigger,
+} from '@/components/ui/sidebar';
+import {
+    attendances,
+    boats,
+    categories,
+    cautions,
+    companies,
+    customers,
+    dashboard,
+    differences,
+    invoices,
+    items,
+    officeRooms,
+    payments,
+    receipts,
+    sales,
+    sessions,
+    workers,
+    zones,
+} from '@/routes';
+import type { NavGroup } from '@/types';
 import {
     Banknote,
-    BookOpen,
     Building2,
     CalendarClock,
     DoorOpen,
     FileText,
-    FolderGit2,
     LayoutGrid,
     MapPin,
     Package,
@@ -17,142 +44,139 @@ import {
     Tags,
     User,
     UserCheck,
-    Users,
+    Users
 } from 'lucide-react';
-import { NavFooter } from '@/components/nav-footer';
-import { NavMain } from '@/components/nav-main';
-import { NavUser } from '@/components/nav-user';
-import {
-    Sidebar,
-    SidebarContent,
-    SidebarFooter,
-    SidebarHeader,
-    SidebarTrigger,
-} from '@/components/ui/sidebar';
-import {
-    customers,
-    boats,
-    categories,
-    dashboard,
-    invoices,
-    items,
-    officeRooms,
-    payments,
-    companies,
-    sessions,
-    differences,
-    receipts,
-    cautions,
-    sales,
-    workers,
-    attendances,
-    zones,
-} from '@/routes';
-import type { NavItem } from '@/types';
 
-const mainNavItems: NavItem[] = [
+const mainNavGroups: NavGroup[] = [
     {
         title: 'Tableau de bord',
-        href: dashboard(),
-        icon: LayoutGrid,
+        items: [
+            {
+                title: 'Tableau de bord',
+                href: dashboard(),
+                icon: LayoutGrid,
+            },
+        ],
     },
     {
-        title: 'Zones',
-        href: zones(),
-        icon: MapPin,
+        title: 'Activité',
+        items: [
+            {
+                title: 'Journées',
+                href: sessions(),
+                icon: CalendarClock,
+            },
+            {
+                title: 'Pointages',
+                href: attendances(),
+                icon: UserCheck,
+            },
+            {
+                title: 'Ventes',
+                href: sales(),
+                icon: ShoppingBag,
+            },
+            {
+                title: 'Bons de Réception',
+                href: receipts(),
+                icon: Receipt,
+            },
+            {
+                title: 'Différences',
+                href: differences(),
+                icon: Scale,
+            },
+        ],
     },
     {
-        title: 'Journées',
-        href: sessions(),
-        icon: CalendarClock,
+        title: 'Finance',
+        items: [
+            {
+                title: 'Factures',
+                href: invoices(),
+                icon: FileText,
+            },
+            {
+                title: 'Paiements',
+                href: payments(),
+                icon: Banknote,
+            },
+            {
+                title: 'Cautions',
+                href: cautions(),
+                icon: ShieldCheck,
+            },
+        ],
     },
     {
-        title: 'Factures',
-        href: invoices(),
-        icon: FileText,
+        title: 'Organisation',
+        items: [
+            {
+                title: 'Zones',
+                href: zones(),
+                icon: MapPin,
+            },
+            {
+                title: 'Bureaux',
+                href: officeRooms(),
+                icon: DoorOpen,
+            },
+            {
+                title: 'Bateaux',
+                href: boats(),
+                icon: Ship,
+            },
+            {
+                title: 'Ouvriers',
+                href: workers(),
+                icon: Users,
+            },
+        ],
     },
     {
-        title: 'Pointages',
-        href: attendances(),
-        icon: UserCheck,
+        title: 'Partenaires',
+        items: [
+            {
+                title: 'Sociétés',
+                href: companies(),
+                icon: Building2,
+            },
+            {
+                title: 'Clients',
+                href: customers(),
+                icon: User,
+            },
+        ],
     },
     {
-        title: 'Ventes',
-        href: sales(),
-        icon: ShoppingBag,
-    },
-
-    {
-        title: 'Bons de Réception',
-        href: receipts(),
-        icon: Receipt,
-    },
-    {
-        title: 'Differences',
-        href: differences(),
-        icon: Scale,
-    },
-    {
-        title: 'Bureaux',
-        href: officeRooms(),
-        icon: DoorOpen,
-    },
-    {
-        title: 'Sociétés',
-        href: companies(),
-        icon: Building2,
-    },
-    {
-        title: 'Clients',
-        href: customers(),
-        icon: User,
-    },
-    {
-        title: 'Bateaux',
-        href: boats(),
-        icon: Ship,
-    },
-    {
-        title: 'Cautions',
-        href: cautions(),
-        icon: ShieldCheck,
-    },
-    {
-        title: 'Catégories',
-        href: categories(),
-        icon: Tags,
-    },
-    {
-        title: 'Articles',
-        href: items(),
-        icon: Package,
-    },
-
-    {
-        title: 'Ouvriers',
-        href: workers(),
-        icon: Users,
-    },
-
-    {
-        title: 'Paiements',
-        href: payments(),
-        icon: Banknote,
+        title: 'Catalogue',
+        items: [
+            {
+                title: 'Catégories',
+                href: categories(),
+                icon: Tags,
+            },
+            {
+                title: 'Articles',
+                href: items(),
+                icon: Package,
+            },
+        ],
     },
 ];
 
-const footerNavItems: NavItem[] = [
-    {
-        title: 'Repository',
-        href: 'https://github.com/laravel/react-starter-kit',
-        icon: FolderGit2,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#react',
-        icon: BookOpen,
-    },
-];
+// const footerNavItems: NavItem[] = [
+//     {
+//         title: 'Repository',
+//         href: 'https://github.com/laravel/react-starter-kit',
+//         icon: FolderGit2,
+//     },
+//     {
+//         title: 'Documentation',
+//         href: 'https://laravel.com/docs/starter-kits#react',
+//         icon: BookOpen,
+//     },
+// ];
 
 export function AppSidebar() {
     return (
@@ -167,11 +191,11 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain items={mainNavItems} />
+                <NavMain groups={mainNavGroups} />
             </SidebarContent>
 
             <SidebarFooter>
-                <NavFooter items={footerNavItems} className="mt-auto" />
+                {/* <NavFooter items={footerNavItems} className="mt-auto" /> */}
                 <NavUser />
             </SidebarFooter>
         </Sidebar>
