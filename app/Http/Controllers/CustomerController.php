@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Customer;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
@@ -17,7 +18,7 @@ class CustomerController extends Controller
         $customers = Customer::withCount(['invoices', 'boats'])->latest()->get();
 
         return Inertia::render('customers', [
-            'customers' => $customers
+            'customers' => $customers,
         ]);
     }
 
@@ -36,7 +37,7 @@ class CustomerController extends Controller
 
         if ($existingCustomer) {
             // إيلا كان كاين وما ممسوحش -> نطبقو الـ Validation العادي باش يعطي Error Unique
-            if (!$existingCustomer->trashed()) {
+            if (! $existingCustomer->trashed()) {
                 $request->validate([
                     'name' => 'unique:customers,name',
                 ], [
@@ -63,6 +64,72 @@ class CustomerController extends Controller
         Customer::create($validated);
 
         return redirect()->back()->with('success', 'Client créé avec succès ! ✅');
+    }
+
+    /**
+     * Enregistrer plusieurs clients d'un coup (Bulk).
+     * Les doublons existants sont ignorés et les clients archivés sont restaurés.
+     */
+    public function bulkStore(Request $request)
+    {
+        // 1. توحيد السمية + حذف الفراغات + إزالة التكرار داخل نفس اللائحة
+        $request->merge([
+            'names' => collect($request->input('names', []))
+                ->map(fn ($name) => strtolower(trim((string) $name)))
+                ->filter()
+                ->unique()
+                ->values()
+                ->all(),
+        ]);
+
+        // 2. التحقق من صحة اللائحة كاملة
+        $validated = $request->validate([
+            'names' => 'required|array|min:1',
+            'names.*' => 'required|string|max:255',
+        ], [
+            'names.required' => 'Ajoutez au moins un nom de client.',
+            'names.min' => 'Ajoutez au moins un nom de client.',
+            'names.*.required' => 'Le nom du client est obligatoire.',
+            'names.*.max' => 'Le nom du client ne peut pas dépasser 255 caractères.',
+        ]);
+
+        $created = 0;
+        $restored = 0;
+        $skipped = 0;
+
+        // 3. المعالجة داخل Transaction وحدة
+        DB::transaction(function () use ($validated, &$created, &$restored, &$skipped) {
+            foreach ($validated['names'] as $name) {
+                $existingCustomer = Customer::withTrashed()->where('name', $name)->first();
+
+                // مالقيناش السمية -> إنشاء جديد
+                if (! $existingCustomer) {
+                    Customer::create(['name' => $name]);
+                    $created++;
+
+                    continue;
+                }
+
+                // كاين ولكن ممسوح (archivé) -> Restore
+                if ($existingCustomer->trashed()) {
+                    $existingCustomer->restore();
+                    $restored++;
+
+                    continue;
+                }
+
+                // كاين و نشيط -> كنتجاهلوه باش ما نكرهوش Doublons
+                $skipped++;
+            }
+        });
+
+        $message = collect([
+            $created > 0 ? "{$created} client(s) créé(s)" : null,
+            $restored > 0 ? "{$restored} restauré(s)" : null,
+            $skipped > 0 ? "{$skipped} ignoré(s) (déjà existants)" : null,
+        ])->filter()->implode(', ');
+
+        return redirect()->back()->with('success', $message.'. ✅');
     }
 
     /**
@@ -106,10 +173,14 @@ class CustomerController extends Controller
             $message = "Impossible d'archiver ce compte : ";
             $reasons = [];
 
-            if ($boatsCount > 0) $reasons[] = "$boatsCount bateau(x)";
-            if ($invoicesCount > 0) $reasons[] = "$invoicesCount facture(s)";
+            if ($boatsCount > 0) {
+                $reasons[] = "$boatsCount bateau(x)";
+            }
+            if ($invoicesCount > 0) {
+                $reasons[] = "$invoicesCount facture(s)";
+            }
 
-            return redirect()->back()->with('error', $message . implode(' et ', $reasons) . '.');
+            return redirect()->back()->with('error', $message.implode(' et ', $reasons).'.');
         }
 
         $customer->delete();

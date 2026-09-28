@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Company;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
@@ -17,7 +18,7 @@ class CompanyController extends Controller
         $companies = Company::withCount(['invoices', 'boats'])->latest()->get();
 
         return Inertia::render('companies', [
-            'companies' => $companies
+            'companies' => $companies,
         ]);
     }
 
@@ -36,7 +37,7 @@ class CompanyController extends Controller
 
         if ($existingCompany) {
             // إيلا كانت الشركة موجودة وغير ممسوحة -> خطأ (تكرار)
-            if (!$existingCompany->trashed()) {
+            if (! $existingCompany->trashed()) {
                 return back()->withErrors(['name' => 'Cette société existe déjà.']);
             }
 
@@ -57,6 +58,72 @@ class CompanyController extends Controller
         Company::create($validated);
 
         return redirect()->back()->with('success', 'Société créée avec succès ! ✅');
+    }
+
+    /**
+     * Enregistrer plusieurs sociétés d'un coup (Bulk).
+     * Les doublons existants sont ignorés et les sociétés archivées sont restaurées.
+     */
+    public function bulkStore(Request $request)
+    {
+        // 1. توحيد السمية + حذف الفراغات + إزالة التكرار داخل نفس اللائحة
+        $request->merge([
+            'names' => collect($request->input('names', []))
+                ->map(fn ($name) => strtolower(trim((string) $name)))
+                ->filter()
+                ->unique()
+                ->values()
+                ->all(),
+        ]);
+
+        // 2. التحقق من صحة اللائحة كاملة
+        $validated = $request->validate([
+            'names' => 'required|array|min:1',
+            'names.*' => 'required|string|max:255',
+        ], [
+            'names.required' => 'Ajoutez au moins un nom de société.',
+            'names.min' => 'Ajoutez au moins un nom de société.',
+            'names.*.required' => 'Le nom de la société est obligatoire.',
+            'names.*.max' => 'Le nom de la société ne peut pas dépasser 255 caractères.',
+        ]);
+
+        $created = 0;
+        $restored = 0;
+        $skipped = 0;
+
+        // 3. المعالجة داخل Transaction وحدة
+        DB::transaction(function () use ($validated, &$created, &$restored, &$skipped) {
+            foreach ($validated['names'] as $name) {
+                $existingCompany = Company::withTrashed()->where('name', $name)->first();
+
+                // مالقيناش السمية -> إنشاء جديد
+                if (! $existingCompany) {
+                    Company::create(['name' => $name]);
+                    $created++;
+
+                    continue;
+                }
+
+                // كاينة ولكن ممسوحة (archivée) -> Restore
+                if ($existingCompany->trashed()) {
+                    $existingCompany->restore();
+                    $restored++;
+
+                    continue;
+                }
+
+                // كاينة و نشيطة -> كنتجاهلوها باش ما نكرهوش Doublons
+                $skipped++;
+            }
+        });
+
+        $message = collect([
+            $created > 0 ? "{$created} société(s) créée(s)" : null,
+            $restored > 0 ? "{$restored} restaurée(s)" : null,
+            $skipped > 0 ? "{$skipped} ignorée(s) (déjà existantes)" : null,
+        ])->filter()->implode(', ');
+
+        return redirect()->back()->with('success', $message.'. ✅');
     }
 
     /**
@@ -105,7 +172,7 @@ class CompanyController extends Controller
                 $reasons[] = "$invoicesCount facture(s)";
             }
 
-            return redirect()->back()->with('error', "Impossible d'archiver : liée à " . implode(' et ', $reasons) . ".");
+            return redirect()->back()->with('error', "Impossible d'archiver : liée à ".implode(' et ', $reasons).'.');
         }
 
         $company->delete();

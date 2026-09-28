@@ -35,6 +35,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('customers')->group(function () {
         Route::get('/', [CustomerController::class, 'index'])->name('customers');
         Route::post('/', [CustomerController::class, 'store'])->name('customers.store');
+        // إضافة عدة عملاء دفعة وحدة
+        Route::post('/bulk', [CustomerController::class, 'bulkStore'])->name('customers.bulkStore');
         Route::patch('/{customer}', [CustomerController::class, 'update'])->name('customers.update');
         Route::delete('/{customer}', [CustomerController::class, 'destroy'])->name('customers.destroy');
     });
@@ -43,6 +45,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('companies')->group(function () {
         Route::get('/', [CompanyController::class, 'index'])->name('companies');
         Route::post('/', [CompanyController::class, 'store'])->name('companies.store');
+        // إضافة عدة شركات دفعة وحدة
+        Route::post('/bulk', [CompanyController::class, 'bulkStore'])->name('companies.bulkStore');
         Route::patch('/{company}', [CompanyController::class, 'update'])->name('companies.update');
         Route::delete('/{company}', [CompanyController::class, 'destroy'])->name('companies.destroy');
     });
@@ -103,11 +107,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('boats', [BoatController::class, 'index'])->name('boats');
     Route::post('boats', [BoatController::class, 'store'])->name('boats.store');
     Route::patch('boats/{boat}', [BoatController::class, 'update'])->name('boats.update');
+    // Ajout de plusieurs bateaux d'un coup (avec leurs propriétaires)
+    Route::post('boats/bulk', [BoatController::class, 'bulkStore'])->name('boats.bulkStore');
+
     Route::delete('boats/{boat}', [BoatController::class, 'destroy'])->name('boats.destroy');
 
     // Cautions Routes
     Route::get('cautions', [CautionController::class, 'index'])->name('cautions');
     Route::post('cautions', [CautionController::class, 'store'])->name('cautions.store');
+    // Ajouter plusieurs cautions d'un coup
+    Route::post('cautions/bulk', [CautionController::class, 'bulkStore'])->name('cautions.bulkStore');
     Route::patch('cautions/{caution}', [CautionController::class, 'update'])->name('cautions.update');
     Route::delete('cautions/{caution}', [CautionController::class, 'destroy'])->name('cautions.destroy');
 
@@ -120,12 +129,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Categories Routes
     Route::get('categories', [CategoryController::class, 'index'])->name('categories');
     Route::post('categories', [CategoryController::class, 'store'])->name('categories.store');
+    // Ajout de plusieurs catégories d'un coup
+    Route::post('categories/bulk', [CategoryController::class, 'bulkStore'])->name('categories.bulkStore');
     Route::patch('categories/{category}', [CategoryController::class, 'update'])->name('categories.update');
     Route::delete('categories/{category}', [CategoryController::class, 'destroy'])->name('categories.destroy');
 
     // Items Routes
     Route::get('items', [ItemController::class, 'index'])->name('items');
     Route::post('items', [ItemController::class, 'store'])->name('items.store');
+    // Ajout de plusieurs articles d'un coup (avec leurs catégories)
+    Route::post('items/bulk', [ItemController::class, 'bulkStore'])->name('items.bulkStore');
     Route::patch('items/{item}', [ItemController::class, 'update'])->name('items.update');
     Route::delete('items/{item}', [ItemController::class, 'destroy'])->name('items.destroy');
 
@@ -186,6 +199,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // --- Workers Routes ---
     Route::get('workers', [WorkerController::class, 'index'])->name('workers');
     Route::post('workers', [WorkerController::class, 'store'])->name('workers.store');
+    // Ajout de plusieurs ouvriers d'un coup
+    Route::post('workers/bulk', [WorkerController::class, 'bulkStore'])->name('workers.bulkStore');
     Route::patch('workers/{worker}', [WorkerController::class, 'update'])->name('workers.update');
     Route::delete('workers/{worker}', [WorkerController::class, 'destroy'])->name('workers.destroy');
 

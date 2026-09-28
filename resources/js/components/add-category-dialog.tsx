@@ -1,5 +1,5 @@
 import { Form } from '@inertiajs/react';
-import { Plus, Loader2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import InputError from '@/components/input-error';
@@ -11,13 +11,80 @@ import {
     DialogHeader,
     DialogTitle,
     DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { store } from '@/routes/categories';
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Spinner } from '@/components/ui/spinner';
+import { bulkStore } from '@/routes/categories';
+
+interface CategoryRow {
+    id: number;
+    value: string;
+}
+
+interface FlashMessage {
+    success?: string;
+    error?: string;
+}
+
+let categoryRowId = 0;
+
+function createCategoryRow(value = ''): CategoryRow {
+    categoryRowId += 1;
+
+    return { id: categoryRowId, value };
+}
+
+/**
+ * Découpe un collage multi-lignes (Excel, WhatsApp...) en liste de noms.
+ */
+function splitPastedNames(pasted: string): string[] {
+    return pasted
+        .split(/\r?\n/)
+        .map((name) => name.trim())
+        .filter((name) => name !== '');
+}
 
 export default function AddCategoryDialog() {
-    const [open, setOpen] = useState(false);
+    const [open, setOpen] = useState<boolean>(false);
+    const [rows, setRows] = useState<CategoryRow[]>([createCategoryRow()]);
+    const [formKey, setFormKey] = useState<number>(0);
+
+    const filledCount = rows.filter((row) => row.value.trim() !== '').length;
+
+    const addRow = () => {
+        setRows((current) => [...current, createCategoryRow()]);
+    };
+
+    const removeRow = (id: number) => {
+        if (rows.length === 1) {
+            return;
+        }
+
+        setRows((current) => current.filter((row) => row.id !== id));
+    };
+
+    const updateRowValue = (id: number, value: string) => {
+        setRows((current) =>
+            current.map((row) => (row.id === id ? { ...row, value } : row)),
+        );
+    };
+
+    /**
+     * Remplace la ligne collée, puis ajoute une ligne par nom supplémentaire.
+     */
+    const pasteRows = (index: number, names: string[]) => {
+        setRows((current) => {
+            const updated = [...current];
+            updated[index] = createCategoryRow(names[0]);
+
+            return [
+                ...updated,
+                ...names.slice(1).map((name) => createCategoryRow(name)),
+            ];
+        });
+    };
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -26,57 +93,198 @@ export default function AddCategoryDialog() {
                     <Plus className="mr-2 h-4 w-4" /> Ajouter une catégorie
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-106.25">
                 <DialogHeader>
-                    <DialogTitle>Nouvelle catégorie</DialogTitle>
+                    <DialogTitle>Ajouter des catégories</DialogTitle>
                     <DialogDescription>
-                        Créez une nouvelle catégorie pour organiser vos articles.
+                        Ajoutez une ou plusieurs catégories d&apos;un coup. Les
+                        catégories déjà existantes sont ignorées
+                        automatiquement.
                     </DialogDescription>
                 </DialogHeader>
 
                 <Form
-                    {...store.form()}
-                    resetOnSuccess={['name']}
-                    onSuccess={() => {
-                        toast.success('La catégorie a été créée ! ✨');
+                    {...bulkStore.form()}
+                    key={formKey}
+                    transform={(data) => {
+                        const names =
+                            (data.names as string[] | undefined) ?? [];
+
+                        return {
+                            names: names.filter((name) => name.trim() !== ''),
+                        };
+                    }}
+                    onBefore={() => {
+                        if (filledCount === 0) {
+                            toast.error(
+                                'Ajoutez au moins un nom de catégorie.',
+                            );
+
+                            return false;
+                        }
+
+                        return true;
+                    }}
+                    onSuccess={(page) => {
+                        const flash = page.props.flash as
+                            | FlashMessage
+                            | undefined;
+
+                        toast.success(
+                            flash?.success ??
+                                'Les catégories ont été enregistrées ! ✅',
+                        );
+
+                        setRows([createCategoryRow()]);
+                        setFormKey((key) => key + 1);
                         setOpen(false);
                     }}
                     className="space-y-4 pt-4"
                 >
-                    {({ processing, errors }) => (
+                    {({ processing, errors, clearErrors }) => (
                         <>
-                            <div className="grid gap-2">
-                                <Label htmlFor="name">Nom de la catégorie</Label>
-                                <Input
-                                    id="name"
-                                    name="name"
-                                    required
-                                    placeholder="ex: Électronique, Services..."
-                                    autoFocus
-                                />
-                                <InputError message={errors.name} />
+                            <div className="grid gap-3">
+                                <div className="flex items-center justify-between gap-2">
+                                    <Label htmlFor="category-name-0">
+                                        Noms des catégories
+                                    </Label>
+
+                                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                                        {filledCount} catégorie(s)
+                                    </span>
+                                </div>
+
+                                <ScrollArea className="max-h-64">
+                                    <div className="space-y-2 pr-3">
+                                        {rows.map((row, index) => (
+                                            <div
+                                                key={row.id}
+                                                className="space-y-1"
+                                            >
+                                                <div className="flex items-start gap-2">
+                                                    <Input
+                                                        id={`category-name-${index}`}
+                                                        name="names[]"
+                                                        defaultValue={row.value}
+                                                        autoComplete="off"
+                                                        autoFocus={
+                                                            index ===
+                                                            rows.length - 1
+                                                        }
+                                                        placeholder={
+                                                            index === 0
+                                                                ? 'ex: Électronique, Services...'
+                                                                : 'Autre catégorie...'
+                                                        }
+                                                        onChange={(event) => {
+                                                            updateRowValue(
+                                                                row.id,
+                                                                event.target
+                                                                    .value,
+                                                            );
+                                                        }}
+                                                        onKeyDown={(event) => {
+                                                            if (
+                                                                event.key ===
+                                                                'Enter'
+                                                            ) {
+                                                                event.preventDefault();
+                                                                addRow();
+                                                            }
+                                                        }}
+                                                        onPaste={(event) => {
+                                                            const pasted =
+                                                                event.clipboardData.getData(
+                                                                    'text',
+                                                                );
+
+                                                            if (
+                                                                !pasted.includes(
+                                                                    '\n',
+                                                                )
+                                                            ) {
+                                                                return;
+                                                            }
+
+                                                            const pastedNames =
+                                                                splitPastedNames(
+                                                                    pasted,
+                                                                );
+
+                                                            if (
+                                                                pastedNames.length ===
+                                                                0
+                                                            ) {
+                                                                return;
+                                                            }
+
+                                                            event.preventDefault();
+                                                            clearErrors();
+                                                            pasteRows(
+                                                                index,
+                                                                pastedNames,
+                                                            );
+                                                        }}
+                                                    />
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        aria-label={`Supprimer la ligne ${index + 1}`}
+                                                        disabled={
+                                                            rows.length === 1
+                                                        }
+                                                        className="shrink-0 text-red-500 hover:bg-red-50 hover:text-red-600 dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300"
+                                                        onClick={() => {
+                                                            clearErrors();
+                                                            removeRow(row.id);
+                                                        }}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+
+                                                <InputError
+                                                    message={
+                                                        errors[`names.${index}`]
+                                                    }
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </ScrollArea>
+
+                                <InputError message={errors.names} />
                             </div>
 
-                            <div className="flex justify-end gap-3 pt-4">
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={() => setOpen(false)}
-                                    disabled={processing}
-                                >
-                                    Annuler
-                                </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="w-full border-dashed border-slate-300 text-slate-600 dark:border-slate-600 dark:text-slate-300"
+                                onClick={() => {
+                                    addRow();
+                                }}
+                            >
+                                <Plus className="mr-2 h-4 w-4" /> Ajouter une
+                                ligne
+                            </Button>
+
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                Astuce : appuyez sur{' '}
+                                <span className="font-semibold">Entrée</span>{' '}
+                                pour ajouter une catégorie, ou collez une
+                                colonne entière depuis Excel.
+                            </p>
+
+                            <div className="flex justify-end gap-3 pt-2">
                                 <Button
                                     type="submit"
                                     disabled={processing}
-                                    className="min-w-[100px]"
+                                    className="w-full"
                                 >
-                                    {processing ? (
-                                        <>
-                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            Création...
-                                        </>
-                                    ) : 'Enregistrer'}
+                                    {processing && <Spinner />}
+                                    Enregistrer {filledCount} catégorie(s)
                                 </Button>
                             </div>
                         </>

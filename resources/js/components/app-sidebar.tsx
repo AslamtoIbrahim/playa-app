@@ -67,16 +67,6 @@ const mainNavGroups: NavGroup[] = [
                 icon: CalendarClock,
             },
             {
-                title: 'Pointages',
-                href: attendances(),
-                icon: UserCheck,
-            },
-            {
-                title: 'Ventes',
-                href: sales(),
-                icon: ShoppingBag,
-            },
-            {
                 title: 'Bons de Réception',
                 href: receipts(),
                 icon: Receipt,
@@ -85,6 +75,16 @@ const mainNavGroups: NavGroup[] = [
                 title: 'Différences',
                 href: differences(),
                 icon: Scale,
+            },
+            {
+                title: 'Pointages',
+                href: attendances(),
+                icon: UserCheck,
+            },
+            {
+                title: 'Ventes',
+                href: sales(),
+                icon: ShoppingBag,
             },
         ],
     },
