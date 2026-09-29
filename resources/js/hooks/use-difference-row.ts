@@ -45,19 +45,13 @@ export function useDifferenceRow({
     };
 
     const isReadyToSave = (currentData = data): boolean => {
-        if (isNew) {
-            {
-                return (
-                    currentData.customer_id !== '' &&
-                    currentData.item_id !== '' &&
-                    Number(currentData.unit_count) > 0 &&
-                    Number(currentData.real_price) > 0
-                );
-            }
-        }
-
         {
-            return true;
+            return (
+                currentData.customer_id !== '' &&
+                currentData.item_id !== '' &&
+                Number(currentData.unit_count) > 0 &&
+                Number(currentData.real_price) > 0
+            );
         }
     };
 
@@ -197,6 +191,28 @@ export function useDifferenceRow({
     ): void => {
         if (openCustomer || openItem) {
             {
+                return;
+            }
+        }
+
+        const isClearKey = e.key === 'Backspace' || e.key === 'Delete';
+
+        if (isClearKey && type) {
+            {
+                e.preventDefault();
+
+                if (type === 'customer' && data.customer_id !== '') {
+                    {
+                        handleDataChange({ customer_id: '' });
+                    }
+                }
+
+                if (type === 'item' && data.item_id !== '') {
+                    {
+                        handleDataChange({ item_id: '' });
+                    }
+                }
+
                 return;
             }
         }

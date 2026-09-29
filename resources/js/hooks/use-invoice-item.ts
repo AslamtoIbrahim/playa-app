@@ -142,6 +142,28 @@ export function useInvoiceItem({ invoiceId, item, isNew }: UseInvoiceItemProps) 
             }
         }
 
+        const isClearKey = e.key === 'Backspace' || e.key === 'Delete';
+
+        if (isClearKey && type) {
+            {
+                e.preventDefault();
+
+                if (type === 'boat' && data.boat_id !== '') {
+                    {
+                        handleDataChange({ boat_id: '' });
+                    }
+                }
+
+                if (type === 'item' && data.item_id !== '') {
+                    {
+                        handleDataChange({ item_id: '' });
+                    }
+                }
+
+                return;
+            }
+        }
+
         if (type && !openBoat && !openItem) {
             {
                 const isCharacter = e.key.length === 1 && e.key.match(/[a-z0-9\u0600-\u06FF]/i);

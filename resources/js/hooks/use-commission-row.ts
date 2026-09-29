@@ -192,6 +192,24 @@ export function useCommissionRow({
             }
         }
 
+        const isClearKey = e.key === 'Backspace' || e.key === 'Delete';
+
+        {
+            if (isClearKey && type === 'customer') {
+                {
+                    e.preventDefault();
+
+                    if (data.beneficiary_id !== '') {
+                        {
+                            handleDataChange({ beneficiary_id: '' });
+                        }
+                    }
+
+                    return;
+                }
+            }
+        }
+
         {
             if (type === 'customer' && !openCustomer) {
                 {
