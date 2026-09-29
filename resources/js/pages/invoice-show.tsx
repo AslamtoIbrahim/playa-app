@@ -56,7 +56,8 @@ import {
     duplicateMany,
     reorder,
 } from '@/routes/invoices/items';
-import { Boat } from '@/types/boat';
+import { Boat, Owner } from '@/types/boat';
+import { Category } from '@/types/category';
 import { Customer } from '@/types/customer';
 import { Invoice } from '@/types/invoice';
 import { InvoiceItem } from '@/types/invoice-item';
@@ -67,6 +68,8 @@ interface Props {
     invoice: Invoice & { items: InvoiceItem[] };
     boats: Boat[];
     items: Item[];
+    owners: Owner[];
+    categories: Category[];
     customers: Customer[];
     /** URL de retour explicite fournie par le backend (journée liée ou liste). */
     backUrl: string;
@@ -76,6 +79,8 @@ export default function InvoiceShow({
     invoice,
     boats,
     items,
+    owners,
+    categories,
     customers,
     backUrl,
 }: Props) {
@@ -416,6 +421,8 @@ export default function InvoiceShow({
                                 invoiceId={invoice.id}
                                 boats={boats}
                                 items={items}
+                                owners={owners}
+                                categories={categories}
                                 isNew={true}
                                 onOpenDifference={() => {}} // New row doesn't need this
                             />
@@ -431,6 +438,8 @@ export default function InvoiceShow({
                                         item={row}
                                         boats={boats}
                                         items={items}
+                                        owners={owners}
+                                        categories={categories}
                                         selected={selectedIds.includes(row.id)}
                                         onSelectChange={(checked) => {
                                             setSelectedIds((prev) =>

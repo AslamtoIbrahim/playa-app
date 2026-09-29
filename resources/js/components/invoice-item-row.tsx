@@ -16,13 +16,16 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
 // Types & Logic
-import { Boat } from '@/types/boat';
+import { Boat, Owner } from '@/types/boat';
+import { Category } from '@/types/category';
 import { Item } from '@/types/item';
 import { InvoiceItem } from '@/types/invoice-item';
 import { Checkbox } from './ui/checkbox';
 import { InvoiceRowActions } from './invoice-row-actions';
 import { useInvoiceItem } from '@/hooks/use-invoice-item';
 import { SearchSelect } from './search-select';
+import MissingBoatPopup from './missing-boat-popup';
+import MissingItemPopup from './missing-item-popup';
 
 interface Props {
     invoiceId: number;
@@ -33,6 +36,8 @@ interface Props {
     selected?: boolean;
     onSelectChange?: (checked: boolean) => void;
     onOpenDifference: (item: InvoiceItem) => void;
+    owners: Owner[];
+    categories: Category[];
 }
 
 export default function InvoiceItemRow({
@@ -44,6 +49,8 @@ export default function InvoiceItemRow({
     selected,
     onSelectChange,
     onOpenDifference,
+    owners,
+    categories,
 }: Props) {
     const {
         data,
@@ -80,9 +87,11 @@ export default function InvoiceItemRow({
         position: (isDragging ? 'relative' : 'static') as any,
     };
 
-    const cellFocusClass = 'focus-within:ring-1 focus-within:ring-inset focus-within:ring-slate-300 focus-within:bg-slate-100/50 dark:focus-within:ring-neutral-700 dark:focus-within:bg-neutral-800/50 transition-all';
+    const cellFocusClass =
+        'focus-within:ring-1 focus-within:ring-inset focus-within:ring-slate-300 focus-within:bg-slate-100/50 dark:focus-within:ring-neutral-700 dark:focus-within:bg-neutral-800/50 transition-all';
 
-    const inputBaseClass = 'border-none rounded-none h-10 text-xs shadow-none bg-transparent focus-visible:ring-0 w-full font-normal [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none text-slate-900 dark:text-neutral-100';
+    const inputBaseClass =
+        'border-none rounded-none h-10 text-xs shadow-none bg-transparent focus-visible:ring-0 w-full font-normal [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none text-slate-900 dark:text-neutral-100';
 
     return (
         <TableRow
@@ -90,7 +99,9 @@ export default function InvoiceItemRow({
             style={style}
             className={cn(
                 'group border-b border-slate-100 dark:border-neutral-800',
-                isNew ? 'bg-slate-50/50 dark:bg-neutral-900/60' : 'hover:bg-slate-50/30 dark:hover:bg-neutral-900/40',
+                isNew
+                    ? 'bg-slate-50/50 dark:bg-neutral-900/60'
+                    : 'hover:bg-slate-50/30 dark:hover:bg-neutral-900/40',
                 isDragging && 'bg-blue-50/80 shadow-2xl dark:bg-blue-950/60',
                 selected && 'bg-blue-50/50 dark:bg-blue-950/40',
                 isNew && 'print:hidden',
@@ -124,11 +135,22 @@ export default function InvoiceItemRow({
                 )}
             </TableCell>
 
-            <TableCell className={cn('w-45 border-r border-slate-100 p-0 dark:border-neutral-800', cellFocusClass)}>
+            <TableCell
+                className={cn(
+                    'w-45 border-r border-slate-100 p-0 dark:border-neutral-800',
+                    cellFocusClass,
+                )}
+            >
                 <SearchSelect
                     value={data.boat_id}
                     options={boats}
                     placeholder="Choisir bateau..."
+                    renderNoMatchAction={(search) => (
+                        <MissingBoatPopup
+                            initialName={search}
+                            owners={owners}
+                        />
+                    )}
                     open={openBoat}
                     onOpenChange={setOpenBoat}
                     onKeyDown={(e) => {
@@ -145,11 +167,22 @@ export default function InvoiceItemRow({
                 />
             </TableCell>
 
-            <TableCell className={cn('w-45 border-r border-slate-100 p-0 dark:border-neutral-800', cellFocusClass)}>
+            <TableCell
+                className={cn(
+                    'w-45 border-r border-slate-100 p-0 dark:border-neutral-800',
+                    cellFocusClass,
+                )}
+            >
                 <SearchSelect
                     value={data.item_id}
                     options={items}
                     placeholder="Saisir espèce..."
+                    renderNoMatchAction={(search) => (
+                        <MissingItemPopup
+                            initialName={search}
+                            categories={categories}
+                        />
+                    )}
                     open={openItem}
                     onOpenChange={setOpenItem}
                     onKeyDown={(e) => {
@@ -159,12 +192,20 @@ export default function InvoiceItemRow({
                     }}
                     onSelect={(id) => {
                         {
-                            const selectedItem = items.find(i => String(i.id) === String(id));
-                            const isPoulpe = selectedItem?.name?.toLowerCase().includes('poulpe') || selectedItem?.name?.toLowerCase().includes('بولبو');
+                            const selectedItem = items.find(
+                                (i) => String(i.id) === String(id),
+                            );
+                            const isPoulpe =
+                                selectedItem?.name
+                                    ?.toLowerCase()
+                                    .includes('poulpe') ||
+                                selectedItem?.name
+                                    ?.toLowerCase()
+                                    .includes('بولبو');
 
                             handleDataChange({
                                 item_id: id,
-                                unit: isPoulpe ? 'kg' : 'caisse'
+                                unit: isPoulpe ? 'kg' : 'caisse',
                             });
 
                             setOpenItem(false);
@@ -173,9 +214,12 @@ export default function InvoiceItemRow({
                 />
             </TableCell>
 
-
-
-            <TableCell className={cn('w-24 border-r border-slate-100 p-0 dark:border-neutral-800', cellFocusClass)}>
+            <TableCell
+                className={cn(
+                    'w-24 border-r border-slate-100 p-0 dark:border-neutral-800',
+                    cellFocusClass,
+                )}
+            >
                 <Input
                     type="number"
                     value={data.unit_count}
@@ -189,7 +233,12 @@ export default function InvoiceItemRow({
                 />
             </TableCell>
 
-            <TableCell className={cn('w-28 border-r border-slate-100 p-0 dark:border-neutral-800', cellFocusClass)}>
+            <TableCell
+                className={cn(
+                    'w-28 border-r border-slate-100 p-0 dark:border-neutral-800',
+                    cellFocusClass,
+                )}
+            >
                 <Input
                     type="number"
                     value={data.unit_price}
@@ -203,7 +252,12 @@ export default function InvoiceItemRow({
                 />
             </TableCell>
 
-            <TableCell className={cn('w-28 border-r border-slate-100 p-0 dark:border-neutral-800', cellFocusClass)}>
+            <TableCell
+                className={cn(
+                    'w-28 border-r border-slate-100 p-0 dark:border-neutral-800',
+                    cellFocusClass,
+                )}
+            >
                 <Select
                     value={data.unit}
                     onValueChange={(val) => {
@@ -214,13 +268,23 @@ export default function InvoiceItemRow({
                 >
                     <SelectTrigger
                         onKeyDown={handleKeyDown}
-                        className="h-10 w-full rounded-none border-none bg-transparent px-3 text-[10px] uppercase shadow-none focus:ring-0 text-slate-900 dark:text-neutral-100"
+                        className="h-10 w-full rounded-none border-none bg-transparent px-3 text-[10px] text-slate-900 uppercase shadow-none focus:ring-0 dark:text-neutral-100"
                     >
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
-                        <SelectItem value="caisse" className="text-[10px] uppercase dark:focus:bg-neutral-800">Caisse</SelectItem>
-                        <SelectItem value="kg" className="text-[10px] uppercase dark:focus:bg-neutral-800">Kg</SelectItem>
+                        <SelectItem
+                            value="caisse"
+                            className="text-[10px] uppercase dark:focus:bg-neutral-800"
+                        >
+                            Caisse
+                        </SelectItem>
+                        <SelectItem
+                            value="kg"
+                            className="text-[10px] uppercase dark:focus:bg-neutral-800"
+                        >
+                            Kg
+                        </SelectItem>
                     </SelectContent>
                 </Select>
             </TableCell>
@@ -235,7 +299,12 @@ export default function InvoiceItemRow({
             </TableCell> */}
 
             {/* 7. POIDS (Editable) */}
-            <TableCell className={cn('w-24 border-r border-slate-100 p-0 dark:border-neutral-800', cellFocusClass)}>
+            <TableCell
+                className={cn(
+                    'w-24 border-r border-slate-100 p-0 dark:border-neutral-800',
+                    cellFocusClass,
+                )}
+            >
                 <Input
                     type="number"
                     value={weight}
@@ -248,15 +317,21 @@ export default function InvoiceItemRow({
                     className={cn(
                         inputBaseClass,
                         'text-center font-medium',
-                        data.unit === 'caisse' && Number(weight) !== (Number(data.unit_count) * 21)
-                            ? 'text-blue-600 font-bold dark:text-blue-400'
-                            : 'text-slate-500 dark:text-neutral-400'
+                        data.unit === 'caisse' &&
+                            Number(weight) !== Number(data.unit_count) * 21
+                            ? 'font-bold text-blue-600 dark:text-blue-400'
+                            : 'text-slate-500 dark:text-neutral-400',
                     )}
                 />
             </TableCell>
 
             {/* BOX - الحقل الجديد */}
-            <TableCell className={cn('w-20 border-r border-slate-100 p-0 dark:border-neutral-800', cellFocusClass)}>
+            <TableCell
+                className={cn(
+                    'w-20 border-r border-slate-100 p-0 dark:border-neutral-800',
+                    cellFocusClass,
+                )}
+            >
                 <Input
                     type="number"
                     value={displayBox}
@@ -270,14 +345,17 @@ export default function InvoiceItemRow({
                     className={cn(
                         inputBaseClass,
                         'text-center font-bold text-blue-900 dark:text-blue-300',
-                        data.unit === 'caisse' && 'text-slate-500 font-normal dark:text-neutral-400'
+                        data.unit === 'caisse' &&
+                            'font-normal text-slate-500 dark:text-neutral-400',
                     )}
                 />
             </TableCell>
 
             <TableCell className="w-32 bg-slate-50/10 px-6 text-right text-xs font-normal text-slate-900 dark:bg-neutral-900/20 dark:text-neutral-100">
                 {amount > 0
-                    ? amount.toLocaleString('fr-FR', { minimumFractionDigits: 2 })
+                    ? amount.toLocaleString('fr-FR', {
+                          minimumFractionDigits: 2,
+                      })
                     : '0.00'}
             </TableCell>
 

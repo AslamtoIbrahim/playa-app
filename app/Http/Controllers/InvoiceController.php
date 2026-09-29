@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Boat;
+use App\Models\Category;
 use App\Models\Caution;
 use App\Models\Company;
 use App\Models\Customer;
@@ -188,6 +189,16 @@ class InvoiceController extends Controller
             'invoice' => $invoice,
             'boats' => Boat::all(['id', 'name']),
             'items' => Item::all(['id', 'name']),
+            'categories' => Category::all(['id', 'name']),
+            'owners' => Customer::select('id', 'name')->get()->map(fn ($c) => [
+                'id' => $c->id,
+                'name' => $c->name,
+                'type' => Customer::class,
+            ])->concat(Company::select('id', 'name')->get()->map(fn ($c) => [
+                'id' => $c->id,
+                'name' => $c->name,
+                'type' => Company::class,
+            ])),
             'customers' => Customer::all(['id', 'name']),
             'backUrl' => $backUrl,
         ]);

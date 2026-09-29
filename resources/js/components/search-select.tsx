@@ -26,32 +26,64 @@ interface SearchSelectProps {
     onOpenChange: (open: boolean) => void;
     onKeyDown?: (e: React.KeyboardEvent<any>) => void;
     className?: string;
+    /**
+     * Action optionnelle rendue à côté du champ de recherche lorsque la
+     * valeur saisie n'existe pas dans les options (ex : bouton "+" pour
+     * créer l'élément manquant).
+     */
+    renderNoMatchAction?: (search: string) => React.ReactNode;
 }
 
 export function SearchSelect({
     value,
     options,
     placeholder,
-    emptyMessage = "Aucun résultat.",
+    emptyMessage = 'Aucun résultat.',
     onSelect,
     open,
     onOpenChange,
     onKeyDown,
     className,
+    renderNoMatchAction,
 }: SearchSelectProps) {
-    const selectedOption = options.find((opt) => String(opt.id) === String(value));
+    const [search, setSearch] = React.useState('');
+    const selectedOption = options.find(
+        (opt) => String(opt.id) === String(value),
+    );
 
-    // const commandItemClass = 'text-xs !bg-white cursor-pointer flex items-center gap-2 px-3 py-2 rounded-sm outline-none data-[selected=true]:!bg-slate-200 data-[selected=true]:!text-black transition-colors';
+    const trimmedSearch = search.trim();
+    const hasMatch = options.some((opt) =>
+        opt.name.toLowerCase().includes(trimmedSearch.toLowerCase()),
+    );
+
+    const handleOpenChange = (nextOpen: boolean) => {
+        if (!nextOpen) {
+            setSearch('');
+        }
+
+        onOpenChange(nextOpen);
+    };
+
+    const showNoMatchAction =
+        renderNoMatchAction !== undefined && trimmedSearch !== '' && !hasMatch;
 
     return (
-        <Popover open={open} onOpenChange={onOpenChange}>
+        <Popover open={open} onOpenChange={handleOpenChange}>
             <PopoverTrigger asChild>
                 <Button
                     variant="ghost"
                     onKeyDown={onKeyDown}
-                    className={cn("h-10 w-full justify-between px-3 text-left text-xs font-normal", className)}
+                    className={cn(
+                        'h-10 w-full justify-between px-3 text-left text-xs font-normal',
+                        className,
+                    )}
                 >
-                    <span className={cn('truncate', !value && 'text-slate-400 italic')}>
+                    <span
+                        className={cn(
+                            'truncate',
+                            !value && 'text-slate-400 italic',
+                        )}
+                    >
                         {selectedOption ? selectedOption.name : placeholder}
                     </span>
                     <ChevronsUpDown className="h-3 w-3 opacity-20 print:hidden" />
@@ -59,7 +91,22 @@ export function SearchSelect({
             </PopoverTrigger>
             <PopoverContent className="w-64 p-0" align="start">
                 <Command>
-                    <CommandInput placeholder="Rechercher..." className="h-9" />
+                    <div className="flex items-center gap-2 p-1">
+                        <div className="min-w-0 flex-1">
+                            <CommandInput
+                                placeholder="Rechercher..."
+                                className="h-9"
+                                value={search}
+                                onValueChange={setSearch}
+                            />
+                        </div>
+
+                        {showNoMatchAction && (
+                            <div className="shrink-0">
+                                {renderNoMatchAction(trimmedSearch)}
+                            </div>
+                        )}
+                    </div>
                     <CommandList>
                         <CommandEmpty>{emptyMessage}</CommandEmpty>
                         <CommandGroup className="p-1">
@@ -75,7 +122,9 @@ export function SearchSelect({
                                     <Check
                                         className={cn(
                                             'h-3.5 w-3.5 text-blue-600',
-                                            String(value) === String(opt.id) ? 'opacity-100' : 'opacity-0',
+                                            String(value) === String(opt.id)
+                                                ? 'opacity-100'
+                                                : 'opacity-0',
                                         )}
                                     />
                                     <span>{opt.name}</span>
