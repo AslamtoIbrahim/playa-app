@@ -3,16 +3,20 @@ import { Input } from "@/components/ui/input";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { useDifferenceRow } from '@/hooks/use-difference-row';
 import { cn } from '@/lib/utils';
+import { Category } from '@/types/category';
 import { Customer } from '@/types/customer';
 import { Difference } from '@/types/difference';
 import { Item } from '@/types/item';
 import { Loader2, Plus, Trash2 } from 'lucide-react';
+import MissingCustomerCompanyPopup from './missing-customer-company-popup';
+import MissingItemPopup from './missing-item-popup';
 import { SearchSelect } from './search-select';
 
 interface RowProps {
     diff?: Difference;
     customers: Customer[];
     items: Item[];
+    categories: Category[];
     maxAvailable: number;
     isNew?: boolean;
     invoiceItemId?: number;
@@ -25,6 +29,7 @@ export function DifferenceRow({
     diff,
     customers,
     items,
+    categories,
     maxAvailable,
     isNew,
     invoiceItemId,
@@ -75,6 +80,9 @@ export function DifferenceRow({
                     options={customers}
                     // placeholder={isNew ? "Client..." : diff?.customer?.name || "Client..."}
                     placeholder="Client..."
+                    renderNoMatchAction={(search) => (
+                        <MissingCustomerCompanyPopup initialName={search} />
+                    )}
                     open={openCustomer}
                     onOpenChange={setOpenCustomer}
                     onKeyDown={(e) => {
@@ -110,6 +118,12 @@ export function DifferenceRow({
                     value={data.item_id}
                     options={items}
                     placeholder={isNew ? "Article..." : diff?.item?.name || "Article..."}
+                    renderNoMatchAction={(search) => (
+                        <MissingItemPopup
+                            initialName={search}
+                            categories={categories}
+                        />
+                    )}
                     open={openItem}
                     onOpenChange={setOpenItem}
                     onKeyDown={(e) => {

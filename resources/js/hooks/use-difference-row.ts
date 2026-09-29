@@ -86,7 +86,10 @@ export function useDifferenceRow({
                     if (isNew) {
                         {
                             setData({
-                                customer_id: '',
+                                // On réapplique le client par défaut (propriétaire
+                                // du bateau) pour rester cohérent avec l'état
+                                // initial de la ligne.
+                                customer_id: defaultCustomerId?.toString() || '',
                                 item_id: '',
                                 unit_count: '',
                                 real_price: '',

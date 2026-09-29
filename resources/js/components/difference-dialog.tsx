@@ -12,6 +12,8 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { normalizeMorphType } from '@/lib/invoice';
+import { Category } from '@/types/category';
 import { Customer } from '@/types/customer';
 import { Difference } from '@/types/difference';
 import { InvoiceItem } from '@/types/invoice-item';
@@ -29,6 +31,7 @@ interface Props {
     item: InvoiceItem;
     customers: Customer[];
     items: Item[];
+    categories: Category[];
     sessionZoneId: number;
     date: string;
 }
@@ -39,6 +42,7 @@ export function DifferenceDialog({
     item,
     customers,
     items,
+    categories,
     sessionZoneId,
     date,
 }: Props) {
@@ -59,6 +63,44 @@ export function DifferenceDialog({
     }, [differences]);
 
     const remainingCount = Number(item.unit_count) - totalDistributed;
+
+    /**
+     * Client par défaut de la nouvelle ligne de répartition.
+     *
+     * Le propriétaire du bateau est polymorphique (client ou société) et les
+     * ids des deux tables se chevauchent : sans ce contrôle, un bateau
+     * appartenant à une société présélectionnerait le client qui porte le
+     * même id (ex. société #1 → client #1). On ne présélectionne donc que
+     * lorsque le propriétaire est un client existant, sinon on laisse la
+     * cellule vide (les différences référencent la table `customers`).
+     */
+    const ownerCustomerId = useMemo((): number | undefined => {
+        {
+            const boat = item.boat;
+
+            if (!boat?.owner_id || !boat.owner_type) {
+                {
+                    return undefined;
+                }
+            }
+
+            const isCustomerOwner = normalizeMorphType(boat.owner_type).endsWith(
+                'Customer',
+            );
+
+            if (!isCustomerOwner) {
+                {
+                    return undefined;
+                }
+            }
+
+            const ownerCustomer = customers.find(
+                (customer) => Number(customer.id) === Number(boat.owner_id),
+            );
+
+            return ownerCustomer?.id;
+        }
+    }, [item.boat, customers]);
 
     const totalDiffSum = useMemo((): number => {
         {
@@ -237,8 +279,9 @@ export function DifferenceDialog({
                                     invoiceItemId={item.id}
                                     customers={customers}
                                     items={items}
+                                    categories={categories}
                                     maxAvailable={remainingCount}
-                                    defaultCustomerId={item.boat?.owner_id}
+                                    defaultCustomerId={ownerCustomerId}
                                 />
                             )}
 
@@ -250,6 +293,7 @@ export function DifferenceDialog({
                                             diff={diff}
                                             customers={customers}
                                             items={items}
+                                            categories={categories}
                                             maxAvailable={
                                                 remainingCount +
                                                 Number(diff.unit_count)

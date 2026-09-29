@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { Customer } from '@/types/customer';
 import { ReceiptItem } from '@/types/receipt-item';
 import { Loader2, Plus, Trash2 } from 'lucide-react';
+import MissingCustomerCompanyPopup from './missing-customer-company-popup';
 import { SearchSelect } from './search-select';
 
 interface CommissionRowProps {
@@ -72,6 +73,9 @@ export function CommissionRow({
                     value={data.beneficiary_id}
                     options={beneficiaries}
                     placeholder="Bénéficiaire..."
+                    renderNoMatchAction={(search) => (
+                        <MissingCustomerCompanyPopup initialName={search} />
+                    )}
                     open={openCustomer}
                     onOpenChange={setOpenCustomer}
                     onKeyDown={(e) => {

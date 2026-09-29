@@ -500,6 +500,7 @@ export default function InvoiceShow({
                     item={diffItem}
                     customers={customers}
                     items={items}
+                    categories={categories}
                     sessionZoneId={invoice.session_zone_id}
                     date={invoice.date}
                 />
