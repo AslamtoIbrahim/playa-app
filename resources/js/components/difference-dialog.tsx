@@ -22,7 +22,7 @@ import { Customer } from '@/types/customer';
 import { Difference } from '@/types/difference';
 import { InvoiceItem } from '@/types/invoice-item';
 import { Item } from '@/types/item';
-import { AlertCircle, Dot, Ship } from 'lucide-react';
+import { AlertCircle, Ship } from 'lucide-react';
 import { useMemo } from 'react';
 import { DifferenceRow } from './difference-row';
 import { Badge } from './ui/badge';
@@ -106,7 +106,7 @@ export function DifferenceDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="flex max-h-[90vh] w-[95vw] max-w-500 flex-col gap-0 overflow-hidden border border-slate-200 p-0 shadow-lg dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100">
+            <DialogContent className="flex max-h-[90vh] w-fit flex-col gap-0 overflow-hidden border border-slate-200 p-0 shadow-lg sm:max-w-4xl dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100">
                 <DialogHeader className="shrink-0 border-b border-slate-300 bg-slate-50/50 p-6 pb-2 dark:border-neutral-800 dark:bg-neutral-900/50">
                     <div className="flex flex-col items-start justify-between gap-4 pr-8">
                         <div className="flex w-full items-center justify-between">
@@ -148,26 +148,24 @@ export function DifferenceDialog({
                             </Badge>
                         </div>
 
-                        <div className="flex w-full items-center justify-between text-sm text-slate-500 dark:text-neutral-400">
-                            <span>
+                        <div className="flex w-full flex-wrap justify-around items-center gap-x-5 gap-y-2 text-sm text-slate-500 dark:text-neutral-400">
+                            <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
                                 Quantité:{' '}
-                                <strong className="rounded bg-slate-50 px-2 py-0.5 text-sm text-slate-900 dark:bg-neutral-900 dark:text-neutral-200">
+                                <strong className="rounded bg-slate-50 px-2 py-0.5 text-sm whitespace-nowrap text-slate-900 dark:bg-neutral-900 dark:text-neutral-200">
                                     {item.unit_count} {item.unit}
                                 </strong>
                             </span>
-                            <Dot />
-                            <span>
+                            <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
                                 P.U:{' '}
-                                <strong className="rounded bg-blue-50 px-2 py-0.5 text-sm text-blue-600 dark:bg-blue-950/60 dark:text-blue-400">
+                                <strong className="rounded bg-blue-50 px-2 py-0.5 text-sm whitespace-nowrap text-blue-600 dark:bg-blue-950/60 dark:text-blue-400">
                                     {item.unit_price} DH
                                 </strong>
                             </span>
-                            <Dot />
-                            <span className="flex items-center gap-1">
-                                Total Diff:
+                            <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
+                                Total Diff:{' '}
                                 <strong
                                     className={cn(
-                                        'rounded px-2 py-0.5 text-sm',
+                                        'rounded px-2 py-0.5 text-sm whitespace-nowrap',
                                         totalDiffSum >= 0
                                             ? 'bg-green-50 text-green-600 dark:bg-green-950/60 dark:text-green-400'
                                             : 'bg-red-50 text-red-700 dark:bg-red-950/60 dark:text-red-400',
@@ -181,25 +179,25 @@ export function DifferenceDialog({
                 </DialogHeader>
 
                 <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto dark:bg-neutral-950">
-                    <Table className="w-full table-fixed border-collapse">
+                    <Table className="w-auto border-collapse">
                         <TableHeader className="sticky top-0 z-20 bg-slate-50/80 shadow-sm backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-900/90">
                             <TableRow className="border-b border-slate-100 hover:bg-transparent dark:border-neutral-800">
-                                <TableHead className="w-[22%] py-4 pl-6 text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
+                                <TableHead className="min-w-40 py-4 pl-6 text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
                                     Client / Bénéf.
                                 </TableHead>
-                                <TableHead className="w-[18%] py-4 text-center text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
+                                <TableHead className="min-w-32 py-4 text-center text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
                                     Article
                                 </TableHead>
-                                <TableHead className="w-[12%] text-center text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
+                                <TableHead className="w-20 py-4 text-center text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
                                     Qté
                                 </TableHead>
-                                <TableHead className="w-[12%] text-center text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
+                                <TableHead className="w-28 py-4 text-center text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
                                     P.R / P.Comm
                                 </TableHead>
-                                <TableHead className="w-[14%] text-center text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
+                                <TableHead className="w-28 py-4 text-center text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
                                     Diff Total
                                 </TableHead>
-                                <TableHead className="w-[5%]"></TableHead>
+                                <TableHead className="w-15"></TableHead>
                             </TableRow>
                         </TableHeader>
 

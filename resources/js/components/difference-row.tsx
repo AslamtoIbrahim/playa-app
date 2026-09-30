@@ -71,7 +71,7 @@ export function DifferenceRow({
             {/* عمود الكليان */}
             <TableCell
                 className={cn(
-                    "p-0 border-r w-[20%]",
+                    "p-0 border-r min-w-40",
                     isNew ? "border-blue-100/50 dark:border-blue-900/40" : "border-slate-100 dark:border-neutral-800"
                 )}
             >
@@ -110,7 +110,7 @@ export function DifferenceRow({
             {/* عمود السلعة (Article) */}
             <TableCell
                 className={cn(
-                    "p-0 border-r",
+                    "p-0 border-r min-w-32",
                     isNew ? "border-blue-100/50 dark:border-blue-900/40" : "border-slate-100 dark:border-neutral-800"
                 )}
             >
@@ -151,7 +151,7 @@ export function DifferenceRow({
             {/* عمود الكمية */}
             <TableCell
                 className={cn(
-                    "p-0 border-r",
+                    "p-0 border-r w-20",
                     isNew ? "border-blue-100/50 dark:border-blue-900/40" : "border-slate-100 dark:border-neutral-800"
                 )}
             >
@@ -185,7 +185,7 @@ export function DifferenceRow({
             {/* عمود الثمن */}
             <TableCell
                 className={cn(
-                    "p-0 border-r w-[25%]",
+                    "p-0 border-r w-28",
                     isNew ? "border-blue-100/50 dark:border-blue-900/40" : "border-slate-100 dark:border-neutral-800"
                 )}
             >
@@ -219,7 +219,7 @@ export function DifferenceRow({
             {/* عمود الفرق */}
             <TableCell
                 className={cn(
-                    "text-right pr-6 font-bold w-[15%]",
+                    "text-right pr-6 font-bold w-28",
                     isNew
                         ? "text-slate-300 italic text-xs dark:text-neutral-600"
                         : (() => {
