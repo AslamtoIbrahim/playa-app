@@ -412,6 +412,9 @@ export default function InvoiceShow({
                                 <TableHead className="px-6 text-right text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
                                     Valeur DH
                                 </TableHead>
+                                <TableHead className="w-28 border-l border-slate-100 px-4 text-right text-[10px] font-black tracking-tight text-slate-500 uppercase dark:border-neutral-800 dark:text-neutral-400">
+                                    Différence
+                                </TableHead>
                                 <TableHead className="w-12 print:hidden"></TableHead>
                             </TableRow>
                         </TableHeader>

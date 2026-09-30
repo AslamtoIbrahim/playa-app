@@ -1,4 +1,8 @@
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
+import {
+    computeInvoiceItemDifferenceTotal,
+    formatDifferenceAmount,
+} from '@/lib/differences';
 import { InvoiceItem } from '@/types/invoice-item';
 import { GripVertical } from 'lucide-react';
 
@@ -8,66 +12,98 @@ interface Props {
 
 const InvoiceItemDragOverlay = ({ items }: Props) => {
     return (
-        <div className="bg-white shadow-2xl rounded-md overflow-hidden border border-slate-200 opacity-95">
+        <div className="overflow-hidden rounded-md border border-slate-200 bg-white opacity-95 shadow-2xl">
             <Table>
                 <TableBody>
-                    {items.map((item) => (
-                        <TableRow 
-                            key={item.id} 
-                            className="bg-white divide-x divide-slate-100 border-b border-slate-50 last:border-none hover:bg-white"
-                        >
-                            {/* Drag Handle */}
-                            <TableCell className="w-8 p-0 text-center text-slate-400">
-                                <GripVertical className="h-4 w-4 mx-auto" />
-                            </TableCell>
+                    {items.map((item) => {
+                        const differenceTotal =
+                            computeInvoiceItemDifferenceTotal(item);
 
-                            {/* Drag Handle */}
-                            <TableCell className="w-6 p-0 text-center text-slate-400">
-                            </TableCell>
+                        const hasDifferences =
+                            (item.differences?.length ?? 0) > 0;
 
-                            {/* Bateau */}
-                            <TableCell className="text-xs font-medium py-2 min-w-14">
-                                {item.boat?.name || '-'}
-                            </TableCell>
+                        return (
+                            <TableRow
+                                key={item.id}
+                                className="divide-x divide-slate-100 border-b border-slate-50 bg-white last:border-none hover:bg-white"
+                            >
+                                {/* Drag Handle */}
+                                <TableCell className="w-8 p-0 text-center text-slate-400">
+                                    <GripVertical className="mx-auto h-4 w-4" />
+                                </TableCell>
 
-                            {/* Espèce */}
-                            <TableCell className="text-xs py-2 text-slate-600 min-w-14">
-                                {item.item?.name || '-'}
-                            </TableCell>
+                                {/* Drag Handle */}
+                                <TableCell className="w-6 p-0 text-center text-slate-400"></TableCell>
 
-                            {/* Qte / NC */}
-                            <TableCell className="text-center w-14 text-xs py-2">
-                                {item.unit_count || 0}
-                            </TableCell>
+                                {/* Bateau */}
+                                <TableCell className="min-w-14 py-2 text-xs font-medium">
+                                    {item.boat?.name || '-'}
+                                </TableCell>
 
-                            {/* Prix Unitaire */}
-                            <TableCell className="text-right py-2">
-                                {Number(item.unit_price)}
-                            </TableCell>
+                                {/* Espèce */}
+                                <TableCell className="min-w-14 py-2 text-xs text-slate-600">
+                                    {item.item?.name || '-'}
+                                </TableCell>
 
-                            {/* Unité */}
-                            <TableCell className="text-center  py-2 text-slate-500">
-                                {item.unit}
-                            </TableCell>
+                                {/* Qte / NC */}
+                                <TableCell className="w-14 py-2 text-center text-xs">
+                                    {item.unit_count || 0}
+                                </TableCell>
 
-                            {/* Poids */}
-                            <TableCell className="text-shadow-sidebar-accent-foreground text-center py-2">
-                                {Number(item.weight)}
-                            </TableCell>
+                                {/* Prix Unitaire */}
+                                <TableCell className="py-2 text-right">
+                                    {Number(item.unit_price)}
+                                </TableCell>
 
-                            {/* Caisse */}
-                            <TableCell className="text-center py-2 w-12">
-                                {Number(item.box)}
-                            </TableCell>
+                                {/* Unité */}
+                                <TableCell className="py-2 text-center text-slate-500">
+                                    {item.unit}
+                                </TableCell>
 
-                            {/* Valeur DH */}
-                            <TableCell className="text-right px-6 text-xs font-bold py-2 ">
-                                {(Number(item.unit_count) * Number(item.unit_price)).toLocaleString('fr-FR', { minimumFractionDigits: 2 })}
-                            </TableCell>
-                            
-                            <TableCell className="w-4"></TableCell>
-                        </TableRow>
-                    ))}
+                                {/* Poids */}
+                                <TableCell className="py-2 text-center text-shadow-sidebar-accent-foreground">
+                                    {Number(item.weight)}
+                                </TableCell>
+
+                                {/* Caisse */}
+                                <TableCell className="w-12 py-2 text-center">
+                                    {Number(item.box)}
+                                </TableCell>
+
+                                {/* Valeur DH */}
+                                <TableCell className="px-6 py-2 text-right text-xs font-bold">
+                                    {(
+                                        Number(item.unit_count) *
+                                        Number(item.unit_price)
+                                    ).toLocaleString('fr-FR', {
+                                        minimumFractionDigits: 2,
+                                    })}
+                                </TableCell>
+
+                                {/* Différence */}
+                                <TableCell className="w-28 border-l border-slate-100 px-4 py-2 text-right text-xs font-semibold dark:border-neutral-800">
+                                    <span
+                                        className={
+                                            differenceTotal > 0
+                                                ? 'text-green-600 dark:text-green-400'
+                                                : differenceTotal < 0
+                                                  ? 'text-red-600 dark:text-red-400'
+                                                  : 'text-slate-400 dark:text-neutral-500'
+                                        }
+                                    >
+                                        {hasDifferences
+                                            ? (differenceTotal > 0 ? '+' : '') +
+                                              formatDifferenceAmount(
+                                                  differenceTotal,
+                                              )
+                                            : '0.00'}
+                                    </span>
+                                </TableCell>
+
+                                <TableCell className="w-4"></TableCell>
+                            </TableRow>
+                        );
+                    })}
                 </TableBody>
             </Table>
         </div>

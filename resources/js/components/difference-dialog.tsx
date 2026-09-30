@@ -12,6 +12,10 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import {
+    computeInvoiceItemDifferenceTotal,
+    formatDifferenceAmount,
+} from '@/lib/differences';
 import { normalizeMorphType } from '@/lib/invoice';
 import { Category } from '@/types/category';
 import { Customer } from '@/types/customer';
@@ -76,9 +80,9 @@ export function DifferenceDialog({
                 }
             }
 
-            const isCustomerOwner = normalizeMorphType(boat.owner_type).endsWith(
-                'Customer',
-            );
+            const isCustomerOwner = normalizeMorphType(
+                boat.owner_type,
+            ).endsWith('Customer');
 
             if (!isCustomerOwner) {
                 {
@@ -96,26 +100,9 @@ export function DifferenceDialog({
 
     const totalDiffSum = useMemo((): number => {
         {
-            const diffsSum = differences.reduce((sum, d) => {
-                {
-                    return sum + (Number(d.total_diff) || 0);
-                }
-            }, 0);
-
-            const commissionsSum = (item.receipt_items || [])
-                .filter((ri) => ri.type === 'commission')
-                .reduce((sum, c) => {
-                    {
-                        return (
-                            sum +
-                            (Number(c.unit_count) * Number(c.real_price) || 0)
-                        );
-                    }
-                }, 0);
-
-            return diffsSum - commissionsSum;
+            return computeInvoiceItemDifferenceTotal(item);
         }
-    }, [differences, item.receipt_items]);
+    }, [item]);
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -186,7 +173,7 @@ export function DifferenceDialog({
                                             : 'bg-red-50 text-red-700 dark:bg-red-950/60 dark:text-red-400',
                                     )}
                                 >
-                                    {totalDiffSum} DH
+                                    {formatDifferenceAmount(totalDiffSum)} DH
                                 </strong>
                             </span>
                         </div>
@@ -195,7 +182,7 @@ export function DifferenceDialog({
 
                 <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto dark:bg-neutral-950">
                     <Table className="w-full table-fixed border-collapse">
-                        <TableHeader className="sticky top-0 z-20 bg-slate-50/80 shadow-sm backdrop-blur-sm dark:bg-neutral-900/90 dark:border-neutral-800">
+                        <TableHeader className="sticky top-0 z-20 bg-slate-50/80 shadow-sm backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-900/90">
                             <TableRow className="border-b border-slate-100 hover:bg-transparent dark:border-neutral-800">
                                 <TableHead className="w-[22%] py-4 pl-6 text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
                                     Client / Bénéf.

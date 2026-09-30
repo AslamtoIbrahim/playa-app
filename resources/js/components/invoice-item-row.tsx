@@ -9,7 +9,12 @@ import {
 } from '@/components/ui/select';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import {
+    computeInvoiceItemDifferenceTotal,
+    formatDifferenceAmount,
+} from '@/lib/differences';
 import { Check, Loader2, GripVertical } from 'lucide-react';
+import { useMemo } from 'react';
 
 // Drag & Drop
 import { useSortable } from '@dnd-kit/sortable';
@@ -66,6 +71,7 @@ export default function InvoiceItemRow({
         isReadyToSave,
         submitSave,
         handleKeyDown,
+        handleBlur,
     } = useInvoiceItem({ invoiceId, item, isNew });
 
     const {
@@ -86,6 +92,18 @@ export default function InvoiceItemRow({
         zIndex: isDragging ? 50 : 1,
         position: (isDragging ? 'relative' : 'static') as any,
     };
+
+    /*
+     * Total de la répartition du svelte : c'est exactement le montant affiché
+     * par le DifferenceDialog (somme des écarts moins les commissions). Il se
+     * rafraîchit dès qu'une différence est enregistrée, puisque `item` est
+     * resynchronisé avec les props Inertia.
+     */
+    const differenceTotal = useMemo(() => {
+        return computeInvoiceItemDifferenceTotal(item);
+    }, [item]);
+
+    const hasDifferences = (item?.differences?.length ?? 0) > 0;
 
     const cellFocusClass =
         'focus-within:ring-1 focus-within:ring-inset focus-within:ring-slate-300 focus-within:bg-slate-100/50 dark:focus-within:ring-neutral-700 dark:focus-within:bg-neutral-800/50 transition-all';
@@ -229,6 +247,7 @@ export default function InvoiceItemRow({
                         }
                     }}
                     onKeyDown={handleKeyDown}
+                    onBlur={handleBlur}
                     className={cn(inputBaseClass, 'text-center')}
                 />
             </TableCell>
@@ -248,6 +267,7 @@ export default function InvoiceItemRow({
                         }
                     }}
                     onKeyDown={handleKeyDown}
+                    onBlur={handleBlur}
                     className={cn(inputBaseClass, 'pr-4 text-right')}
                 />
             </TableCell>
@@ -314,6 +334,7 @@ export default function InvoiceItemRow({
                         }
                     }}
                     onKeyDown={handleKeyDown}
+                    onBlur={handleBlur}
                     className={cn(
                         inputBaseClass,
                         'text-center font-medium',
@@ -342,6 +363,7 @@ export default function InvoiceItemRow({
                         }
                     }}
                     onKeyDown={handleKeyDown}
+                    onBlur={handleBlur}
                     className={cn(
                         inputBaseClass,
                         'text-center font-bold text-blue-900 dark:text-blue-300',
@@ -357,6 +379,47 @@ export default function InvoiceItemRow({
                           minimumFractionDigits: 2,
                       })
                     : '0.00'}
+            </TableCell>
+
+            {/* DIFFÉRENCE : clic = ouvrir le DifferenceDialog */}
+            <TableCell className="w-28 border-l border-slate-100 bg-slate-50/10 p-0 dark:border-neutral-800 dark:bg-neutral-900/20">
+                <button
+                    type="button"
+                    disabled={!item}
+                    onClick={() => {
+                        if (item) {
+                            {
+                                onOpenDifference(item);
+                            }
+                        }
+                    }}
+                    title={
+                        item ? 'Voir la répartition des différences' : undefined
+                    }
+                    className={cn(
+                        'flex h-10 w-full items-center justify-end px-4 text-right text-xs font-semibold transition-colors',
+                        item &&
+                            'cursor-pointer hover:bg-blue-50/60 focus-visible:ring-1 focus-visible:ring-slate-300 focus-visible:outline-none focus-visible:ring-inset dark:hover:bg-blue-950/40 dark:focus-visible:ring-neutral-700',
+                        !item &&
+                            'cursor-not-allowed text-slate-300 dark:text-neutral-700',
+                        hasDifferences &&
+                            differenceTotal > 0 &&
+                            'text-green-600 dark:text-green-400',
+                        hasDifferences &&
+                            differenceTotal < 0 &&
+                            'text-red-600 dark:text-red-400',
+                        hasDifferences &&
+                            differenceTotal === 0 &&
+                            'text-slate-600 dark:text-neutral-300',
+                        !hasDifferences &&
+                            'text-slate-400 dark:text-neutral-500',
+                    )}
+                >
+                    {hasDifferences
+                        ? (differenceTotal > 0 ? '+' : '') +
+                          formatDifferenceAmount(differenceTotal)
+                        : '0.00'}
+                </button>
             </TableCell>
 
             <TableCell className="relative w-12 border-l border-slate-100 p-0 text-center dark:border-neutral-800 print:hidden">
