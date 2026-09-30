@@ -1,3 +1,4 @@
+import { CommissionDialog } from '@/components/commission-dialog';
 import { ExportDropdown } from '@/components/export-dropdown';
 import { TaxFreeDialog } from '@/components/tax-free-dialog';
 import { Button } from '@/components/ui/button';
@@ -15,17 +16,50 @@ import { useDifferenceExport } from '@/hooks/use-difference-export';
 import { useScreenshot } from '@/hooks/use-screenshot';
 import AppLayout from '@/layouts/app-layout';
 import { formatDateDisplay } from '@/lib/date';
+import { Customer } from '@/types/customer';
 import { Difference } from '@/types/difference';
 import { Head, router } from '@inertiajs/react';
-import { ArrowLeft, Camera, Printer, Receipt } from 'lucide-react';
+import {
+    ArrowLeft,
+    Camera,
+    CircleDollarSign,
+    Printer,
+    Receipt,
+} from 'lucide-react';
 import React, { useState } from 'react';
 
 interface DifferenceWithInvoice extends Difference {
+    is_extra?: boolean;
     invoice_item?: Difference['invoice_item'] & {
         invoice?: { date: string };
         boat?: { name: string };
         item?: { name: string };
     };
+}
+
+/**
+ * Contexte des commissions : elles appartiennent au propriétaire du bateau du
+ * rapport, pas à un article de facture.
+ */
+interface ReportBoat {
+    id: number;
+    name: string;
+    owner_id: number;
+    owner_type: string;
+    owner_name?: string | null;
+    owner_is_company: boolean;
+    session_zone_id?: number | null;
+    /** Date du rapport : source de vérité, y compris sans facture au rapport. */
+    date?: string | null;
+    /** Commissions déjà enregistrées, réaffichées dans la dialog. */
+    commissions?: {
+        id: number;
+        receipt_id: number;
+        beneficiary_id: number;
+        beneficiary_name?: string | null;
+        unit_count: number;
+        commission_per_unit: number;
+    }[];
 }
 
 interface Props {
@@ -34,6 +68,10 @@ interface Props {
     total_amount: number;
     /** URL de retour explicite fournie par le backend (journée unique ou liste). */
     backUrl: string;
+    /** Bénéficiaires possibles pour les commissions du rapport. */
+    customers: Customer[];
+    /** Bateau du rapport et son propriétaire (client ou société). */
+    boat?: ReportBoat | null;
 }
 
 export default function DifferenceShow({
@@ -41,8 +79,17 @@ export default function DifferenceShow({
     total_boxes,
     total_amount,
     backUrl,
+    customers,
+    boat,
 }: Props) {
     const [isTaxFreeOpen, setIsTaxFreeOpen] = useState(false);
+    const [isCommissionOpen, setIsCommissionOpen] = useState(false);
+    const [commissionSession, setCommissionSession] = useState<number>(0);
+
+    // Sans bateau propriétaire, impossible d'enregistrer une commission.
+    // La date du rapport est obligatoire : un rapport de reçus n'a pas de
+    // facture derrière lui, il faut donc la lire sur le contexte du bateau.
+    const canAddCommission = Boolean(boat?.session_zone_id && boat?.date);
 
     const { copyToClipboard } = useScreenshot();
 
@@ -76,8 +123,6 @@ export default function DifferenceShow({
         );
     }
 
-    console.log('details 💛', details);
-
     const first = details[0];
 
     return (
@@ -95,7 +140,27 @@ export default function DifferenceShow({
                     <ArrowLeft className="h-4 w-4" /> Retour
                 </Button>
 
-                <div className="flex gap-3">
+                <div className="flex items-center gap-3">
+                    <Button
+                        onClick={() => {
+                            // La clé de la dialog change à chaque ouverture :
+                            // elle repart toujours avec une ligne vierge.
+                            setCommissionSession((session) => session + 1);
+                            setIsCommissionOpen(true);
+                        }}
+                        variant="outline"
+                        size="sm"
+                        title={
+                            canAddCommission
+                                ? 'Ajouter une commission'
+                                : 'Aucune séance rattachée à ce bateau'
+                        }
+                        disabled={!canAddCommission}
+                        className="h-9 border-amber-100 bg-amber-50/50 text-amber-600 shadow-sm hover:bg-amber-100 hover:text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300 dark:hover:bg-amber-900/40"
+                    >
+                        <CircleDollarSign className="h-4 w-4" />
+                    </Button>
+
                     <Button
                         onClick={() => setIsTaxFreeOpen(true)}
                         variant="outline"
@@ -261,6 +326,23 @@ export default function DifferenceShow({
                 customerName={first.customer?.name}
                 customerId={first.customer_id}
             />
+
+            {/* Modal Commissions */}
+            {boat && canAddCommission && (
+                <CommissionDialog
+                    key={`${boat.id}-${commissionSession}`}
+                    open={isCommissionOpen}
+                    onOpenChange={setIsCommissionOpen}
+                    boatId={boat.id}
+                    sessionZoneId={Number(boat.session_zone_id)}
+                    date={String(boat.date)}
+                    beneficiaries={customers}
+                    boatName={boat.name}
+                    ownerName={boat.owner_name ?? undefined}
+                    ownerIsCompany={boat.owner_is_company}
+                    commissions={boat.commissions}
+                />
+            )}
         </div>
     );
 }

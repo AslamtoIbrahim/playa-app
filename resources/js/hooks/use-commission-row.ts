@@ -9,56 +9,104 @@ import { toast } from 'sonner';
 import { ReceiptItem } from '@/types/receipt-item';
 
 interface UseCommissionRowProps {
-    invoiceItemId: number;
+    boatId: number;
     unitCount: number;
     sessionZoneId: number;
     date: string;
     onSuccess?: () => void;
     commission?: ReceiptItem;
+    /** Starting values of the line (draft mode). */
+    initialDraft?: CommissionDraft;
+    /**
+     * Draft mode: the line sends no request, every change is pushed up to the
+     * parent (the report commissions dialog).
+     */
+    onDraftChange?: (data: CommissionDraft) => void;
+}
+
+/**
+ * Values of a commission line before it is saved.
+ */
+export interface CommissionDraft {
+    beneficiary_id: string;
+    commission_per_unit: string;
+    unit_count: string;
+}
+
+/**
+ * A line can be saved when the beneficiary, the quantity and the commission
+ * price are filled in and strictly positive.
+ */
+export function isCommissionDraftValid(draft: CommissionDraft): boolean {
+    {
+        return (
+            draft.beneficiary_id !== '' &&
+            Number(draft.commission_per_unit) > 0 &&
+            Number(draft.unit_count) > 0
+        );
+    }
 }
 
 export function useCommissionRow({
-    invoiceItemId,
+    boatId,
     unitCount,
     sessionZoneId,
     date,
     onSuccess,
     commission,
+    initialDraft,
+    onDraftChange,
 }: UseCommissionRowProps) {
     const [loading, setLoading] = useState<boolean>(false);
 
     const [openCustomer, setOpenCustomer] = useState<boolean>(false);
 
-    const [data, setData] = useState({
-        beneficiary_id: commission?.receipt?.customer?.id?.toString() || '',
-        commission_per_unit: commission?.real_price?.toString() || '',
-        unit_count: commission
-            ? commission.unit_count.toString()
-            : unitCount.toString(),
+    /** Draft mode: the line is driven by the dialog, not by the API. */
+    const isDraft = onDraftChange !== undefined;
+
+    const [data, setData] = useState<CommissionDraft>(() => {
+        {
+            return (
+                initialDraft ?? {
+                    beneficiary_id:
+                        commission?.receipt?.customer?.id?.toString() || '',
+                    commission_per_unit:
+                        commission?.real_price?.toString() || '',
+                    unit_count: commission
+                        ? commission.unit_count.toString()
+                        : unitCount.toString(),
+                }
+            );
+        }
     });
 
-    const handleDataChange = (updates: Partial<typeof data>): void => {
-        setData((prev) => {
-            {
-                return { ...prev, ...updates };
-            }
-        });
+    const handleDataChange = (updates: Partial<CommissionDraft>): void => {
+        const next = { ...data, ...updates };
+
+        setData(next);
+
+        if (onDraftChange) {
+            onDraftChange(next);
+        }
     };
 
     const isReadyToSave = (currentData = data): boolean => {
         {
-            return (
-                currentData.beneficiary_id !== '' &&
-                Number(currentData.commission_per_unit) > 0 &&
-                Number(currentData.unit_count) > 0
-            );
+            return isCommissionDraftValid(currentData);
         }
     };
 
     /**
-     * Enregistrer ou mettre à jour une commission
+     * Save or update a commission.
+     *
+     * In draft mode nothing is sent from the line: the dialog validates and
+     * saves the whole set of drafts with its own button.
      */
     const submitSave = (currentData = data): void => {
+        if (isDraft) {
+            return;
+        }
+
         {
             if (!isReadyToSave(currentData) || loading) {
                 {
@@ -71,67 +119,71 @@ export function useCommissionRow({
 
         const isUpdate = !!commission?.id;
 
-        const url = isUpdate
-            ? updateCommission([commission.receipt_id, commission.id])
-            : storeCommission();
+        const payload = {
+            boat_id: boatId,
+            beneficiary_id: parseInt(currentData.beneficiary_id),
+            commission_per_unit: parseFloat(currentData.commission_per_unit),
+            unit_count: parseFloat(currentData.unit_count),
+            session_zone_id: sessionZoneId,
+            date: date,
+        };
 
-        router.post(
-            url,
-            {
-                _method: isUpdate ? 'PUT' : 'POST',
-                invoice_item_id: invoiceItemId,
-                beneficiary_id: parseInt(currentData.beneficiary_id),
-                commission_per_unit: parseFloat(
-                    currentData.commission_per_unit,
-                ),
-                unit_count: parseFloat(currentData.unit_count),
-                session_zone_id: sessionZoneId,
-                date: date,
-            },
-            {
-                preserveScroll: true,
+        const options = {
+            preserveScroll: true,
 
-                onSuccess: (): void => {
-                    {
-                        router.reload({only: ['receipts', 'reports', 'invoices']}); 
-                        
-                        toast.success(
-                            isUpdate
-                                ? 'Commission mise à jour ✅'
-                                : 'Commission enregistrée ✅',
-                        );
+            onSuccess: (): void => {
+                {
+                    router.reload({
+                        only: ['receipts', 'reports', 'invoices'],
+                    });
 
+                    toast.success(
+                        isUpdate
+                            ? 'Commission mise à jour ✅'
+                            : 'Commission enregistrée ✅',
+                    );
 
-                        if (!isUpdate) {
-                            {
-                                setData({
-                                    beneficiary_id: '',
-                                    commission_per_unit: '',
-                                    unit_count: unitCount.toString(),
-                                });
-                            }
-                        }
-
-                        if (onSuccess) {
-                            {
-                                onSuccess();
-                            }
+                    if (!isUpdate) {
+                        {
+                            setData({
+                                beneficiary_id: '',
+                                commission_per_unit: '',
+                                unit_count: unitCount.toString(),
+                            });
                         }
                     }
-                },
 
-                onFinish: (): void => {
-                    {
-                        setLoading(false);
+                    if (onSuccess) {
+                        {
+                            onSuccess();
+                        }
                     }
-                },
+                }
             },
-        );
+
+            onFinish: (): void => {
+                {
+                    setLoading(false);
+                }
+            },
+        };
+
+        // A real PUT is required: the frontend sends JSON and Laravel only
+        // reads the `_method` trick from a form encoded body.
+        if (isUpdate && commission) {
+            router.put(
+                updateCommission([commission.receipt_id, commission.id]),
+                payload,
+                options,
+            );
+
+            return;
+        }
+
+        router.post(storeCommission(), payload, options);
     };
 
-    /**
-     * Supprimer une commission existante
-     */
+    /** Delete a saved commission (both legs) after a confirmation. */
     const deleteCommission = (): void => {
         {
             if (!commission || loading) {

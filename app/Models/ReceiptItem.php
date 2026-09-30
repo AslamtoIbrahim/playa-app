@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ReceiptItem extends Model
@@ -17,12 +17,33 @@ class ReceiptItem extends Model
         'box',
         'total_diff',
         'position',
-        'type' // 'item', 'commission', 'freetax'
+        'type', // 'item', 'commission', 'freetax'
+        'boat_id', // boat the line belongs to (a commission belongs to the boat owner)
+        'commission_twin_id', // opposite leg of a commission (beneficiary <-> owner)
     ];
 
     public function invoiceItem(): BelongsTo
     {
         return $this->belongsTo(InvoiceItem::class);
+    }
+
+    /**
+     * Opposite leg of a commission. A commission belongs to the owner of the
+     * boat and not to an invoice item, so this link is the only reliable way to
+     * find its twin again when updating or deleting it.
+     */
+    public function commissionTwin(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'commission_twin_id');
+    }
+
+    /**
+     * Boat the line belongs to. Used to find back the commissions of a boat,
+     * including the ones whose owner is a company (no negative leg then).
+     */
+    public function boat(): BelongsTo
+    {
+        return $this->belongsTo(Boat::class);
     }
 
     public function receipt(): BelongsTo
@@ -81,9 +102,9 @@ class ReceiptItem extends Model
                 ->first();
 
             $receipt->update([
-                'quantity'     => $totals->qty ?? 0,
+                'quantity' => $totals->qty ?? 0,
                 'total_amount' => $totals->amount ?? 0,
-                'total_boxes'  => $totals->total_boxes ?? 0,
+                'total_boxes' => $totals->total_boxes ?? 0,
             ]);
         }
     }

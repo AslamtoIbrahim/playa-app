@@ -2,7 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
+use App\Models\Boat;
+use App\Models\Company;
 use App\Models\InvoiceItem;
 use App\Models\Receipt;
 use App\Models\ReceiptItem;
@@ -11,84 +12,98 @@ use Illuminate\Support\Facades\DB;
 
 class ReceiptItemController extends Controller
 {
-
     /**
-     * دالة الكوميسيون (Double Entry)
-     * كتكريي سطر للمستفيد (+) وسطر لمول الباطو (-)
+     * Save a commission (double entry).
+     *
+     * A commission belongs to the owner of the boat and not to an invoice item,
+     * so the boat is the anchor: `boat_id` is stored on both lines to be able to
+     * find them back later.
+     *
+     * Two lines are written:
+     *  - the beneficiary line (+) on the receipt of the beneficiary,
+     *  - the owner line (-) on the receipt of the boat owner, but only when the
+     *    owner is a customer: a company cannot hold a receipt, so in that case
+     *    only the beneficiary line is written and the user is told about it.
      */
     public function storeCommission(Request $request)
     {
         $validated = $request->validate([
-            'invoice_item_id' => 'required|exists:invoice_items,id',
-            'beneficiary_id'  => 'required|exists:customers,id',
+            'boat_id' => 'required|exists:boats,id',
+            'beneficiary_id' => 'required|exists:customers,id',
             'commission_per_unit' => 'required|numeric',
-            'unit_count'      => 'required|numeric',
+            'unit_count' => 'required|numeric',
             'session_zone_id' => 'required|exists:session_zones,id',
-            'date'            => 'required|date',
+            'date' => 'required|date',
         ]);
 
-        $updatedItem = DB::transaction(function () use ($validated) {
-            $invoiceItem = InvoiceItem::with('boat.owner')->findOrFail($validated['invoice_item_id']);
-            $boatOwner = $invoiceItem->boat->owner;
+        $result = DB::transaction(function () use ($validated) {
+            $boat = Boat::with('owner')->findOrFail($validated['boat_id']);
+            $boatOwner = $boat->owner;
 
-            if (!$boatOwner) {
+            if (! $boatOwner) {
                 return null;
             }
 
-            // 1. المستفيد (+)
+            // 1. Beneficiary line (+)
             $beneficiaryReceipt = Receipt::firstOrCreate([
                 'customer_id' => $validated['beneficiary_id'],
                 'session_zone_id' => $validated['session_zone_id'],
-                'date'        => $validated['date'],
+                'date' => $validated['date'],
             ]);
 
-            $beneficiaryReceipt->items()->create([
-                'invoice_item_id' => $validated['invoice_item_id'],
-                'item_id'    => null, // خليناها خاوية هنا
+            $beneficiaryItem = $beneficiaryReceipt->items()->create([
+                'invoice_item_id' => null, // a commission is not linked to an invoice item
+                'item_id' => null, // no item either
+                'boat_id' => $boat->id,
                 'unit_count' => $validated['unit_count'],
                 'real_price' => $validated['commission_per_unit'],
-                'type'       => 'commission',
+                'type' => 'commission',
             ]);
 
             $beneficiaryReceipt->calculateTotals();
 
-            // 2. مول الباطو (-)
+            $isCompanyOwner = $boatOwner instanceof Company;
+
+            if ($isCompanyOwner) {
+                return ['owner_name' => $boatOwner->name, 'owner_is_company' => true];
+            }
+
+            // 2. Owner line (-)
             $ownerReceipt = Receipt::firstOrCreate([
                 'customer_id' => $boatOwner->id,
                 'session_zone_id' => $validated['session_zone_id'],
-                'date'        => $validated['date'],
-                'boat_id'     => $invoiceItem->boat_id,
+                'date' => $validated['date'],
+                'boat_id' => $boat->id,
             ]);
 
-            $ownerReceipt->items()->create([
-                'invoice_item_id' => $validated['invoice_item_id'],
-                'item_id'    => null, // خليناها خاوية هنا
+            $ownerItem = $ownerReceipt->items()->create([
+                'invoice_item_id' => null,
+                'item_id' => null,
+                'boat_id' => $boat->id,
                 'unit_count' => $validated['unit_count'],
                 'real_price' => -abs($validated['commission_per_unit']),
-                'type'       => 'commission',
+                'type' => 'commission',
             ]);
+
+            // Keep the link between the two lines: without it, finding the twin
+            // again to update or delete the commission is not reliable.
+            $beneficiaryItem->update(['commission_twin_id' => $ownerItem->id]);
+            $ownerItem->update(['commission_twin_id' => $beneficiaryItem->id]);
 
             $ownerReceipt->calculateTotals();
 
-
-            // كنرجعو الـ Item مع الـ commissions (الموجبة فقط) باش الـ Frontend يتحدث
-            $item =  InvoiceItem::with(['receiptItems' => function ($q) {
-                $q->where('type', 'commission')
-                    ->where('real_price', '>', 0) // باش يطلع غير المستفيد فـ الـ Dialog
-                    ->with('receipt.customer');
-            }])->find($validated['invoice_item_id']);
-
-            return $item->refresh();
+            return ['owner_name' => $boatOwner->name, 'owner_is_company' => false];
         });
 
-        if (!$updatedItem) {
+        if (! $result) {
             return back()->with('error', "Ce bateau n'a pas de propriétaire assigné.");
         }
 
-        return back()->with([
-            'success' => 'Commission enregistrée.',
-            'updated_item' => $updatedItem
-        ]);
+        if ($result['owner_is_company']) {
+            return back()->with('error', 'Commission enregistrée pour le bénéficiaire uniquement : le propriétaire du bateau est une société, qui ne peut pas porter de bon de réception.');
+        }
+
+        return back()->with('success', 'Commission enregistrée.');
     }
 
     /**
@@ -129,64 +144,100 @@ class ReceiptItemController extends Controller
     //     ]);
     // }
 
+    /**
+     * Update a commission (double entry).
+     *
+     * The beneficiary can change, so the line is moved to the receipt of the new
+     * beneficiary instead of renaming the receipt: renaming it would drag the
+     * other lines of that receipt (the regular items of the day) over to the new
+     * beneficiary. The owner line is found through `commission_twin_id`.
+     *
+     * Note: the line itself is the source of truth, the route receipt is only
+     * used as a fallback.
+     */
     public function updateCommission(Request $request, Receipt $receipt, ReceiptItem $item)
     {
         $validated = $request->validate([
-            'invoice_item_id' => 'required|exists:invoice_items,id',
-            'beneficiary_id'  => 'required|exists:customers,id',
+            'boat_id' => 'required|exists:boats,id',
+            'beneficiary_id' => 'required|exists:customers,id',
             'commission_per_unit' => 'required|numeric',
-            'unit_count'      => 'required|numeric',
+            'unit_count' => 'required|numeric',
             'session_zone_id' => 'required|exists:session_zones,id',
-            'date'            => 'required|date',
+            'date' => 'required|date',
         ]);
 
-        $updatedItem = DB::transaction(function () use ($validated, $item, $receipt) {
-            // 1. كنجيبو الـ Item التوأم (اللي عند مول الباطو بالسالب) قبل ما نمسحو
-            $twinItem = ReceiptItem::where('invoice_item_id', $item->invoice_item_id)
-                ->where('type', 'commission')
-                ->where('id', '!=', $item->id)
-                ->first();
+        if ($item->type !== 'commission') {
+            return back()->with('error', "Ce bon n'est pas une commission.");
+        }
 
-            // 2. تحديث الـ Receipt الحالي بالـ Client الجديد والمعلومات الجديدة
-            $receipt->update([
+        $boat = Boat::with('owner')->findOrFail($validated['boat_id']);
+        $boatOwner = $boat->owner;
+
+        if (! $boatOwner) {
+            return back()->with('error', "Ce bateau n'a pas de propriétaire assigné.");
+        }
+
+        DB::transaction(function () use ($validated, $item, $receipt, $boat) {
+            $unitCount = $validated['unit_count'];
+            $unitPrice = $validated['commission_per_unit'];
+
+            // 1. A commission line always sits on the receipt of its beneficiary.
+            $targetReceipt = Receipt::firstOrCreate([
                 'customer_id' => $validated['beneficiary_id'],
                 'session_zone_id' => $validated['session_zone_id'],
                 'date' => $validated['date'],
             ]);
 
-            // 3. تحديث الـ Item نفسه (المستفيد)
+            $sourceReceipt = $item->receipt ?? $receipt;
+
+            if ($sourceReceipt && $sourceReceipt->id !== $targetReceipt->id) {
+                $item->update(['receipt_id' => $targetReceipt->id]);
+
+                $sourceReceipt->refresh()->calculateTotals();
+
+                // A receipt left without any line is not kept around.
+                if ($sourceReceipt->items()->count() === 0) {
+                    $sourceReceipt->delete();
+                }
+            }
+
+            $targetReceipt->refresh()->calculateTotals();
+
+            // 2. Values of the beneficiary line.
             $item->update([
-                'unit_count' => $validated['unit_count'],
-                'real_price' => $validated['commission_per_unit'],
+                'boat_id' => $boat->id,
+                'unit_count' => $unitCount,
+                'real_price' => $unitPrice,
             ]);
 
-            $receipt->calculateTotals();
+            // 3. Owner line, found through the twin link saved at creation.
+            $twinItem = $item->commission_twin_id
+                ? ReceiptItem::find($item->commission_twin_id)
+                : null;
 
-            // 4. تحديث طرف مول الباطو (Twin)
-            if ($twinItem) {
-                $ownerReceipt = $twinItem->receipt;
-                $twinItem->update([
-                    'unit_count' => $validated['unit_count'],
-                    'real_price' => -abs($validated['commission_per_unit']),
-                ]);
+            if (! $twinItem) {
+                return;
+            }
 
-                // تحديث الـ Header ديال بون مول الباطو حتى هو إلا تبدلات الـ zone أو التاريخ
+            $twinItem->update([
+                'boat_id' => $boat->id,
+                'unit_count' => $unitCount,
+                'real_price' => -abs($unitPrice),
+            ]);
+
+            $ownerReceipt = $twinItem->receipt;
+
+            if ($ownerReceipt) {
                 $ownerReceipt->update([
                     'session_zone_id' => $validated['session_zone_id'],
                     'date' => $validated['date'],
                 ]);
+
                 $ownerReceipt->calculateTotals();
             }
-
-            return InvoiceItem::with(['receiptItems' => function ($q) {
-                $q->where('type', 'commission')->where('real_price', '>', 0)->with('receipt.customer');
-            }])->find($validated['invoice_item_id']);
         });
 
-        return back()->with([
-            'success' => 'Commission mise à jour avec succès.',
-            'updated_item' => $updatedItem
-        ]);
+        return back()->with('success', 'Commission mise à jour avec succès.');
     }
 
     // نصيحة: جمع Logic ديال الـ Commission ف دالة وحدة باش تستعملها ف الـ store والـ update
@@ -195,20 +246,22 @@ class ReceiptItemController extends Controller
         $invoiceItem = InvoiceItem::with('boat.owner')->findOrFail($validated['invoice_item_id']);
         $boatOwner = $invoiceItem->boat->owner;
 
-        if (!$boatOwner) return null;
+        if (! $boatOwner) {
+            return null;
+        }
 
         // المستفيد (+)
         $beneficiaryReceipt = Receipt::firstOrCreate([
             'customer_id' => $validated['beneficiary_id'],
-            'session_zone_id'  => $validated['session_zone_id'],
-            'date'        => $validated['date'],
+            'session_zone_id' => $validated['session_zone_id'],
+            'date' => $validated['date'],
         ]);
 
         $beneficiaryReceipt->items()->create([
             'invoice_item_id' => $validated['invoice_item_id'],
             'unit_count' => $validated['unit_count'],
             'real_price' => $validated['commission_per_unit'],
-            'type'       => 'commission',
+            'type' => 'commission',
         ]);
         $beneficiaryReceipt->calculateTotals();
         $beneficiaryReceipt->refresh();
@@ -216,16 +269,16 @@ class ReceiptItemController extends Controller
         // مول الباطو (-)
         $ownerReceipt = Receipt::firstOrCreate([
             'customer_id' => $boatOwner->id,
-            'session_zone_id'  => $validated['session_zone_id'],
-            'date'        => $validated['date'],
-            'boat_id'     => $invoiceItem->boat_id,
+            'session_zone_id' => $validated['session_zone_id'],
+            'date' => $validated['date'],
+            'boat_id' => $invoiceItem->boat_id,
         ]);
 
         $ownerReceipt->items()->create([
             'invoice_item_id' => $validated['invoice_item_id'],
             'unit_count' => $validated['unit_count'],
             'real_price' => -abs($validated['commission_per_unit']),
-            'type'       => 'commission',
+            'type' => 'commission',
         ]);
         $ownerReceipt->calculateTotals();
         $ownerReceipt->refresh();
@@ -241,14 +294,14 @@ class ReceiptItemController extends Controller
     public function store(Request $request, Receipt $receipt)
     {
         $validated = $request->validate([
-            'item_id'         => 'nullable|exists:items,id',
+            'item_id' => 'nullable|exists:items,id',
             'invoice_item_id' => 'nullable|exists:invoice_items,id',
-            'unit_count'      => 'required|numeric',
-            'real_price'      => 'required|numeric',
-            'type'            => 'nullable|string|in:item,commission,freetax',
-            'box'             => 'nullable|integer',
-            'target_id'       => 'nullable|exists:receipt_items,id',
-            'direction'       => 'nullable|in:above,below',
+            'unit_count' => 'required|numeric',
+            'real_price' => 'required|numeric',
+            'type' => 'nullable|string|in:item,commission,freetax',
+            'box' => 'nullable|integer',
+            'target_id' => 'nullable|exists:receipt_items,id',
+            'direction' => 'nullable|in:above,below',
         ]);
 
         DB::transaction(function () use ($request, $receipt, $validated) {
@@ -262,14 +315,14 @@ class ReceiptItemController extends Controller
             }
 
             $receipt->items()->create([
-                'item_id'         => $validated['item_id'] ?? null,
+                'item_id' => $validated['item_id'] ?? null,
                 'invoice_item_id' => $validated['invoice_item_id'] ?? null,
-                'unit_count'      => $validated['unit_count'],
-                'real_price'      => $validated['real_price'],
-                'box'             => $validated['box'] ?? 0,
-                'type'            => $validated['type'] ?? 'item',
-                'total_diff'      => $validated['unit_count'] * $validated['real_price'],
-                'position'        => $position,
+                'unit_count' => $validated['unit_count'],
+                'real_price' => $validated['real_price'],
+                'box' => $validated['box'] ?? 0,
+                'type' => $validated['type'] ?? 'item',
+                'total_diff' => $validated['unit_count'] * $validated['real_price'],
+                'position' => $position,
             ]);
             $receipt->calculateTotals();
         });
@@ -283,13 +336,13 @@ class ReceiptItemController extends Controller
     public function update(Request $request, Receipt $receipt, ReceiptItem $item)
     {
         $validated = $request->validate([
-            'item_id'         => 'nullable|exists:items,id',
+            'item_id' => 'nullable|exists:items,id',
             'invoice_item_id' => 'nullable|exists:invoice_items,id', // 🟢 زدناها هنا
-            'unit_count'      => 'nullable|numeric',
-            'real_price'      => 'nullable|numeric',
-            'type'            => 'nullable|string|in:item,commission,freetax', // 🟢 زدناها هنا
-            'box'             => 'nullable|integer',
-            'position'        => 'nullable|integer',
+            'unit_count' => 'nullable|numeric',
+            'real_price' => 'nullable|numeric',
+            'type' => 'nullable|string|in:item,commission,freetax', // 🟢 زدناها هنا
+            'box' => 'nullable|integer',
+            'position' => 'nullable|integer',
         ]);
 
         DB::transaction(function () use ($item, $validated) {
@@ -297,14 +350,14 @@ class ReceiptItemController extends Controller
             $realPrice = $validated['real_price'] ?? $item->real_price;
 
             $item->update([
-                'item_id'         => $validated['item_id'] ?? $item->item_id,
+                'item_id' => $validated['item_id'] ?? $item->item_id,
                 'invoice_item_id' => $validated['invoice_item_id'] ?? $item->invoice_item_id,
-                'type'            => $validated['type'] ?? $item->type,
-                'unit_count'      => $unitCount,
-                'real_price'      => $realPrice,
-                'box'             => $validated['box'] ?? $item->box,
-                'total_diff'      => $unitCount * $realPrice,
-                'position'        => $validated['position'] ?? $item->position,
+                'type' => $validated['type'] ?? $item->type,
+                'unit_count' => $unitCount,
+                'real_price' => $realPrice,
+                'box' => $validated['box'] ?? $item->box,
+                'total_diff' => $unitCount * $realPrice,
+                'position' => $validated['position'] ?? $item->position,
             ]);
             $item->receipt->calculateTotals();
         });
@@ -318,27 +371,27 @@ class ReceiptItemController extends Controller
     public function bulkStore(Request $request, Receipt $receipt)
     {
         $validated = $request->validate([
-            'items'                     => 'required|array',
-            'items.*.item_id'           => 'required|exists:items,id',
-            'items.*.invoice_item_id'   => 'nullable|exists:invoice_items,id', // 🟢 زدناها هنا
-            'items.*.type'              => 'nullable|string', // 🟢 زدناها هنا
-            'items.*.unit_count'        => 'required|numeric',
-            'items.*.real_price'        => 'required|numeric',
-            'items.*.box'               => 'required|integer',
+            'items' => 'required|array',
+            'items.*.item_id' => 'required|exists:items,id',
+            'items.*.invoice_item_id' => 'nullable|exists:invoice_items,id', // 🟢 زدناها هنا
+            'items.*.type' => 'nullable|string', // 🟢 زدناها هنا
+            'items.*.unit_count' => 'required|numeric',
+            'items.*.real_price' => 'required|numeric',
+            'items.*.box' => 'required|integer',
         ]);
 
         DB::transaction(function () use ($receipt, $validated) {
             $lastPosition = $receipt->items()->max('position') ?? -1;
             foreach ($validated['items'] as $index => $itemData) {
                 $receipt->items()->create([
-                    'item_id'         => $itemData['item_id'],
+                    'item_id' => $itemData['item_id'],
                     'invoice_item_id' => $itemData['invoice_item_id'] ?? null,
-                    'unit_count'      => $itemData['unit_count'],
-                    'real_price'      => $itemData['real_price'],
-                    'box'             => $itemData['box'] ?? 0,
-                    'type'            => $itemData['type'] ?? 'item',
-                    'total_diff'      => $itemData['unit_count'] * $itemData['real_price'],
-                    'position'        => $lastPosition + ($index + 1),
+                    'unit_count' => $itemData['unit_count'],
+                    'real_price' => $itemData['real_price'],
+                    'box' => $itemData['box'] ?? 0,
+                    'type' => $itemData['type'] ?? 'item',
+                    'total_diff' => $itemData['unit_count'] * $itemData['real_price'],
+                    'position' => $lastPosition + ($index + 1),
                 ]);
             }
             $receipt->calculateTotals();
@@ -353,8 +406,8 @@ class ReceiptItemController extends Controller
     public function duplicateMany(Request $request, Receipt $receipt)
     {
         $validated = $request->validate([
-            'ids'   => 'required|array',
-            'ids.*' => 'exists:receipt_items,id'
+            'ids' => 'required|array',
+            'ids.*' => 'exists:receipt_items,id',
         ]);
 
         try {
@@ -364,7 +417,9 @@ class ReceiptItemController extends Controller
                     ->orderBy('position', 'asc')
                     ->get();
 
-                if ($itemsToDuplicate->isEmpty()) return;
+                if ($itemsToDuplicate->isEmpty()) {
+                    return;
+                }
 
                 $maxSelectedPosition = $itemsToDuplicate->max('position');
                 $count = $itemsToDuplicate->count();
@@ -395,8 +450,8 @@ class ReceiptItemController extends Controller
     public function reorder(Request $request, Receipt $receipt)
     {
         $validated = $request->validate([
-            'items'   => 'required|array',
-            'items.*' => 'exists:receipt_items,id'
+            'items' => 'required|array',
+            'items.*' => 'exists:receipt_items,id',
         ]);
 
         DB::transaction(function () use ($validated, $receipt) {
@@ -410,89 +465,66 @@ class ReceiptItemController extends Controller
         return back()->with('success', 'Ordre mis à jour ✅');
     }
 
-
     /**
-     * حذف سطر مع تنظيف الـ Receipt إلا بقا خاوي (0.00 DH)
+     * Delete a line and clean up the receipts it leaves empty.
+     *
+     * A commission is two lines (beneficiary + owner): deleting the beneficiary
+     * line must delete its twin too, otherwise the boat owner keeps a negative
+     * commission that nobody can edit any more. The twin link is nulled on
+     * delete, which is why the twin is read before the line is removed.
      */
     public function destroy(Receipt $receipt, ReceiptItem $item)
     {
-        $invoiceItemId = $item->invoice_item_id;
         $isCommission = $item->type === 'commission';
-        $realPrice = $item->real_price;
+        $twinId = $item->commission_twin_id;
 
-        DB::transaction(function () use ($item, $isCommission, $invoiceItemId, $realPrice, $receipt) { {
-                if ($isCommission && $invoiceItemId) { {
-                        /**
-                         * 1. حذف السطر المستهدف
-                         */
-                        $item->delete();
+        DB::transaction(function () use ($item, $isCommission, $twinId) {
+            if (! $isCommission || ! $twinId) {
+                $item->delete();
 
-                        /**
-                         * 2. حذف السطر التوأم (مول الباطو)
-                         */
-                        $twinItem = ReceiptItem::where('invoice_item_id', $invoiceItemId)
-                            ->where('type', 'commission')
-                            ->where('real_price', -$realPrice)
-                            ->first();
+                return;
+            }
 
-                        if ($twinItem) { {
-                                $r = $twinItem->receipt;
+            // 1. Read the twin before the delete nulls the link.
+            $twinItem = ReceiptItem::find($twinId);
+            $twinReceipt = $twinItem?->receipt;
 
-                                $twinItem->delete();
+            // 2. Delete the requested line.
+            $item->delete();
 
-                                if ($r) { {
-                                        $r->calculateTotals();
+            // 3. Delete the twin (boat owner line) and clean its receipt.
+            if ($twinItem) {
+                $twinItem->delete();
 
-                                        // تنظيف الـ Receipt التوأم إلا بقا خاوي
-                                        if ($r->items()->count() === 0) { {
-                                                $r->delete();
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } else { {
-                        $item->delete();
+                if ($twinReceipt) {
+                    $twinReceipt->calculateTotals();
+
+                    if ($twinReceipt->items()->count() === 0) {
+                        $twinReceipt->delete();
                     }
                 }
             }
         });
 
-        /**
-         * 3. تحديث الـ Receipt الحالي وتنظيفه إلا خوى
-         */
+        // 4. Recalculate the receipt of the deleted line and drop it if empty.
         $receipt->calculateTotals();
         $receipt->refresh();
 
         $receiptDeleted = false;
 
-        if ($receipt->items()->count() === 0) { {
-                $receipt->delete();
+        if ($receipt->items()->count() === 0) {
+            $receipt->delete();
 
-                $receiptDeleted = true;
-            }
+            $receiptDeleted = true;
         }
 
-        /**
-         * تحديث الـ Item للـ Dialog
-         */
-        $updatedItem = InvoiceItem::with(['receiptItems' => function ($q) { {
-                $q->where('type', 'commission')
-                    ->where('real_price', '>', 0)
-                    ->with('receipt.customer');
-            }
-        }])->find($invoiceItemId);
-
-        if (!$receiptDeleted) {
-            $receipt->refresh(); // كتعاود تجيب البيانات الفريش من الـ DB
+        if (! $receiptDeleted) {
+            $receipt->refresh();
         }
 
         return back()->with([
             'success' => $receiptDeleted ? 'Receipt supprimé car il est vide' : 'Supprimé ✅',
-            'updated_item' => $updatedItem,
-            'refresh_all' => true
+            'refresh_all' => true,
         ]);
     }
 
@@ -502,8 +534,8 @@ class ReceiptItemController extends Controller
     public function destroyMany(Request $request, Receipt $receipt)
     {
         $validated = $request->validate([
-            'ids'   => 'required|array',
-            'ids.*' => 'integer|exists:receipt_items,id'
+            'ids' => 'required|array',
+            'ids.*' => 'integer|exists:receipt_items,id',
         ]);
 
         try {
@@ -513,7 +545,7 @@ class ReceiptItemController extends Controller
 
             $receipt->calculateTotals();
 
-            return back()->with('success', count($validated['ids']) . ' supprimés. ✅');
+            return back()->with('success', count($validated['ids']).' supprimés. ✅');
         } catch (\Exception $e) {
             return back()->with('error', 'Erreur lors de la suppression.');
         }

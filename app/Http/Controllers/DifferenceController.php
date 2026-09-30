@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Boat;
+use App\Models\Company;
 use App\Models\Customer;
 use App\Models\Difference;
 use App\Models\InvoiceItem;
@@ -164,6 +165,11 @@ class DifferenceController extends Controller
         })->map(function ($group) {
             $first = $group->first();
 
+            // Pour les différences l'article de facture est un modèle, pour les
+            // réceptions (is_extra) c'est un objet simple : on lit donc le
+            // contexte séance à travers, sans dupliquer les clés.
+            $invoice = $first->invoiceItem?->invoice ?? null;
+
             // رجعنا كلشي Object باش السورتينغ يخدم بلا مشاكل
             return (object) [
                 'id' => $first->id,
@@ -174,7 +180,7 @@ class DifferenceController extends Controller
                     'unit_price' => $first->invoiceItem->unit_price ?? 0,
                     'item' => $first->item,
                     'boat' => $first->invoiceItem->boat ?? null,
-                    'invoice' => $first->invoiceItem->invoice ?? null,
+                    'invoice' => $invoice,
                 ],
                 'boxes' => $group->sum('boxes'),
                 'real_price' => $first->real_price,
@@ -225,9 +231,102 @@ class DifferenceController extends Controller
             'details' => $sortedDetails,
             'total_boxes' => $totalBoxesOverall,
             'total_amount' => $totalAmount,
-            'current_boat' => $allDetails->first()->invoiceItem->boat ?? null,
             'backUrl' => $backUrl,
+            // Bénéficiaires possibles pour les commissions du rapport.
+            'customers' => Customer::all(['id', 'name']),
+            /**
+             * Contexte des commissions : elles appartiennent au propriétaire du
+             * bateau du rapport, pas à un article de facture. On expose donc le
+             * bateau et son propriétaire une seule fois pour la page.
+             */
+            'boat' => $this->reportBoatContext($boatId, $date, $rawDifferences, $rawReceipts),
         ]);
+    }
+
+    /**
+     * Bateau du rapport + propriétaire (client ou société), date et contexte de
+     * séance nécessaires à la dialog des commissions.
+     *
+     * La date vient de la requête et non d'un détail : un rapport peut être
+     * composé de seuls bons de réception, qui n'ont pas de facture derrière
+     * eux. Sans elle, la dialog enverrait une date vide et l'enregistrement
+     * échouerait.
+     */
+    private function reportBoatContext($boatId, $reportDate, $differences, $receipts): ?object
+    {
+        $boat = Boat::with('owner')->find($boatId);
+
+        if (! $boat) {
+            return null;
+        }
+
+        // La séance vient de la facture rattachée, à défaut du bon de réception.
+        $sessionZoneId = $differences
+            ->map(fn ($d) => $d->invoiceItem?->invoice?->session_zone_id)
+            ->filter()
+            ->first()
+            ?? $receipts
+                ->map(fn ($ri) => $ri->receipt?->session_zone_id)
+                ->filter()
+                ->first();
+
+        $owner = $boat->owner;
+
+        return (object) [
+            'id' => $boat->id,
+            'name' => $boat->name,
+            'owner_id' => $boat->owner_id,
+            'owner_type' => $boat->owner_type,
+            'owner_name' => $owner?->name,
+            'owner_is_company' => $owner instanceof Company,
+            'session_zone_id' => $sessionZoneId,
+            'date' => $reportDate,
+            /**
+             * Commissions already saved for this boat, so the dialog can show
+             * them again and let them be edited or deleted instead of starting
+             * from an empty grid. Only the beneficiary leg (+) is returned: the
+             * owner leg follows from it.
+             */
+            'commissions' => $this->reportCommissions($boat, $reportDate, $sessionZoneId),
+        ];
+    }
+
+    /**
+     * Commissions already saved for a boat, seen from the beneficiary.
+     *
+     * A commission belongs to the owner of the boat and not to an invoice item,
+     * so the boat is stamped on the line itself (`receipt_items.boat_id`).
+     * The beneficiary leg is the one with a positive amount, and it is the only
+     * one to look for: the owner leg does not exist when the owner is a company,
+     * because a company cannot hold a receipt.
+     */
+    private function reportCommissions($boat, $reportDate, $sessionZoneId): array
+    {
+        if (! $sessionZoneId || ! $reportDate) {
+            return [];
+        }
+
+        return ReceiptItem::query()
+            ->where('type', 'commission')
+            ->where('real_price', '>', 0)
+            ->where('boat_id', $boat->id)
+            ->whereHas('receipt', function ($query) use ($reportDate, $sessionZoneId) {
+                $query->whereDate('date', $reportDate)
+                    ->where('session_zone_id', $sessionZoneId);
+            })
+            ->with('receipt.customer')
+            ->get()
+            ->map(fn ($item) => (object) [
+                'id' => $item->id,
+                'receipt_id' => $item->receipt_id,
+                'beneficiary_id' => $item->receipt?->customer_id,
+                'beneficiary_name' => $item->receipt?->customer?->name,
+                'unit_count' => (float) $item->unit_count,
+                'commission_per_unit' => abs((float) $item->real_price),
+            ])
+            ->sortByDesc('id')
+            ->values()
+            ->all();
     }
 
     public function store(Request $request)

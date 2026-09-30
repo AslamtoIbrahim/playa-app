@@ -18,12 +18,10 @@ import { Customer } from '@/types/customer';
 import { Difference } from '@/types/difference';
 import { InvoiceItem } from '@/types/invoice-item';
 import { Item } from '@/types/item';
-import { AlertCircle, CircleDollarSign, Dot, Ship } from 'lucide-react'; // زدت Percent icon
-import { useMemo, useState } from 'react'; // زدت useState
-import { CommissionRow } from './commission-row'; // import ديالنا الجديد
+import { AlertCircle, Dot, Ship } from 'lucide-react';
+import { useMemo } from 'react';
 import { DifferenceRow } from './difference-row';
 import { Badge } from './ui/badge';
-import { Button } from './ui/button';
 
 interface Props {
     open: boolean;
@@ -32,8 +30,6 @@ interface Props {
     customers: Customer[];
     items: Item[];
     categories: Category[];
-    sessionZoneId: number;
-    date: string;
 }
 
 export function DifferenceDialog({
@@ -43,11 +39,7 @@ export function DifferenceDialog({
     customers,
     items,
     categories,
-    sessionZoneId,
-    date,
 }: Props) {
-    const [showCommission, setShowCommission] = useState(false);
-
     const differences = useMemo((): Difference[] => {
         {
             return item.differences || [];
@@ -158,7 +150,6 @@ export function DifferenceDialog({
                         </div>
 
                         <div className="flex w-full items-center justify-between">
-                            {/* ... (Badge and info section remains same) */}
                             <Badge
                                 variant="secondary"
                                 className="flex items-center gap-1.5 border-slate-200 bg-slate-100 px-2.5 py-1 text-slate-700 shadow-sm dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300"
@@ -168,25 +159,6 @@ export function DifferenceDialog({
                                     {item.boat?.name}
                                 </span>
                             </Badge>
-
-                            {/* زر لإظهار سطر الكوميسيون */}
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                    {
-                                        setShowCommission(!showCommission);
-                                    }
-                                }}
-                                className={cn(
-                                    'h-8 gap-1.5 self-end text-xs dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800',
-                                    showCommission
-                                        ? 'border-emerald-200 bg-white text-red-500 dark:border-emerald-900 dark:bg-neutral-900 dark:text-red-400'
-                                        : '',
-                                )}
-                            >
-                                <CircleDollarSign className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-                            </Button>
                         </div>
 
                         <div className="flex w-full items-center justify-between text-sm text-slate-500 dark:text-neutral-400">
@@ -245,34 +217,6 @@ export function DifferenceDialog({
                         </TableHeader>
 
                         <TableBody key={differences.length}>
-                            {/* سطر الكوميسيون الجديد (كيظهر غير إلا بركنا على الزر) */}
-                            {showCommission && (
-                                <CommissionRow
-                                    beneficiaries={customers}
-                                    invoiceItemId={item.id}
-                                    sessionZoneId={sessionZoneId}
-                                    date={date}
-                                    onSuccess={() => {
-                                        {
-                                            setShowCommission(false);
-                                        }
-                                    }}
-                                />
-                            )}
-
-                            {item.receipt_items
-                                ?.filter((ri) => ri.type === 'commission')
-                                .map((comm) => (
-                                    <CommissionRow
-                                        key={`comm-${comm.id}`}
-                                        commission={comm} // هنا كندوزو الـ Object كامل
-                                        beneficiaries={customers}
-                                        invoiceItemId={item.id}
-                                        sessionZoneId={sessionZoneId}
-                                        date={date}
-                                    />
-                                ))}
-
                             {remainingCount > 0 && (
                                 <DifferenceRow
                                     isNew
