@@ -167,20 +167,31 @@ class CustomerController extends Controller
     {
         $invoicesCount = $customer->invoices()->count();
         $boatsCount = $customer->boats()->count();
+        $receiptsCount = $customer->receipts()->count();
+        $differencesCount = $customer->differences()->count();
+        $salesCount = $customer->sales()->count();
 
-        // منع الأرشفة إيلا كان مرتبط بداتا
-        if ($invoicesCount > 0 || $boatsCount > 0) {
-            $message = "Impossible d'archiver ce compte : ";
+        // منع الأرشفة إيلا كان مرتبط بأي داتا (حفاظا على سلامة المعطيات)
+        if ($invoicesCount > 0 || $boatsCount > 0 || $receiptsCount > 0 || $differencesCount > 0 || $salesCount > 0) {
             $reasons = [];
 
-            if ($boatsCount > 0) {
-                $reasons[] = "$boatsCount bateau(x)";
+            if ($receiptsCount > 0) {
+                $reasons[] = "$receiptsCount bon(s)/reçu(s)";
             }
             if ($invoicesCount > 0) {
                 $reasons[] = "$invoicesCount facture(s)";
             }
+            if ($boatsCount > 0) {
+                $reasons[] = "$boatsCount bateau(x)";
+            }
+            if ($differencesCount > 0) {
+                $reasons[] = "$differencesCount différence(s)";
+            }
+            if ($salesCount > 0) {
+                $reasons[] = "$salesCount vente(s)";
+            }
 
-            return redirect()->back()->with('error', $message.implode(' et ', $reasons).'.');
+            return redirect()->back()->with('error', "Impossible d'archiver ce compte : lié à ".implode(', ', $reasons).'.');
         }
 
         $customer->delete();
