@@ -2,8 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Boat;
-use App\Models\Customer;
 use App\Models\Item;
 use App\Models\Receipt;
 use App\Models\SessionZone;
@@ -22,22 +20,8 @@ class ReceiptController extends Controller
             ->latest()
             ->paginate(10);
 
-        $customers = Customer::all(['id', 'name']);
-
-        $sessionZones = SessionZone::with(['dailySession', 'zone'])
-            ->whereHas('dailySession', function ($query) {
-                $query->where('status', 'open');
-            })
-            ->latest()
-            ->get(['id', 'zone_id', 'daily_session_id']);
-
-        $boats = Boat::all(['id', 'name']);
-
         return Inertia::render('receipts', [
             'receipts' => $receipts,
-            'customers' => $customers,
-            'sessionZones' => $sessionZones,
-            'boats' => $boats,
         ]);
     }
 

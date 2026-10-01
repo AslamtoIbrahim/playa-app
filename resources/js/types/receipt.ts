@@ -33,7 +33,4 @@ export interface ReceiptsIndexProps {
         links: any[];
         meta: any;
     };
-    customers: Customer[];
-    sessionZones: SessionZone[];
-    boats: Boat[];
 }

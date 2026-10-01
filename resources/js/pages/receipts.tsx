@@ -1,6 +1,6 @@
 import { Head, router } from '@inertiajs/react';
 import { format } from 'date-fns';
-import {  ChevronLeft, ChevronRight, Clock, MapPin, Pencil, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, MapPin } from 'lucide-react';
 
 // Components
 import { Badge } from '@/components/ui/badge';
@@ -16,17 +16,9 @@ import {
 import { cn } from '@/lib/utils';
 
 // Types
-import AddReceiptDialog from '@/components/add-receipt-dialog';
-import DeleteReceiptDialog from '@/components/delete-receipt-dialog';
-import EditReceiptDialog from '@/components/edit-receipt-dialog';
 import type { ReceiptsIndexProps } from '@/types/receipt';
 
-export default function Receipts({
-    receipts,
-    customers,
-    sessionZones,
-    boats,
-}: ReceiptsIndexProps) {
+export default function Receipts({ receipts }: ReceiptsIndexProps) {
     const handleRowClick = (receiptId: number) => {
         router.visit(`/receipts/${receiptId}`);
     };
@@ -37,24 +29,15 @@ export default function Receipts({
 
             <div className="flex h-full flex-1 flex-col gap-4 p-4 lg:p-8">
                 {/* Header Section */}
-                <div className="flex flex-col justify-between gap-4 px-2 sm:flex-row sm:items-center">
-                    <div>
-                        <h1 className="text-2xl font-black tracking-tight text-neutral-900 uppercase dark:text-neutral-100">
-                            Bons de Réception
-                        </h1>
+                <div className="px-2">
+                    <h1 className="text-2xl font-black tracking-tight text-neutral-900 uppercase dark:text-neutral-100">
+                        Bons de Réception
+                    </h1>
 
-                        <p className="text-sm font-medium text-muted-foreground dark:text-neutral-400">
-                            Gestion et suivi des bons de réception clients.
-                        </p>
-                    </div>
-
-                    <AddReceiptDialog
-                        boats={boats}
-                        customers={customers}
-                        sessionZones={sessionZones}
-                    />
+                    <p className="text-sm font-medium text-muted-foreground dark:text-neutral-400">
+                        Gestion et suivi des bons de réception clients.
+                    </p>
                 </div>
-
 
                 {/* Table Card */}
                 <div className="flex-1 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
@@ -82,7 +65,6 @@ export default function Receipts({
                                 <TableHead className="text-center font-bold text-slate-800 dark:text-slate-200">
                                     Caisses
                                 </TableHead>
-                                <TableHead className="w-12"></TableHead>
                             </TableRow>
                         </TableHeader>
 
@@ -123,7 +105,8 @@ export default function Receipts({
                                                         variant="outline"
                                                         className={cn(
                                                             'flex items-center gap-1 border px-2 py-0.5 font-bold',
-                                                            receipt.session_zone.daily_session
+                                                            receipt.session_zone
+                                                                .daily_session
                                                                 ?.status ===
                                                                 'open'
                                                                 ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
@@ -144,10 +127,20 @@ export default function Receipts({
                                                         />
 
                                                         <span className="text-[10px] tracking-wider uppercase">
-                                                            {receipt.session_zone?.daily_session?.session_date
-                                                                ? format(new Date(receipt.session_zone.daily_session.session_date), 'dd/MM/yy')
-                                                                : ''
-                                                            }
+                                                            {receipt
+                                                                .session_zone
+                                                                ?.daily_session
+                                                                ?.session_date
+                                                                ? format(
+                                                                      new Date(
+                                                                          receipt
+                                                                              .session_zone
+                                                                              .daily_session
+                                                                              .session_date,
+                                                                      ),
+                                                                      'dd/MM/yy',
+                                                                  )
+                                                                : ''}
                                                         </span>
                                                     </Badge>
                                                 ) : (
@@ -163,13 +156,17 @@ export default function Receipts({
                                                 {receipt.session_zone ? (
                                                     <Badge
                                                         variant="outline"
-                                                        className={cn('flex items-center gap-1 border-slate-200 bg-slate-50 px-2 py-0.5 font-bold text-slate-700 dark:border-neutral-700 dark:bg-neutral-800 dark:text-slate-300')}
+                                                        className={cn(
+                                                            'flex items-center gap-1 border-slate-200 bg-slate-50 px-2 py-0.5 font-bold text-slate-700 dark:border-neutral-700 dark:bg-neutral-800 dark:text-slate-300',
+                                                        )}
                                                     >
                                                         <MapPin className="h-3 w-3 text-slate-500 dark:text-slate-400" />
 
                                                         <span className="text-[10px] tracking-wider uppercase">
                                                             {
-                                                            receipt.session_zone?.zone?.name
+                                                                receipt
+                                                                    .session_zone
+                                                                    ?.zone?.name
                                                             }
                                                         </span>
                                                     </Badge>
@@ -192,47 +189,12 @@ export default function Receipts({
                                         <TableCell className="text-center font-bold text-slate-700 dark:text-slate-300">
                                             {receipt.total_boxes || 0}
                                         </TableCell>
-
-                                        <TableCell
-                                            className="text-right"
-                                            onClick={(e) => e.stopPropagation()}
-                                        >
-                                            <EditReceiptDialog
-                                                boats={boats}
-                                                receipt={receipt}
-                                                customers={customers}
-                                                sessionZones={sessionZones}
-                                                trigger={
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8 text-blue-500 hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-950/40 dark:hover:text-blue-300"
-                                                    >
-                                                        <Pencil className="h-4 w-4" />
-                                                    </Button>
-                                                }
-                                            />
-
-                                            <DeleteReceiptDialog
-                                                receiptId={receipt.id}
-                                                amount={receipt.total_amount}
-                                                trigger={
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8 text-red-500 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/40 dark:hover:text-red-300"
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                }
-                                            />
-                                        </TableCell>
                                     </TableRow>
                                 ))
                             ) : (
                                 <TableRow>
                                     <TableCell
-                                        colSpan={8}
+                                        colSpan={7}
                                         className="py-24 text-center font-medium text-muted-foreground italic"
                                     >
                                         Aucun bon de réception enregistré.
@@ -244,9 +206,9 @@ export default function Receipts({
 
                     {/* Pagination */}
                     <div className="flex items-center justify-between border-t border-neutral-200 bg-neutral-50/50 px-6 py-4 dark:border-neutral-800 dark:bg-neutral-800/50">
-                        <div className="text-xs font-bold tracking-widest text-neutral-500 dark:text-neutral-400 uppercase">
-                            {receipts.meta?.total || receipts.data.length}{' '}
-                            Bons au total
+                        <div className="text-xs font-bold tracking-widest text-neutral-500 uppercase dark:text-neutral-400">
+                            {receipts.meta?.total || receipts.data.length} Bons
+                            au total
                         </div>
 
                         <div className="flex gap-1">
@@ -261,7 +223,7 @@ export default function Receipts({
                                     className={cn(
                                         'h-8 min-w-8 text-xs font-bold shadow-none transition-all dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800',
                                         link.active &&
-                                        'scale-105 bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900',
+                                            'scale-105 bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900',
                                         !link.url && 'opacity-30',
                                     )}
                                     asChild={!!link.url}
@@ -305,4 +267,3 @@ Receipts.layout = {
         },
     ],
 };
-
