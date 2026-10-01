@@ -23,5 +23,4 @@ export interface AttendancesIndexProps {
         links: any[];
         meta: any;
     };
-    sessionZones: SessionZone[];
 }

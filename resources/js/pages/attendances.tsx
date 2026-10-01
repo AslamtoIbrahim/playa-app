@@ -6,8 +6,6 @@ import {
     ChevronRight,
     Clock,
     MapPin,
-    Pencil,
-    Trash2,
 } from 'lucide-react';
 
 // Components
@@ -23,19 +21,10 @@ import {
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 
-// Dialogs
-import AddAttendanceDialog from '@/components/add-attendance-dialog';
-import DeleteAttendanceDialog from '@/components/delete-attendance-dialog';
-import EditAttendanceDialog from '@/components/edit-attendance-dialog';
-
 // Types
 import type { AttendancesIndexProps } from '@/types/attendance';
 
-export default function Attendances({
-    attendances,
-    sessionZones,
-}: AttendancesIndexProps) {
-
+export default function Attendances({ attendances }: AttendancesIndexProps) {
     const handleRowClick = (attendanceId: number) => {
         router.visit(`/attendances/${attendanceId}`);
     };
@@ -46,18 +35,13 @@ export default function Attendances({
 
             <div className="flex h-full flex-1 flex-col gap-4 p-4 lg:p-8">
                 {/* Header Section */}
-                <div className="flex flex-col justify-between gap-4 px-2 sm:flex-row sm:items-center">
-                    <div>
-                        <h1 className="text-2xl font-black tracking-tight text-neutral-900 uppercase dark:text-neutral-100">
-                            Pointage Quotidien
-                        </h1>
-                        <p className="text-sm font-medium text-muted-foreground dark:text-neutral-400">
-                            Gestion d'assiduité et calcul des salaires
-                            journaliers.
-                        </p>
-                    </div>
-
-                    <AddAttendanceDialog sessionZones={sessionZones} />
+                <div className="px-2">
+                    <h1 className="text-2xl font-black tracking-tight text-neutral-900 uppercase dark:text-neutral-100">
+                        Pointage Quotidien
+                    </h1>
+                    <p className="text-sm font-medium text-muted-foreground dark:text-neutral-400">
+                        Gestion d'assiduité et calcul des salaires journaliers.
+                    </p>
                 </div>
 
                 {/* Table Card */}
@@ -80,7 +64,6 @@ export default function Attendances({
                                 <TableHead className="text-right font-bold text-neutral-800 dark:text-neutral-200">
                                     Masse Salariale
                                 </TableHead>
-                                <TableHead className="w-12"></TableHead>
                             </TableRow>
                         </TableHeader>
 
@@ -104,11 +87,11 @@ export default function Attendances({
                                                 <CalendarDays className="h-4 w-4 text-slate-400 dark:text-neutral-500" />
                                                 {attendance.date
                                                     ? format(
-                                                        new Date(
-                                                            attendance.date,
-                                                        ),
-                                                        'dd MMMM yyyy',
-                                                    )
+                                                          new Date(
+                                                              attendance.date,
+                                                          ),
+                                                          'dd-MM-yyyy',
+                                                      )
                                                     : '---'}
                                             </div>
                                         </TableCell>
@@ -169,7 +152,9 @@ export default function Attendances({
                                                         variant="outline"
                                                         className={cn(
                                                             'flex items-center gap-1 border px-2 py-0.5 font-bold',
-                                                            attendance.session_zone.daily_session
+                                                            attendance
+                                                                .session_zone
+                                                                .daily_session
                                                                 ?.status ===
                                                                 'open'
                                                                 ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300'
@@ -190,10 +175,20 @@ export default function Attendances({
                                                         />
 
                                                         <span className="text-[10px] tracking-wider uppercase">
-                                                            {attendance.session_zone?.daily_session?.session_date
-                                                                ? format(new Date(attendance.session_zone.daily_session.session_date), 'dd/MM/yy')
-                                                                : ''
-                                                            }
+                                                            {attendance
+                                                                .session_zone
+                                                                ?.daily_session
+                                                                ?.session_date
+                                                                ? format(
+                                                                      new Date(
+                                                                          attendance
+                                                                              .session_zone
+                                                                              .daily_session
+                                                                              .session_date,
+                                                                      ),
+                                                                      'dd/MM/yy',
+                                                                  )
+                                                                : ''}
                                                         </span>
                                                     </Badge>
                                                 ) : (
@@ -209,13 +204,17 @@ export default function Attendances({
                                                 {attendance.session_zone ? (
                                                     <Badge
                                                         variant="outline"
-                                                        className={cn('flex items-center gap-1 border px-2 py-0.5 font-bold border-slate-200 bg-slate-50 text-slate-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300')}
+                                                        className={cn(
+                                                            'flex items-center gap-1 border border-slate-200 bg-slate-50 px-2 py-0.5 font-bold text-slate-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300',
+                                                        )}
                                                     >
                                                         <MapPin className="h-3 w-3 text-slate-500 dark:text-neutral-400" />
 
                                                         <span className="text-[10px] tracking-wider uppercase">
                                                             {
-                                                                attendance.session_zone?.zone?.name
+                                                                attendance
+                                                                    .session_zone
+                                                                    ?.zone?.name
                                                             }
                                                         </span>
                                                     </Badge>
@@ -235,41 +234,6 @@ export default function Attendances({
                                                 Number(attendance.total_wage),
                                             )}
                                         </TableCell>
-
-                                        <TableCell
-                                            className="text-right"
-                                            onClick={(e) => e.stopPropagation()}
-                                        >
-                                            <div className="flex justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                                                <EditAttendanceDialog
-                                                    attendance={attendance}
-                                                    sessionZones={sessionZones}
-                                                    trigger={
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-8 w-8 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/70"
-                                                        >
-                                                            <Pencil className="h-4 w-4" />
-                                                        </Button>
-                                                    }
-                                                />
-
-                                                <DeleteAttendanceDialog
-                                                    attendanceId={attendance.id}
-                                                    date={attendance.date}
-                                                    trigger={
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-8 w-8 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/70"
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    }
-                                                />
-                                            </div>
-                                        </TableCell>
                                     </TableRow>
                                 ))
                             ) : (
@@ -287,7 +251,7 @@ export default function Attendances({
 
                     {/* Pagination */}
                     <div className="flex items-center justify-between border-t border-neutral-200 bg-neutral-50/50 px-6 py-4 dark:border-neutral-800 dark:bg-neutral-800/50">
-                        <div className="text-xs font-bold tracking-widest text-neutral-500 dark:text-neutral-400 uppercase">
+                        <div className="text-xs font-bold tracking-widest text-neutral-500 uppercase dark:text-neutral-400">
                             {attendances.meta?.total || attendances.data.length}{' '}
                             Feuilles au total
                         </div>
@@ -304,7 +268,7 @@ export default function Attendances({
                                     className={cn(
                                         'h-8 min-w-8 text-xs font-bold shadow-none transition-all dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800',
                                         link.active &&
-                                        'scale-105 bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900',
+                                            'scale-105 bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900',
                                         !link.url && 'opacity-30',
                                     )}
                                     asChild={!!link.url}
