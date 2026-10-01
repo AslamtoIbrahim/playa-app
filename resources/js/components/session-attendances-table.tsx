@@ -1,7 +1,8 @@
 import { router } from '@inertiajs/react';
-import { Lock, Plus } from 'lucide-react';
+import { Lock, Plus, Trash2 } from 'lucide-react';
 
 import AddAttendanceDialog from '@/components/add-attendance-dialog';
+import DeleteAttendanceDialog from '@/components/delete-attendance-dialog';
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -124,6 +125,8 @@ export function SessionAttendancesTable({
                         <TableHead className="text-right">
                             Masse salariale
                         </TableHead>
+
+                        <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
 
@@ -147,13 +150,39 @@ export function SessionAttendancesTable({
                                     {attendance.items?.length || 0}
                                 </TableCell>
 
-                                <TableCell className="text-right font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                                <TableCell className="text-right font-mono font-semibold text-slate-900 dark:text-neutral-100">
                                     {formatCurrency(attendance.total_wage || 0)}
+                                </TableCell>
+
+                                <TableCell
+                                    className="text-right"
+                                    onClick={(event) => {
+                                        event.stopPropagation();
+                                    }}
+                                >
+                                    {attendanceContext?.sessionStatus ===
+                                    'open' ? (
+                                        <div className="flex items-center justify-end gap-1">
+                                            <DeleteAttendanceDialog
+                                                attendanceId={attendance.id}
+                                                date={attendance.date}
+                                                trigger={
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/70"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                }
+                                            />
+                                        </div>
+                                    ) : null}
                                 </TableCell>
                             </TableRow>
                         ))
                     ) : (
-                        <SessionEmptyRow colSpan={4}>
+                        <SessionEmptyRow colSpan={5}>
                             {emptyMessage}
                         </SessionEmptyRow>
                     )}
