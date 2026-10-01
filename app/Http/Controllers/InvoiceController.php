@@ -4,13 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Boat;
 use App\Models\Category;
-use App\Models\Caution;
 use App\Models\Company;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Item;
-use App\Models\OfficeRoom;
-use App\Models\SessionZone; // Changed from DailySession
+use App\Models\SessionZone;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -22,40 +20,12 @@ class InvoiceController extends Controller
      */
     public function index()
     {
-        $invoices = Invoice::with(['billable', 'officeRoom', 'sessionZone.dailySession', 'sessionZone.zone', 'caution']) // Changed 'session' to 'sessionZone'
+        $invoices = Invoice::with(['billable', 'officeRoom', 'sessionZone.dailySession', 'sessionZone.zone', 'caution'])
             ->latest()
             ->paginate(10);
 
-        $customers = Customer::select('id', 'name')->get()->map(fn ($c) => [
-            'id' => $c->id,
-            'name' => $c->name,
-            'type' => Customer::class,
-        ]);
-
-        $companies = Company::select('id', 'name')->get()->map(fn ($c) => [
-            'id' => $c->id,
-            'name' => $c->name,
-            'type' => Company::class,
-        ]);
-
         return Inertia::render('invoices', [
             'invoices' => $invoices,
-
-            'billables' => $customers->concat($companies),
-
-            'officeRooms' => OfficeRoom::all(['id', 'name', 'city']),
-
-            'sessionZones' => SessionZone::whereHas('dailySession', function ($query) {
-                $query->where('status', 'open');
-            })
-                ->with([
-                    'zone:id,name',           // كنطلعو لجدول المناطق ونجيبو غير السمية
-                    'dailySession:id,session_date',    // كنطلعو للحصة ونجيبو غير التاريخ
-                ])
-                ->latest()
-                ->get(), // خليه يجيب كاع السجلات (بما فيها الـ IDs ديال الربط)
-
-            'cautions' => Caution::select('id', 'name', 'owner_id', 'owner_type')->get(),
         ]);
     }
 
