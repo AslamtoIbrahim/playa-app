@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 
 interface Report {
+    id: number;
     customer_id: number;
     invoice_date: string;
     boat_id: number;
@@ -74,6 +75,9 @@ export default function Differences({ reports }: Props) {
                     <Table>
                         <TableHeader className="bg-neutral-50/50 dark:bg-neutral-800/50">
                             <TableRow className="border-b border-neutral-200 text-sm hover:bg-transparent dark:border-neutral-800">
+                                <TableHead className="w-24 font-bold text-neutral-800 dark:text-neutral-200">
+                                    ID
+                                </TableHead>
                                 <TableHead className="font-bold text-neutral-800 dark:text-neutral-200">
                                     Date Facture
                                 </TableHead>
@@ -92,7 +96,7 @@ export default function Differences({ reports }: Props) {
                             {reports.data.length > 0 ? (
                                 reports.data.map((item) => (
                                     <TableRow
-                                        key={`${item.customer_id}-${item.invoice_date}-${item.boat_id}`}
+                                        key={item.id}
                                         className="group cursor-pointer border-b border-slate-100 bg-white transition-all last:border-0 hover:bg-slate-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800/70"
                                         onClick={() =>
                                             viewReport(
@@ -102,6 +106,10 @@ export default function Differences({ reports }: Props) {
                                             )
                                         }
                                     >
+                                        <TableCell className="font-mono text-sm font-bold text-slate-700 dark:text-neutral-300">
+                                            #{item.id}
+                                        </TableCell>
+
                                         <TableCell className="font-medium text-slate-900 dark:text-neutral-100">
                                             <div className="flex items-center gap-2">
                                                 <CalendarDays className="h-4 w-4 text-slate-400 dark:text-neutral-500" />
@@ -145,7 +153,7 @@ export default function Differences({ reports }: Props) {
                             ) : (
                                 <TableRow>
                                     <TableCell
-                                        colSpan={4}
+                                        colSpan={5}
                                         className="py-24 text-center font-medium text-muted-foreground italic dark:text-neutral-400"
                                     >
                                         Aucun écart enregistré.

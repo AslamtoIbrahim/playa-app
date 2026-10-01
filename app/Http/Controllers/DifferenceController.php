@@ -25,7 +25,8 @@ class DifferenceController extends Controller
                 'invoice_items.boat_id',
                 DB::raw('DATE(invoices.date) as report_date'),
                 DB::raw('SUM(differences.total_diff) as amount'),
-                DB::raw('COUNT(differences.id) as items_count')
+                DB::raw('COUNT(differences.id) as items_count'),
+                DB::raw('MIN(differences.id) as diff_id')
             )
             ->groupBy('differences.customer_id', 'invoice_items.boat_id', 'report_date');
 
@@ -49,7 +50,8 @@ class DifferenceController extends Controller
                 'receipts.boat_id',
                 DB::raw('DATE(receipts.date) as report_date'),
                 DB::raw('SUM(receipt_items.unit_count * receipt_items.real_price) as amount'),
-                DB::raw('COUNT(receipt_items.id) as items_count')
+                DB::raw('COUNT(receipt_items.id) as items_count'),
+                DB::raw('NULL as diff_id')
             )
             ->groupBy('receipts.customer_id', 'receipts.boat_id', 'report_date');
 
@@ -61,7 +63,8 @@ class DifferenceController extends Controller
                 'boat_id',
                 'report_date as invoice_date',
                 DB::raw('SUM(amount) as total_diff_amount'),
-                DB::raw('SUM(items_count) as total_items')
+                DB::raw('SUM(items_count) as total_items'),
+                DB::raw('MIN(diff_id) as id')
             )
             ->groupBy('customer_id', 'boat_id', 'invoice_date')
             ->whereNotNull('boat_id')
@@ -78,6 +81,7 @@ class DifferenceController extends Controller
                 }
 
                 return (object) [
+                    'id' => (int) $row->id,
                     'customer_id' => $row->customer_id,
                     'boat_id' => $row->boat_id,
                     'invoice_date' => $row->invoice_date,
