@@ -31,8 +31,8 @@ class DailySessionController extends Controller
     public function index()
     {
         $sessions = DailySession::latest('session_date')
-            ->get()
-            ->map(function ($session) {
+            ->paginate(10)
+            ->through(function ($session) {
                 // Les factures / bons / pointages sont rattachés au SessionZone, pas directement à la session.
                 $sessionZoneIds = $session->sessionZones()->pluck('id')->all();
 

@@ -161,44 +161,56 @@ export default function Differences({ reports }: Props) {
                             total
                         </div>
 
-                        <div className="flex items-center gap-1">
-                            {reports.links?.map((link, i) => (
-                                <Button
-                                    key={i}
-                                    variant="ghost"
-                                    size="sm"
-                                    disabled={!link.url}
-                                    asChild={!!link.url}
-                                    className={cn(
-                                        'h-8 min-w-8 px-2 text-xs font-bold text-neutral-500 shadow-none hover:bg-neutral-200/60 dark:text-neutral-400 dark:hover:bg-neutral-800',
-                                        link.active &&
-                                            'text-neutral-900 underline underline-offset-4 dark:text-neutral-100',
-                                        !link.url && 'opacity-30',
-                                    )}
-                                >
-                                    {link.url ? (
-                                        <a href={link.url}>
-                                            {link.label.includes('Previous') ? (
-                                                <ChevronLeft className="h-4 w-4" />
-                                            ) : link.label.includes('Next') ? (
-                                                <ChevronRight className="h-4 w-4" />
-                                            ) : (
-                                                link.label
-                                            )}
-                                        </a>
-                                    ) : (
-                                        <span>
-                                            {link.label.includes('Previous') ? (
-                                                <ChevronLeft className="h-4 w-4" />
-                                            ) : link.label.includes('Next') ? (
-                                                <ChevronRight className="h-4 w-4" />
-                                            ) : (
-                                                link.label
-                                            )}
-                                        </span>
-                                    )}
-                                </Button>
-                            ))}
+                        <div className="flex gap-2">
+                            {reports.links?.map((link, i) => {
+                                const isPrevious =
+                                    link.label.includes('Previous');
+                                const isNext = link.label.includes('Next');
+
+                                if (!link.url && !link.active) {
+                                    return null;
+                                }
+
+                                return (
+                                    <Button
+                                        key={i}
+                                        variant={
+                                            link.active ? 'default' : 'outline'
+                                        }
+                                        size="sm"
+                                        className={cn(
+                                            'h-9 min-w-9 text-xs font-bold shadow-none transition-all dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700',
+                                            !link.url &&
+                                                'pointer-events-none cursor-not-allowed opacity-40',
+                                            link.active &&
+                                                'scale-105 shadow-md dark:bg-primary dark:text-primary-foreground',
+                                        )}
+                                        asChild={!!link.url}
+                                    >
+                                        {link.url ? (
+                                            <a href={link.url}>
+                                                {isPrevious ? (
+                                                    <ChevronLeft className="h-4 w-4" />
+                                                ) : isNext ? (
+                                                    <ChevronRight className="h-4 w-4" />
+                                                ) : (
+                                                    link.label
+                                                )}
+                                            </a>
+                                        ) : (
+                                            <span>
+                                                {isPrevious ? (
+                                                    <ChevronLeft className="h-4 w-4" />
+                                                ) : isNext ? (
+                                                    <ChevronRight className="h-4 w-4" />
+                                                ) : (
+                                                    link.label
+                                                )}
+                                            </span>
+                                        )}
+                                    </Button>
+                                );
+                            })}
                         </div>
                     </div>
                 </div>

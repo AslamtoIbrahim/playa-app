@@ -88,8 +88,8 @@ test('la masse salariale des ouvriers est incluse dans le total d\'achat', funct
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('sessions')
-            ->where('sessions.0.total_buy', fn ($total) => (float) $total === 600.0)
-            ->where('sessions.0.total_sell', 0)
+            ->where('sessions.data.0.total_buy', fn ($total) => (float) $total === 600.0)
+            ->where('sessions.data.0.total_sell', 0)
         );
 });
 

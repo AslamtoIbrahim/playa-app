@@ -242,10 +242,10 @@ test('la liste des sessions calcule les totaux via le SessionZone', function () 
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('sessions')
-            ->has('sessions', 1)
-            ->where('sessions.0.id', $data['session']->id)
-            ->where('sessions.0.total_buy', fn ($total) => (float) $total === 1800.0)
-            ->where('sessions.0.total_sell', 0)
+            ->has('sessions.data', 1)
+            ->where('sessions.data.0.id', $data['session']->id)
+            ->where('sessions.data.0.total_buy', fn ($total) => (float) $total === 1800.0)
+            ->where('sessions.data.0.total_sell', 0)
         );
 });
 

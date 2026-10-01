@@ -1,4 +1,5 @@
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
     Table,
     TableBody,
@@ -8,16 +9,19 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { formatDateDisplay } from '@/lib/date';
-import type { DailySession } from '@/types/daily-session';
+import { cn } from '@/lib/utils';
+import type { SessionsIndexProps } from '@/types/daily-session';
 import { Head, router } from '@inertiajs/react';
-import { CalendarDays, Lock, Unlock } from 'lucide-react';
+import {
+    CalendarDays,
+    ChevronLeft,
+    ChevronRight,
+    Lock,
+    Unlock,
+} from 'lucide-react';
 import type { ReactNode } from 'react';
 
-interface Props {
-    sessions: DailySession[];
-}
-
-export default function Sessions({ sessions }: Props) {
+export default function Sessions({ sessions }: SessionsIndexProps) {
     const calculateMargin = (sell: number, buy: number) => {
         return sell - buy;
     };
@@ -53,6 +57,9 @@ export default function Sessions({ sessions }: Props) {
                     <Table>
                         <TableHeader className="bg-neutral-50/50 dark:bg-neutral-800/50">
                             <TableRow className="border-b border-neutral-200 text-sm hover:bg-transparent dark:border-neutral-800">
+                                <TableHead className="w-24 font-bold text-neutral-800 dark:text-neutral-200">
+                                    ID
+                                </TableHead>
                                 <TableHead className="font-bold text-neutral-800 dark:text-neutral-200">
                                     Date de Journée
                                 </TableHead>
@@ -72,8 +79,8 @@ export default function Sessions({ sessions }: Props) {
                         </TableHeader>
 
                         <TableBody>
-                            {sessions.length > 0 ? (
-                                sessions.map((session) => {
+                            {sessions.data.length > 0 ? (
+                                sessions.data.map((session) => {
                                     const margin = calculateMargin(
                                         session.total_sell,
                                         session.total_buy,
@@ -87,6 +94,10 @@ export default function Sessions({ sessions }: Props) {
                                                 handleRowClick(session.id);
                                             }}
                                         >
+                                            <TableCell className="font-mono text-sm font-bold text-slate-700 dark:text-neutral-300">
+                                                #{session.id}
+                                            </TableCell>
+
                                             <TableCell className="font-medium text-slate-900 dark:text-neutral-100">
                                                 <div className="flex items-center gap-2">
                                                     <CalendarDays className="h-4 w-4 text-slate-400 dark:text-neutral-500" />
@@ -143,7 +154,7 @@ export default function Sessions({ sessions }: Props) {
                             ) : (
                                 <TableRow>
                                     <TableCell
-                                        colSpan={5}
+                                        colSpan={6}
                                         className="py-24 text-center font-medium text-muted-foreground italic dark:text-neutral-400"
                                     >
                                         Aucune session trouvée.
@@ -156,8 +167,60 @@ export default function Sessions({ sessions }: Props) {
                     <div className="flex items-center justify-between border-t border-neutral-200 bg-neutral-50/50 px-6 py-4 dark:border-neutral-800 dark:bg-neutral-800/50">
                         <div className="flex items-center gap-2 text-xs font-bold tracking-widest text-neutral-500 uppercase dark:text-neutral-400">
                             <CalendarDays className="h-4 w-4" />
-                            {sessions.length} Session
-                            {sessions.length > 1 ? 's' : ''} au total
+                            {sessions.total} Session
+                            {sessions.total > 1 ? 's' : ''} au total
+                        </div>
+
+                        <div className="flex gap-2">
+                            {sessions.links.map((link, i) => {
+                                const isPrevious =
+                                    link.label.includes('Previous');
+                                const isNext = link.label.includes('Next');
+
+                                if (!link.url && !link.active) {
+                                    return null;
+                                }
+
+                                return (
+                                    <Button
+                                        key={i}
+                                        variant={
+                                            link.active ? 'default' : 'outline'
+                                        }
+                                        size="sm"
+                                        className={cn(
+                                            'h-9 min-w-9 text-xs font-bold shadow-none transition-all dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700',
+                                            !link.url &&
+                                                'pointer-events-none cursor-not-allowed opacity-40',
+                                            link.active &&
+                                                'scale-105 shadow-md dark:bg-primary dark:text-primary-foreground',
+                                        )}
+                                        asChild={!!link.url}
+                                    >
+                                        {link.url ? (
+                                            <a href={link.url}>
+                                                {isPrevious ? (
+                                                    <ChevronLeft className="h-4 w-4" />
+                                                ) : isNext ? (
+                                                    <ChevronRight className="h-4 w-4" />
+                                                ) : (
+                                                    link.label
+                                                )}
+                                            </a>
+                                        ) : (
+                                            <span>
+                                                {isPrevious ? (
+                                                    <ChevronLeft className="h-4 w-4" />
+                                                ) : isNext ? (
+                                                    <ChevronRight className="h-4 w-4" />
+                                                ) : (
+                                                    link.label
+                                                )}
+                                            </span>
+                                        )}
+                                    </Button>
+                                );
+                            })}
                         </div>
                     </div>
                 </div>

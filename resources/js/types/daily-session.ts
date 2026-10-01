@@ -26,6 +26,17 @@ export interface SessionGroupData {
     total: number;
 }
 
+// Props for the paginated sessions index page.
+export interface SessionsIndexProps {
+    sessions: {
+        data: DailySession[];
+        links: { url: string | null; label: string; active: boolean }[];
+        current_page: number;
+        last_page: number;
+        total: number;
+    };
+}
+
 // Props lli kiy-wslo l-page SessionsShow
 export interface SessionDetailProps {
     session: DailySession;

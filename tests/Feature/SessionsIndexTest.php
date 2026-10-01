@@ -27,11 +27,11 @@ test('the sessions index page renders the sessions list', function () {
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('sessions')
-            ->has('sessions', 1)
-            ->where('sessions.0.id', $session->id)
-            ->where('sessions.0.status', 'open')
-            ->where('sessions.0.total_buy', 0)
-            ->where('sessions.0.total_sell', 0)
+            ->has('sessions.data', 1)
+            ->where('sessions.data.0.id', $session->id)
+            ->where('sessions.data.0.status', 'open')
+            ->where('sessions.data.0.total_buy', 0)
+            ->where('sessions.data.0.total_sell', 0)
         );
 });
 
