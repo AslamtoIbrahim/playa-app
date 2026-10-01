@@ -55,7 +55,7 @@ class DifferenceController extends Controller
 
         // 3. Union & Final Grouping
         // دابا الـ Union غيجمع الـ Diffs مع الـ Receipts لي محققين الشرط فقط
-        $combined = DB::query()->fromSub($diffs->unionAll($receipts), 'sub')
+        $reports = DB::query()->fromSub($diffs->unionAll($receipts), 'sub')
             ->select(
                 'customer_id',
                 'boat_id',
@@ -65,26 +65,29 @@ class DifferenceController extends Controller
             )
             ->groupBy('customer_id', 'boat_id', 'invoice_date')
             ->whereNotNull('boat_id')
-            ->get();
+            ->orderByDesc('invoice_date')
+            ->paginate(10);
 
-        $reports = $combined->map(function ($row) {
-            $customer = Customer::find($row->customer_id);
-            $boat = Boat::find($row->boat_id);
+        $reports->setCollection(
+            $reports->getCollection()->map(function ($row) {
+                $customer = Customer::find($row->customer_id);
+                $boat = Boat::find($row->boat_id);
 
-            if (! $customer || ! $boat) {
-                return null;
-            }
+                if (! $customer || ! $boat) {
+                    return null;
+                }
 
-            return (object) [
-                'customer_id' => $row->customer_id,
-                'boat_id' => $row->boat_id,
-                'invoice_date' => $row->invoice_date,
-                'total_diff_amount' => (float) $row->total_diff_amount,
-                'items_count' => (int) $row->total_items,
-                'customer' => $customer,
-                'boat_name' => $boat->name,
-            ];
-        })->filter()->values();
+                return (object) [
+                    'customer_id' => $row->customer_id,
+                    'boat_id' => $row->boat_id,
+                    'invoice_date' => $row->invoice_date,
+                    'total_diff_amount' => (float) $row->total_diff_amount,
+                    'items_count' => (int) $row->total_items,
+                    'customer' => $customer,
+                    'boat_name' => $boat->name,
+                ];
+            })->filter()->values()
+        );
 
         return Inertia::render('differences', [
             'reports' => $reports,

@@ -37,7 +37,7 @@ export default function Sessions({ sessions }: Props) {
         <>
             <Head title="Sessions Journalières" />
 
-            <div className="flex h-full flex-1 flex-col gap-4 bg-amber-300 p-4 lg:p-8">
+            <div className="flex h-full flex-1 flex-col gap-4 p-4 lg:p-8">
                 <div className="px-2">
                     <h1 className="text-2xl font-black tracking-tight text-neutral-900 uppercase dark:text-neutral-100">
                         Sessions Journalières
