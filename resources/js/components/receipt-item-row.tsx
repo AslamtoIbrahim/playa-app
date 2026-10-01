@@ -44,6 +44,7 @@ export default function ReceiptItemRow({
         isReadyToSave,
         submitSave,
         handleKeyDown,
+        handleBlur,
     } = useReceiptItem({ receiptId, item, isNew });
 
     const {
@@ -116,6 +117,7 @@ export default function ReceiptItemRow({
                     placeholder="0"
                     onChange={(e) => handleDataChange({ box: e.target.value })}
                     onKeyDown={handleKeyDown}
+                    onBlur={handleBlur}
                     className={cn(inputBaseClass, 'text-center font-medium')}
                 />
             </TableCell>
@@ -144,6 +146,7 @@ export default function ReceiptItemRow({
                     placeholder="0.00"
                     onChange={(e) => handleDataChange({ unit_count: e.target.value })}
                     onKeyDown={handleKeyDown}
+                    onBlur={handleBlur}
                     className={cn(inputBaseClass, 'text-center font-medium')}
                 />
             </TableCell>
@@ -157,6 +160,7 @@ export default function ReceiptItemRow({
                     placeholder="0.00"
                     onChange={(e) => handleDataChange({ real_price: e.target.value })}
                     onKeyDown={handleKeyDown}
+                    onBlur={handleBlur}
                     className={cn(inputBaseClass, 'pr-4 text-right')}
                 />
             </TableCell>

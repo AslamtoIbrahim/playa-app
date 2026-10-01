@@ -51,3 +51,20 @@
 
 ## 4. Response Guidelines
 - Keep responses direct and concise. Focus strictly on code and solutions without unnecessary conversational filler or introductory text.
+
+## 5. Language Rules (Strict)
+
+### User-Facing Content: French
+- Always write all user-facing frontend text in French.
+- This includes page titles, labels, buttons, placeholders, validation messages, alerts, dialogs, empty states, tooltips, and toast notifications.
+- Backend validation or error messages displayed to users must also be in French.
+
+### Development Content: English
+- Always write code, variable names, function names, class names, file names, database fields, routes, and technical identifiers in English.
+- Always write documentation, README files, Markdown files, code comments, PHPDoc, JSDoc/TSDoc, API documentation, changelogs, logs, and test descriptions in English.
+- Never use French or Arabic for development content unless explicitly requested.
+
+### Important Distinction
+- The conversation language must not affect the project language rules.
+- French is only for content visible to the end user.
+- English is required for everything intended for developers or internal technical use.
