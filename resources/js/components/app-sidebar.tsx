@@ -44,7 +44,7 @@ import {
     Tags,
     User,
     UserCheck,
-    Users
+    Users,
 } from 'lucide-react';
 
 const mainNavGroups: NavGroup[] = [
@@ -61,6 +61,11 @@ const mainNavGroups: NavGroup[] = [
     {
         title: 'Activité',
         items: [
+            {
+                title: 'Zones',
+                href: zones(),
+                icon: MapPin,
+            },
             {
                 title: 'Journées',
                 href: sessions(),
@@ -101,36 +106,6 @@ const mainNavGroups: NavGroup[] = [
                 href: payments(),
                 icon: Banknote,
             },
-            {
-                title: 'Cautions',
-                href: cautions(),
-                icon: ShieldCheck,
-            },
-        ],
-    },
-    {
-        title: 'Organisation',
-        items: [
-            {
-                title: 'Zones',
-                href: zones(),
-                icon: MapPin,
-            },
-            {
-                title: 'Bureaux',
-                href: officeRooms(),
-                icon: DoorOpen,
-            },
-            {
-                title: 'Bateaux',
-                href: boats(),
-                icon: Ship,
-            },
-            {
-                title: 'Ouvriers',
-                href: workers(),
-                icon: Users,
-            },
         ],
     },
     {
@@ -145,6 +120,31 @@ const mainNavGroups: NavGroup[] = [
                 title: 'Clients',
                 href: customers(),
                 icon: User,
+            },
+        ],
+    },
+    {
+        title: 'Organisation',
+        items: [
+            {
+                title: 'Bateaux',
+                href: boats(),
+                icon: Ship,
+            },
+            {
+                title: 'Ouvriers',
+                href: workers(),
+                icon: Users,
+            },
+            {
+                title: 'Cautions',
+                href: cautions(),
+                icon: ShieldCheck,
+            },
+            {
+                title: 'Bureaux',
+                href: officeRooms(),
+                icon: DoorOpen,
             },
         ],
     },
