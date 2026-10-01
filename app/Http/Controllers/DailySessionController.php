@@ -30,12 +30,7 @@ class DailySessionController extends Controller
      */
     public function index()
     {
-        // 1. جلب كاع المناطق المتاحة (للمقترحات في Dialog)
-        $zones = Zone::all(['id', 'name']);
-
-        // 2. جلب الـ Sessions مع الـ Zones المرتبطة بها
-        $sessions = DailySession::with('zones') // ضروري نزيدو هادي باش EditDialog يعرف الـ selected zones
-            ->latest('session_date')
+        $sessions = DailySession::latest('session_date')
             ->get()
             ->map(function ($session) {
                 // Les factures / bons / pointages sont rattachés au SessionZone, pas directement à la session.
@@ -53,9 +48,6 @@ class DailySessionController extends Controller
 
         return Inertia::render('sessions', [
             'sessions' => $sessions,
-            'zones' => $zones,
-            // غادي نحتاجو حتى التواريخ اللي ديجا محجوزة باش نـبلوكيوهم في الـ Calendar
-            // 'existingDates' => $sessions->pluck('session_date')->toArray(),
         ]);
     }
 
