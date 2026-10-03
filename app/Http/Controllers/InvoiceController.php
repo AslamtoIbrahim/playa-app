@@ -8,6 +8,7 @@ use App\Models\Company;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Item;
+use App\Models\Sale;
 use App\Models\SessionZone;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -136,6 +137,7 @@ class InvoiceController extends Controller
             'items.item',
             'items.boat',
             'items.differences.customer',
+            'items.saleItems.sale.customer',
             'sessionZone.dailySession', // Changed 'session' to 'sessionZone'
             'sessionZone.zone',
             'items.receiptItems' => function ($q) {
@@ -155,6 +157,12 @@ class InvoiceController extends Controller
             ? route('sessions.show', [$session->id])
             : route('invoices');
 
+        // Ventes de la même journée : la distribution d'une ligne d'achat ne
+        // peut se faire que vers une vente de la journée en cours.
+        $sales = $session
+            ? Sale::where('session_id', $session->id)->with('customer')->latest('id')->get()
+            : Sale::whereRaw('1 = 0')->get();
+
         return Inertia::render('invoice-show', [
             'invoice' => $invoice,
             'boats' => Boat::all(['id', 'name']),
@@ -170,6 +178,7 @@ class InvoiceController extends Controller
                 'type' => Company::class,
             ])),
             'customers' => Customer::all(['id', 'name']),
+            'sales' => $sales,
             'backUrl' => $backUrl,
         ]);
     }

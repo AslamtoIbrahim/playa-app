@@ -5,26 +5,33 @@ import { SaleItem } from '@/types/sale-item';
 import { Sale } from '@/types/sale';
 import { SaleStats } from '@/types/sale-stats';
 
+/**
+ * Export d'une vente : la vente est alimentée par les lignes de facture
+ * d'achat, chaque ligne affiche donc l'article, le bateau et la facture
+ * d'origine, la quantité vendue, le prix réel et l'écart en résultant.
+ */
 export function useSaleExport() {
     /**
-     * 1. Prepare data with technical keys
+     * 1. Normalisation des lignes en clés techniques.
      */
     const prepareData = (items: SaleItem[]) => {
         {
             return items.map((row) => {
                 {
-                    const totalAmount =
-                        Number(row.unit_count) * Number(row.unit_price);
+                    const invoiceItem = row.invoice_item;
 
                     return {
-                        boatName: row.boat?.name || '-',
-                        itemName: row.item?.name || '-',
-                        qty: row.unit_count,
-                        price: row.unit_price,
-                        unit: row.unit,
-                        weight: row.weight,
-                        amount: totalAmount,
-                        box: row.box,
+                        itemName: invoiceItem?.item?.name || '-',
+                        boatName: invoiceItem?.boat?.name || '-',
+                        invoiceNumber: invoiceItem?.invoice?.invoice_number
+                            ? `#${invoiceItem.invoice.invoice_number}`
+                            : '-',
+                        qty: Number(row.unit_count),
+                        realPrice: Number(row.real_price),
+                        unitPrice: Number(invoiceItem?.unit_price ?? 0),
+                        unit: invoiceItem?.unit || '',
+                        diff: Number(row.total_diff),
+                        value: Number(row.unit_count) * Number(row.real_price),
                     };
                 }
             });
@@ -32,7 +39,7 @@ export function useSaleExport() {
     };
 
     /**
-     * 2. Export Excel with numeric formatting
+     * 2. Export Excel (colonnes numériques formatées).
      */
     const exportToExcel = (sale: Sale, items: SaleItem[]) => {
         {
@@ -41,14 +48,14 @@ export function useSaleExport() {
             const excelData = data.map((d) => {
                 {
                     return {
-                        BATEAU: d.boatName,
                         ESPÈCES: d.itemName,
-                        'QTE / NC': Number(d.qty),
-                        'PRIX UNITAIRE': Number(d.price),
-                        UNITÉ: d.unit,
-                        'POIDS (KG)': Number(d.weight),
-                        CAISSES: Number(d.box),
-                        'VALEUR DH': Number(d.amount),
+                        BATEAU: d.boatName,
+                        FACTURE: d.invoiceNumber,
+                        'QTE / NC': d.qty,
+                        'PRIX RÉEL': d.realPrice,
+                        'P.U FACTURE': d.unitPrice,
+                        'DIFF TOTAL': d.diff,
+                        'VALEUR DH': d.value,
                     };
                 }
             });
@@ -60,9 +67,9 @@ export function useSaleExport() {
             for (let R = range.s.r + 1; R <= range.e.r; ++R) {
                 {
                     /**
-                     * Columns: C: QTE, D: PRICE, F: WEIGHT, G: BOX, H: AMOUNT
+                     * Colonnes: D: QTE, E: PRIX RÉEL, F: P.U, G: DIFF, H: VALEUR
                      */
-                    ['C', 'D', 'F', 'G', 'H'].forEach((col) => {
+                    ['D', 'E', 'F', 'G', 'H'].forEach((col) => {
                         {
                             const cell = worksheet[col + (R + 1)];
 
@@ -85,7 +92,7 @@ export function useSaleExport() {
     };
 
     /**
-     * 3. Export CSV
+     * 3. Export CSV.
      */
     const exportToCSV = (sale: Sale, items: SaleItem[]) => {
         {
@@ -104,7 +111,7 @@ export function useSaleExport() {
     };
 
     /**
-     * 4. Export PDF SALE
+     * 4. Export PDF de la vente.
      */
     const exportToPDF = (sale: Sale, items: SaleItem[], stats: SaleStats) => {
         {
@@ -112,58 +119,57 @@ export function useSaleExport() {
 
             const data = prepareData(items);
 
-            // Header - Style dyal l-Inspiration
             doc.setFontSize(18);
 
             doc.text(`VENTE #${sale.id}`, 14, 22);
 
             doc.setFontSize(10);
 
-            doc.text('PLAYA', 170, 22);
+            doc.text('PLAYA', 190, 22, { align: 'right' });
 
-            doc.text(sale.date, 170, 28);
+            doc.text(sale.date, 190, 28, { align: 'right' });
 
-            // Table
             autoTable(doc, {
                 startY: 40,
                 head: [
                     [
-                        'BATEAU',
                         'ESPÈCES',
+                        'BATEAU',
+                        'FACTURE',
                         'QTE',
-                        'P.U',
-                        'UNITÉ',
-                        'POIDS',
-                        'BOX',
-                        'TOTAL DH',
+                        'PRIX RÉEL',
+                        'P.U FACTURE',
+                        'DIFF',
+                        'VALEUR DH',
                     ],
                 ],
                 body: data.map((d) => {
                     {
                         return [
-                            d.boatName,
                             d.itemName,
+                            d.boatName,
+                            d.invoiceNumber,
                             d.qty,
-                            d.price,
-                            d.unit,
-                            d.weight,
-                            d.box,
-                            d.amount
+                            d.realPrice,
+                            d.unitPrice,
+                            d.diff
                                 .toLocaleString('fr-FR', {
                                     minimumFractionDigits: 2,
                                 })
                                 .replace(/\s/g, ' ')
                                 .replace(/\//g, '')
                                 .trim(),
+                            d.value.toLocaleString('fr-FR', {
+                                minimumFractionDigits: 2,
+                            }),
                         ];
                     }
                 }),
                 theme: 'grid',
-                headStyles: { fillColor: [15, 23, 42] }, // Darker Slate kif l-inspiration
+                headStyles: { fillColor: [15, 23, 42] },
                 styles: { fontSize: 8 },
             });
 
-            // Footer - Logic d l-Inspiration bach i-tla3 zwin
             const finalY = (doc as any).lastAutoTable.finalY + 10;
 
             doc.setFontSize(9);
@@ -176,7 +182,6 @@ export function useSaleExport() {
                 finalY + 6,
             );
 
-            // Cleaning l-prix kima derti f l-inspiration
             const cleanNetPrice = stats.formattedNetToPay
                 .replace(/\s/g, ' ')
                 .replace(/\//g, '')

@@ -2,11 +2,18 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * Distribution d'une ligne de facture d'achat vers une vente.
+ *
+ * Une même ligne de facture (invoice_item) peut être vendue en plusieurs
+ * fois, à des ventes différentes (donc des clients différents), jusqu'à
+ * épuisement de sa quantité. Les différences de prix restent une notion
+ * indépendante : elles n'affectent pas la quantité vendable.
+ */
 class SaleItem extends Model
 {
     use SoftDeletes;
@@ -15,15 +22,16 @@ class SaleItem extends Model
 
     protected $fillable = [
         'sale_id',
-        'item_id',
-        'boat_id',
-        'unit',
-        'box',
+        'invoice_item_id',
         'unit_count',
-        'unit_price',
-        'weight',
-        'amount',
-        'position'
+        'real_price',
+        'total_diff',
+    ];
+
+    protected $casts = [
+        'unit_count' => 'decimal:2',
+        'real_price' => 'decimal:2',
+        'total_diff' => 'decimal:2',
     ];
 
     /**
@@ -35,52 +43,34 @@ class SaleItem extends Model
     }
 
     /**
-     * العلاقة مع نوع السلعة
+     * Relation avec la ligne de facture d'achat d'origine.
      */
-    public function item(): BelongsTo
+    public function invoiceItem(): BelongsTo
     {
-        return $this->belongsTo(Item::class, 'item_id');
+        return $this->belongsTo(InvoiceItem::class, 'invoice_item_id');
     }
 
     /**
-     * العلاقة مع المركب (Mnin jaya l-sel3a)
-     */
-    public function boat(): BelongsTo
-    {
-        return $this->belongsTo(Boat::class, 'boat_id');
-    }
-
-    /**
-     * Logic dyal l-calcul o l-automations
+     * Calcul de l'écart réel et rafraîchissement des totaux de la vente.
      */
     protected static function boot()
     {
         parent::boot();
 
-        // 1. حساب الـ amount تلقائياً (unit_count * unit_price)
+        // 1. Écart réel = (prix réel - prix unitaire facturé) * quantité
         static::saving(function ($item) {
-            $item->amount = $item->unit_count * $item->unit_price;
+            $unitPrice = (float) ($item->invoiceItem?->unit_price ?? 0);
+
+            $item->total_diff = ((float) $item->real_price - $unitPrice) * (float) $item->unit_count;
         });
 
-        // 2. تحديث طوطال ديال Sale مورا كل تغيير (Save, Update, Delete)
+        // 2. Totaux de la vente recalculés après chaque changement (Save, Update, Delete)
         static::saved(function ($item) {
-            $item->sale->calculateTotals();
+            $item->sale?->calculateTotals();
         });
 
         static::deleted(function ($item) {
-            $item->sale->calculateTotals();
-        });
-
-        // 3. الترتيب التلقائي (Positioning)
-        static::creating(function ($item) {
-            if (is_null($item->position)) {
-                $item->position = static::where('sale_id', $item->sale_id)->max('position') + 1;
-            }
-        });
-
-        // 4. Global Scope باش السطور يخرجوا ديما مرتبين بـ position
-        static::addGlobalScope('order', function (Builder $builder) {
-            $builder->orderBy('position', 'asc');
+            $item->sale?->calculateTotals();
         });
     }
 }

@@ -2,167 +2,117 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\InvoiceItem;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Distribution des lignes de facture d'achat vers les ventes.
+ *
+ * Une ligne de facture peut être vendue en plusieurs fois, à des ventes
+ * différentes (donc à des clients différents), jusqu'à épuisement de sa
+ * quantité. Le prix réel de chaque vente génère son propre écart
+ * (`total_diff`), indépendamment des différences de prix déjà réparties.
+ */
 class SaleItemController extends Controller
 {
     /**
-     * 1. إضافة سطر جديد (Single Store)
+     * 1. Enregistrer la vente d'une (partie de) ligne de facture d'achat.
      */
-    public function store(Request $request, Sale $sale)
+    public function store(Request $request)
     {
         $validated = $request->validate([
-            'boat_id'    => 'nullable|exists:boats,id',
-            'item_id'    => 'nullable|exists:items,id',
-            'unit_count' => 'required|numeric',
-            'unit_price' => 'required|numeric',
-            'weight'     => 'nullable|numeric',
-            'unit'       => 'nullable|string',
-            'box'        => 'nullable|integer',
-            'target_id'  => 'nullable|exists:sale_items,id',
-            'direction'  => 'nullable|in:above,below',
+            'sale_id' => 'required|exists:sales,id',
+            'invoice_item_id' => 'required|exists:invoice_items,id',
+            'unit_count' => 'required|numeric|min:0.01',
+            'real_price' => 'required|numeric|min:0',
         ]);
 
-        DB::transaction(function () use ($request, $sale, $validated) {
-            $position = 0;
+        return DB::transaction(function () use ($validated) {
+            $sale = Sale::findOrFail($validated['sale_id']);
 
-            if ($request->filled('target_id') && $request->filled('direction')) {
-                $targetItem = SaleItem::findOrFail($validated['target_id']);
-                $position = ($validated['direction'] === 'above') ? $targetItem->position : $targetItem->position + 1;
-                $sale->items()->where('position', '>=', $position)->increment('position');
-            } else {
-                $position = ($sale->items()->max('position') ?? -1) + 1;
+            $invoiceItem = InvoiceItem::with('invoice.sessionZone')->findOrFail($validated['invoice_item_id']);
+
+            // La vente doit appartenir à la même journée que la facture d'achat.
+            $invoiceSessionId = $invoiceItem->invoice?->sessionZone?->daily_session_id;
+
+            if ($invoiceSessionId === null || (int) $sale->session_id !== (int) $invoiceSessionId) {
+                return back()->with('error', 'La vente doit appartenir à la même journée que la facture.');
             }
 
-            $sale->items()->create(array_merge($validated, ['position' => $position]));
-            
-            // L-Model boot method gha t-calculi l-totals bouhdha
-        });
+            // La quantité vendable restante ne dépend que des ventes déjà faites :
+            // les différences de prix restent une notion indépendante.
+            $distributed = (float) $invoiceItem->saleItems()->sum('unit_count');
 
-        return back()->with('success', 'Ligne ajoutée.');
-    }
+            $remaining = (float) $invoiceItem->unit_count - $distributed;
 
-    /**
-     * 2. تحديث سطر (Update)
-     */
-    public function update(Request $request, Sale $sale, SaleItem $item)
-    {
-        $validated = $request->validate([
-            'item_id'    => 'nullable|exists:items,id',
-            'boat_id'    => 'nullable|exists:boats,id',
-            'unit_count' => 'nullable|numeric',
-            'unit_price' => 'nullable|numeric',
-            'weight'     => 'nullable|numeric',
-            'unit'       => 'nullable|string',
-            'box'        => 'nullable|integer',
-        ]);
-
-        $item->update($validated);
-
-        return back()->with('success', 'Ligne mise à jour.');
-    }
-
-    /**
-     * 3. إضافة مجموعة سطور (Bulk Store)
-     */
-    public function bulkStore(Request $request, Sale $sale)
-    {
-        $validated = $request->validate([
-            'items' => 'required|array',
-            'items.*.boat_id'    => 'nullable|exists:boats,id',
-            'items.*.item_id'    => 'nullable|exists:items,id',
-            'items.*.unit_count' => 'required|numeric',
-            'items.*.unit_price' => 'required|numeric',
-            'items.*.unit'       => 'required|string',
-            'items.*.box'        => 'nullable|integer',
-            'items.*.weight'     => 'nullable|numeric',
-        ]);
-
-        DB::transaction(function () use ($sale, $validated) {
-            $lastPosition = $sale->items()->max('position') ?? -1;
-
-            foreach ($validated['items'] as $index => $itemData) {
-                $sale->items()->create(array_merge($itemData, [
-                    'position' => $lastPosition + ($index + 1)
-                ]));
+            if ((float) $validated['unit_count'] > $remaining) {
+                return back()->with('error', "Quantité insuffisante ! Max: $remaining");
             }
-        });
 
-        return back()->with('success', 'Articles importés.');
+            $invoiceItem->saleItems()->create([
+                'sale_id' => $sale->id,
+                'unit_count' => $validated['unit_count'],
+                'real_price' => $validated['real_price'],
+            ]);
+
+            return back()->with([
+                'success' => 'Vente enregistrée ! ✅',
+                'updated_item' => $invoiceItem->fresh()->load('saleItems.sale.customer'),
+            ]);
+        });
     }
 
     /**
-     * 4. تكرار السطور (Duplicate Many)
+     * 2. Mettre à jour une distribution (quantité et/ou prix réel).
      */
-    public function duplicateMany(Request $request, Sale $sale)
+    public function update(Request $request, SaleItem $saleItem)
     {
         $validated = $request->validate([
-            'ids' => 'required|array',
-            'ids.*' => 'exists:sale_items,id'
+            'unit_count' => 'nullable|numeric|min:0.01',
+            'real_price' => 'nullable|numeric|min:0',
         ]);
 
-        DB::transaction(function () use ($sale, $validated) {
-            $items = $sale->items()->whereIn('id', $validated['ids'])->orderBy('position', 'asc')->get();
-            $lastPos = $items->max('position');
-            
-            $sale->items()->where('position', '>', $lastPos)->increment('position', $items->count());
+        return DB::transaction(function () use ($validated, $saleItem) {
+            $invoiceItem = $saleItem->invoiceItem;
 
-            foreach ($items as $index => $item) {
-                $newItem = $item->replicate();
-                $newItem->position = $lastPos + ($index + 1);
-                $newItem->save();
+            $newCount = $validated['unit_count'] ?? $saleItem->unit_count;
+
+            if ($invoiceItem) {
+                $otherDistributed = (float) $invoiceItem->saleItems()
+                    ->where('id', '!=', $saleItem->id)
+                    ->sum('unit_count');
+
+                $remaining = (float) $invoiceItem->unit_count - $otherDistributed;
+
+                if ((float) $newCount > $remaining) {
+                    return back()->with('error', "Quantité insuffisante ! Max: $remaining");
+                }
             }
+
+            $saleItem->update([
+                'unit_count' => $newCount,
+                'real_price' => $validated['real_price'] ?? $saleItem->real_price,
+            ]);
+
+            return back()->with('success', 'Ligne mise à jour.');
         });
-
-        return back()->with('success', 'Lignes dupliquées.');
     }
 
     /**
-     * 5. ترتيب السطور (Reorder)
+     * 3. Supprimer une distribution (la quantité redevient vendable).
      */
-    public function reorder(Request $request, Sale $sale)
+    public function destroy(SaleItem $saleItem)
     {
-        $validated = $request->validate([
-            'items' => 'required|array',
-            'items.*' => 'exists:sale_items,id'
+        $invoiceItem = $saleItem->invoiceItem;
+
+        $saleItem->delete();
+
+        return back()->with([
+            'success' => 'Supprimée ! ✅',
+            'updated_item' => $invoiceItem?->fresh()->load('saleItems.sale.customer'),
         ]);
-
-        DB::transaction(function () use ($validated, $sale) {
-            foreach ($validated['items'] as $index => $id) {
-                $sale->items()->where('id', $id)->update(['position' => $index]);
-            }
-        });
-
-        return back()->with('success', 'Ordre mis à jour.');
-    }
-
-    /**
-     * 6. حذف سطر (Destroy)
-     */
-    public function destroy(Sale $sale, SaleItem $item)
-    {
-        $item->delete(); // L-Model hook gha i-update l-totals
-        return back()->with('success', 'Ligne supprimée.');
-    }
-
-    /**
-     * 7. حذف مجموعة سطور (Destroy Many)
-     */
-    public function destroyMany(Request $request, Sale $sale)
-    {
-        $validated = $request->validate([
-            'ids' => 'required|array',
-            'ids.*' => 'integer|exists:sale_items,id'
-        ]);
-
-        $sale->items()->whereIn('id', $validated['ids'])->delete();
-        
-        $sale->refresh();
-        $sale->calculateTotals();
-
-        return back()->with('success', 'Lignes supprimées.');
     }
 }

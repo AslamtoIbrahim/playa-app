@@ -18,7 +18,7 @@ import {
     verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { Head, router } from '@inertiajs/react';
-import { ArrowLeft, Camera, Copy, Printer, Trash2, X } from 'lucide-react';
+import { ArrowLeft, Camera, Copy, Printer, ShoppingCart, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 
 // UI Components
@@ -42,6 +42,7 @@ import { useInvoiceCalculations } from '@/hooks/use-invoice-calculations';
 
 // Types & Routes
 import { DifferenceDialog } from '@/components/difference-dialog';
+import { SaleDialog } from '@/components/sale-dialog';
 import { ExportDropdown } from '@/components/export-dropdown';
 import { ImportItemsDialog } from '@/components/import-items-dialog';
 import { InvoicePrintFooter } from '@/components/print-invoice-footer';
@@ -62,6 +63,7 @@ import { Customer } from '@/types/customer';
 import { Invoice } from '@/types/invoice';
 import { InvoiceItem } from '@/types/invoice-item';
 import { Item } from '@/types/item';
+import { Sale } from '@/types/sale';
 import { toast } from 'sonner';
 
 interface Props {
@@ -71,6 +73,8 @@ interface Props {
     owners: Owner[];
     categories: Category[];
     customers: Customer[];
+    /** Ventes de la même journée : seules cibles possibles pour une vente. */
+    sales: Sale[];
     /** URL de retour explicite fournie par le backend (journée liée ou liste). */
     backUrl: string;
 }
@@ -82,6 +86,7 @@ export default function InvoiceShow({
     owners,
     categories,
     customers,
+    sales,
     backUrl,
 }: Props) {
     // --- State Management (Manual Synchronization) ---
@@ -97,6 +102,10 @@ export default function InvoiceShow({
     const [diffItem, setDiffItem] = useState<InvoiceItem | null>(null);
     const [isDiffOpen, setIsDiffOpen] = useState(false);
 
+    // State لـ Sale Dialog (Vente) : les lignes de facture à vendre
+    const [saleItemIds, setSaleItemIds] = useState<number[]>([]);
+    const [isSaleOpen, setIsSaleOpen] = useState(false);
+
     // فـ Show.tsx
     if (invoice.items !== prevItems) {
         setPrevItems(invoice.items);
@@ -111,6 +120,15 @@ export default function InvoiceShow({
             }
         }
     }
+
+    /**
+     * Lignes de facture affichées dans le dialogue de vente, toujours
+     * rafraîchies depuis les props Inertia : après chaque vente, les lignes
+     * déjà vendues et le restant se mettent à jour sans refermer le dialogue.
+     */
+    const saleItems = saleItemIds
+        .map((id) => invoice.items?.find((item) => item.id === id))
+        .filter((item): item is InvoiceItem => Boolean(item));
 
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -271,6 +289,24 @@ export default function InvoiceShow({
         setIsDiffOpen(true);
     };
 
+    /** Vente d'une seule ligne de facture (action du menu de ligne). */
+    const handleOpenSale = (item: InvoiceItem) => {
+        setSaleItemIds([item.id]);
+        setIsSaleOpen(true);
+    };
+
+    /** Vente de toutes les lignes cochées (vendre une sélection d'un coup). */
+    const handleOpenSaleSelection = () => {
+        if (selectedIds.length === 0) {
+            {
+                return;
+            }
+        }
+
+        setSaleItemIds(selectedIds);
+        setIsSaleOpen(true);
+    };
+
     return (
         <div className="mx-auto min-h-screen max-w-7xl space-y-5 bg-white p-6 font-sans text-slate-900 dark:bg-neutral-950 dark:text-neutral-100">
             <Head title={`Facture ${invoice.invoice_number}`} />
@@ -337,6 +373,14 @@ export default function InvoiceShow({
                                 onClick={handleBulkDuplicate}
                             >
                                 <Copy className="h-3.5 w-3.5" /> Dupliquer
+                            </Button>
+                            <Button
+                                variant="default"
+                                size="sm"
+                                className="h-8 gap-2 bg-emerald-600 text-xs text-white hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500"
+                                onClick={handleOpenSaleSelection}
+                            >
+                                <ShoppingCart className="h-3.5 w-3.5" /> Vente
                             </Button>
                             <Button
                                 variant="destructive"
@@ -428,6 +472,7 @@ export default function InvoiceShow({
                                 categories={categories}
                                 isNew={true}
                                 onOpenDifference={() => {}} // New row doesn't need this
+                                onOpenSale={() => {}} // New row doesn't need this
                             />
 
                             <SortableContext
@@ -454,6 +499,7 @@ export default function InvoiceShow({
                                             );
                                         }}
                                         onOpenDifference={handleOpenDifference}
+                                        onOpenSale={handleOpenSale}
                                     />
                                 ))}
                             </SortableContext>
@@ -504,6 +550,17 @@ export default function InvoiceShow({
                     customers={customers}
                     items={items}
                     categories={categories}
+                />
+            )}
+
+            {/* Sale Dialog Component (Vente) */}
+            {isSaleOpen && saleItems.length > 0 && (
+                <SaleDialog
+                    key={saleItems.map((item) => item.id).join('-')}
+                    open={isSaleOpen}
+                    onOpenChange={setIsSaleOpen}
+                    items={saleItems}
+                    sales={sales}
                 />
             )}
         </div>

@@ -7,9 +7,10 @@ export const useSaleCalculations = (sale: Sale) => {
             const netToPay = Number(sale.amount || 0);
             const totalBoxes = Number(sale.boxes || 0);
             const totalWeight = Number(sale.weight || 0);
-            
-            // Total HT f l-bi3 (bla sandaq)
-            const totalHT = netToPay - totalBoxes;
+
+            // Le net à payer est déjà le total des lignes (aucun frais de
+            // caisse ajouté côté vente) : le HT est donc égal au montant.
+            const totalHT = netToPay;
 
             const formatCurrency = (amount: number) => {
                 {

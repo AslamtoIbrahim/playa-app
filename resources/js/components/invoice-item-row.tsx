@@ -41,6 +41,7 @@ interface Props {
     selected?: boolean;
     onSelectChange?: (checked: boolean) => void;
     onOpenDifference: (item: InvoiceItem) => void;
+    onOpenSale: (item: InvoiceItem) => void;
     owners: Owner[];
     categories: Category[];
 }
@@ -54,6 +55,7 @@ export default function InvoiceItemRow({
     selected,
     onSelectChange,
     onOpenDifference,
+    onOpenSale,
     owners,
     categories,
 }: Props) {
@@ -456,6 +458,7 @@ export default function InvoiceItemRow({
                                     item={item!}
                                     data={data}
                                     onOpenDifference={onOpenDifference}
+                                    onOpenSale={onOpenSale}
                                 />
                             </div>
                         )}

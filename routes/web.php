@@ -184,17 +184,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('sales/{sale}', [SaleController::class, 'update'])->name('sales.update');
     Route::delete('sales/{sale}', [SaleController::class, 'destroy'])->name('sales.destroy');
 
-    // --- Sale Items (Details) Routes ---
-    // 1. Bulk Operations (Store, Duplicate, Delete)
-    Route::post('sales/{sale}/items/bulk', [SaleItemController::class, 'bulkStore'])->name('sales.items.bulkStore');
-    Route::post('sales/{sale}/items/bulk-duplicate', [SaleItemController::class, 'duplicateMany'])->name('sales.items.duplicateMany');
-    Route::delete('sales/{sale}/items/bulk-delete', [SaleItemController::class, 'destroyMany'])->name('sales.items.destroyMany');
-
-    // 2. Standard CRUD & Reorder
-    Route::post('sales/{sale}/items', [SaleItemController::class, 'store'])->name('sales.items.store');
-    Route::patch('sales/{sale}/items/{item}', [SaleItemController::class, 'update'])->name('sales.items.update');
-    Route::delete('sales/{sale}/items/{item}', [SaleItemController::class, 'destroy'])->name('sales.items.destroy');
-    Route::post('sales/{sale}/items/reorder', [SaleItemController::class, 'reorder'])->name('sales.items.reorder');
+    // --- Sale Items (Distribution d'une ligne de facture vers une vente) ---
+    Route::post('sale-items', [SaleItemController::class, 'store'])->name('sale-items.store');
+    Route::patch('sale-items/{saleItem}', [SaleItemController::class, 'update'])->name('sale-items.update');
+    Route::delete('sale-items/{saleItem}', [SaleItemController::class, 'destroy'])->name('sale-items.destroy');
 
     // --- Workers Routes ---
     Route::get('workers', [WorkerController::class, 'index'])->name('workers');

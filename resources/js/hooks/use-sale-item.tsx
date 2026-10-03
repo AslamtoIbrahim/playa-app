@@ -1,4 +1,4 @@
-import { store, update } from '@/routes/sales/items';
+import { store, update } from '@/routes/sale-items';
 import { SaleItem } from '@/types/sale-item';
 import { router } from '@inertiajs/react';
 import { KeyboardEvent, useState } from 'react';
@@ -9,19 +9,19 @@ interface UseSaleItemProps {
     isNew?: boolean;
 }
 
-export function useSaleItem({ saleId, item, isNew }: UseSaleItemProps) {
+export function useSaleItem({ item, isNew }: UseSaleItemProps) {
     const [loading, setLoading] = useState(false);
     const [openBoat, setOpenBoat] = useState(false);
     const [openItem, setOpenItem] = useState(false);
 
     const [data, setData] = useState({
-        boat_id: item?.boat_id || '',
-        item_id: item?.item_id || '',
-        unit_count: item?.unit_count || '',
-        unit_price: item?.unit_price || '',
-        unit: item?.unit || 'caisse',
-        box: item?.box || '',
-        weight: item?.weight || '',
+        boat_id: '',
+        item_id: item?.invoice_item_id?.toString() || '',
+        unit_count: item?.unit_count?.toString() || '',
+        unit_price: item?.real_price?.toString() || '',
+        unit: 'caisse',
+        box: '',
+        weight: '',
     });
 
     const count = Number(data.unit_count) || 0;
@@ -92,44 +92,45 @@ export function useSaleItem({ saleId, item, isNew }: UseSaleItemProps) {
 
         setLoading(true);
 
-        const url = isNew
-            ? store(saleId)
-            : update({ sale: saleId, item: item!.id });
-
         const payload = {
             ...currentData,
             box: currentData.unit === 'caisse' ? currentData.unit_count : currentData.box,
             weight: currentData.weight.toString(),
-            _method: isNew ? 'POST' : 'PATCH',
         };
 
-        router.post(
-            url,
-            payload,
-            {
-                preserveScroll: true,
-                onSuccess: () => {
-                    if (isNew) {
-                        {
-                            setData({
-                                boat_id: '',
-                                item_id: '',
-                                unit_count: '',
-                                unit_price: '',
-                                unit: 'caisse',
-                                box: '',
-                                weight: '',
-                            });
-                        }
-                    }
-                },
-                onFinish: () => {
+        const options = {
+            preserveScroll: true,
+            onSuccess: () => {
+                if (isNew) {
                     {
-                        setLoading(false);
+                        setData({
+                            boat_id: '',
+                            item_id: '',
+                            unit_count: '',
+                            unit_price: '',
+                            unit: 'caisse',
+                            box: '',
+                            weight: '',
+                        });
                     }
-                },
+                }
             },
-        );
+            onFinish: () => {
+                {
+                    setLoading(false);
+                }
+            },
+        };
+
+        if (isNew) {
+            {
+                router.post(store(), payload, options);
+            }
+        } else if (item) {
+            {
+                router.patch(update(item.id), payload, options);
+            }
+        }
     };
 
     const handleKeyDown = (

@@ -85,7 +85,7 @@ class DailySessionController extends Controller
 
         // 2. Ventes data & tracking
         $sales = Sale::where('session_id', $session->id)
-            ->with(['customer', 'items.item', 'items.boat'])
+            ->with(['customer', 'items.invoiceItem.item', 'items.invoiceItem.boat'])
             ->get();
 
         $saleInvoices = Invoice::whereIn('session_zone_id', $sessionZoneIds)

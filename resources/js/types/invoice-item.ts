@@ -3,6 +3,7 @@ import { Difference } from './difference';
 import type { Invoice } from './invoice';
 import { Item } from './item';
 import { ReceiptItem } from './receipt-item';
+import { SaleItem } from './sale-item';
 
 export interface InvoiceItem {
     id: number;
@@ -23,6 +24,7 @@ export interface InvoiceItem {
 
     differences?: Difference[];
     receipt_items?: ReceiptItem[];
+    sale_items?: SaleItem[];
 }
 
 export interface InvoiceItemFormData {

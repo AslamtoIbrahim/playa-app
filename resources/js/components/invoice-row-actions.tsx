@@ -8,16 +8,17 @@ import {
 import { store, destroy } from "@/routes/invoices/items"; // تأكدت من إضافة destroy هنا
 import { InvoiceItem } from "@/types/invoice-item";
 import { router } from "@inertiajs/react";
-import { ArrowDownToLine, ArrowUpToLine, Copy, MoreVertical, Scale, Trash2 } from "lucide-react";
+import { ArrowDownToLine, ArrowUpToLine, Copy, MoreVertical, Scale, ShoppingCart, Trash2 } from "lucide-react";
 
 interface InvoiceRowActionsProps {
     invoiceId: number;
     item: InvoiceItem;
     data: any;
     onOpenDifference: (item: InvoiceItem) => void; // إضافة prop لفتح الـ Dialog
+    onOpenSale: (item: InvoiceItem) => void; // فتح dialogue البيع
 }
 
-export function InvoiceRowActions({ invoiceId, item, data, onOpenDifference }: InvoiceRowActionsProps) {
+export function InvoiceRowActions({ invoiceId, item, data, onOpenDifference, onOpenSale }: InvoiceRowActionsProps) {
 
     const handleAddRow = (direction: 'above' | 'below', duplicate: boolean = false) => {
         router.post(store(invoiceId), {
@@ -54,6 +55,11 @@ export function InvoiceRowActions({ invoiceId, item, data, onOpenDifference }: I
                 <DropdownMenuItem onClick={() => onOpenDifference(item)} className="cursor-pointer text-xs font-medium text-blue-600 focus:text-blue-700 focus:bg-blue-50">
                     <Scale className="mr-2 h-4 w-4" />
                     Répartition (Difference)
+                </DropdownMenuItem>
+
+                <DropdownMenuItem onClick={() => onOpenSale(item)} className="cursor-pointer text-xs font-medium text-emerald-600 focus:text-emerald-700 focus:bg-emerald-50">
+                    <ShoppingCart className="mr-2 h-4 w-4" />
+                    Vente
                 </DropdownMenuItem>
 
                 <DropdownMenuSeparator />

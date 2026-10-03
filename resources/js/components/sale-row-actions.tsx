@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 // Wayfinder functions
-import { store, destroy } from "@/routes/sales/items";
+import { store, destroy } from "@/routes/sale-items";
 
 // Types & Logic
 import { SaleItem } from "@/types/sale-item";
@@ -23,7 +23,8 @@ interface SaleRowActionsProps {
 export function SaleRowActions({ saleId, item, data }: SaleRowActionsProps) {
 
     const handleAddRow = (direction: 'above' | 'below', duplicate: boolean = false) => {
-        router.post(store(saleId), {
+        router.post(store(), {
+            sale_id: saleId,
             ...(duplicate ? data : {
                 boat_id: null,
                 item_id: null,
@@ -40,7 +41,7 @@ export function SaleRowActions({ saleId, item, data }: SaleRowActionsProps) {
     };
 
     const handleDelete = () => {
-        router.delete(destroy([saleId, item.id]), {
+        router.delete(destroy(item.id), {
             preserveScroll: true,
         });
     };

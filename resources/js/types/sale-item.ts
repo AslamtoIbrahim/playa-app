@@ -1,21 +1,41 @@
-import { Boat } from './boat';
-import { Item } from './item';
+import type { InvoiceItem } from './invoice-item';
+import type { Sale } from './sale';
 
+/**
+ * Distribution d'une ligne de facture d'achat vers une vente.
+ *
+ * Une ligne de facture peut être vendue en plusieurs fois (et donc à
+ * plusieurs clients) jusqu'à épuisement de sa quantité.
+ */
 export interface SaleItem {
     id: number;
     sale_id: number;
-    item_id: number;
-    boat_id: number;
-    unit: string;
+    invoice_item_id: number;
+
+    // Quantité vendue sur cette ligne
     unit_count: number;
-    unit_price: number;
-    weight: number;
-    amount: number;
-    box: number;
-    position: number;
+
+    // Prix réel pratiqué
+    real_price: number;
+
+    // Écart réel = (real_price - invoice_item.unit_price) * unit_count
+    total_diff: number;
+
     // Relationships loaded from backend
-    item?: Item;
-    boat?: Boat;
+    sale?: Sale;
+    invoice_item?: InvoiceItem;
+
     created_at?: string;
     updated_at?: string;
+    deleted_at?: string | null;
+}
+
+/**
+ * Charge utile envoyée au backend lors de la vente d'une ligne de facture.
+ */
+export interface SaleItemRequest {
+    sale_id: number;
+    invoice_item_id: number;
+    unit_count: number;
+    real_price: number;
 }

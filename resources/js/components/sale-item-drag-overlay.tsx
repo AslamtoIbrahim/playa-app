@@ -13,7 +13,7 @@ const SaleItemDragOverlay = ({ items }: Props) => {
                 <TableBody>
                     {items.map((item) => {
                         {
-                            const totalAmount = Number(item.unit_count) * Number(item.unit_price);
+                            const totalAmount = Number(item.unit_count) * Number(item.real_price);
 
                             return (
                                 <TableRow 
@@ -32,12 +32,12 @@ const SaleItemDragOverlay = ({ items }: Props) => {
 
                                     {/* Bateau */}
                                     <TableCell className="text-xs font-medium py-2 min-w-45">
-                                        {item.boat?.name || '-'}
+                                        {item.invoice_item?.boat?.name || '-'}
                                     </TableCell>
 
                                     {/* Espèce */}
                                     <TableCell className="text-xs py-2 text-slate-600 min-w-45">
-                                        {item.item?.name || '-'}
+                                        {item.invoice_item?.item?.name || '-'}
                                     </TableCell>
 
                                     {/* Qte / NC */}
@@ -47,22 +47,22 @@ const SaleItemDragOverlay = ({ items }: Props) => {
 
                                     {/* Prix Unitaire */}
                                     <TableCell className="w-28 text-right text-xs py-2 pr-4">
-                                        {Number(item.unit_price).toFixed(2)}
+                                        {Number(item.real_price).toFixed(2)}
                                     </TableCell>
 
                                     {/* Unité */}
                                     <TableCell className="w-24 text-center text-[10px] font-bold py-2 text-slate-500 uppercase">
-                                        {item.unit}
+                                        {item.invoice_item?.unit}
                                     </TableCell>
 
                                     {/* Poids */}
                                     <TableCell className="w-24 text-center text-xs py-2 text-slate-500">
-                                        {Number(item.weight).toFixed(2)}
+                                        {Number(item.invoice_item?.weight ?? 0).toFixed(2)}
                                     </TableCell>
 
                                     {/* Caisses */}
                                     <TableCell className="w-24 text-center text-xs py-2 text-slate-500">
-                                        {Number(item.box)}
+                                        {Number(item.invoice_item?.box ?? 0)}
                                     </TableCell>
 
 

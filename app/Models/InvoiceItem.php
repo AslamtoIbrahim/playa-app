@@ -2,9 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\Boat;
-use App\Models\Invoice;
-use App\Models\Item;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -26,7 +23,7 @@ class InvoiceItem extends Model
         'unit_price',
         'weight',
         'amount',
-        'position' // زدنا هادي باش نقدروا نسيفيو الترتيب الجديد
+        'position', // زدنا هادي باش نقدروا نسيفيو الترتيب الجديد
     ];
 
     /**
@@ -61,10 +58,17 @@ class InvoiceItem extends Model
         return $this->belongsTo(Boat::class, 'boat_id');
     }
 
-
     public function differences(): HasMany
     {
         return $this->hasMany(Difference::class)->orderBy('position', 'asc');
+    }
+
+    /**
+     * Les distributions de cette ligne vers des ventes.
+     */
+    public function saleItems(): HasMany
+    {
+        return $this->hasMany(SaleItem::class, 'invoice_item_id');
     }
 
     /**
@@ -79,7 +83,7 @@ class InvoiceItem extends Model
             $item->amount = $item->unit_count * $item->unit_price;
         });
 
-        // 2. تحديث جميع الفروقات (Differences) فور تغيير الثمن الرئيسي
+        // 2. تحديث جميع الفروقات (Differences) و SALE ITEMS فور تغيير الثمن الرئيسي
         static::updated(function ($item) {
             // نتحقق أولاً هل تغير الثمن فعلاً لتجنب الحلقات اللانهائية
             if ($item->wasChanged('unit_price')) {
@@ -88,6 +92,13 @@ class InvoiceItem extends Model
                     // total_diff = (الثمن الحقيقي - الثمن الجديد في الفاتورة) * الكمية
                     $diff->total_diff = ($diff->real_price - $item->unit_price) * $diff->unit_count;
                     $diff->save();
+                }
+
+                foreach ($item->saleItems as $saleItem) {
+                    // نفس المنطق بالنسبة لبيع الجزء من هذه الخط: الفرق الحقيقي
+                    // = (الثمن الحقيقي - الثمن الجديد في الفاتورة) * الكمية المبيعة
+                    $saleItem->total_diff = ($saleItem->real_price - $item->unit_price) * $saleItem->unit_count;
+                    $saleItem->save();
                 }
             }
         });

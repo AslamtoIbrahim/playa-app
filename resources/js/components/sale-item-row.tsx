@@ -137,7 +137,7 @@ export default function SaleItemRow({
                     }}
                     onSelect={(id) => {
                         {
-                            handleDataChange({ boat_id: id });
+                            handleDataChange({ boat_id: String(id) });
                             setOpenBoat(false);
                         }
                     }}
@@ -163,7 +163,7 @@ export default function SaleItemRow({
                             const isPoulpe = selectedItem?.name?.toLowerCase().includes('poulpe') || selectedItem?.name?.toLowerCase().includes('بولبو');
 
                             handleDataChange({
-                                item_id: id,
+                                item_id: String(id),
                                 unit: isPoulpe ? 'kg' : 'caisse'
                             });
 

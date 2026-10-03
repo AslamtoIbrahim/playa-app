@@ -19,7 +19,7 @@ class Sale extends Model
         'type', // 'normal' ou 'usine'
         'amount',
         'boxes',
-        'weight'
+        'weight',
     ];
 
     /**
@@ -47,39 +47,59 @@ class Sale extends Model
     }
 
     /**
-     * العناصر المرتبطة بالبيع (Items)
+     * Les lignes de distribution de la vente (alimentées par les factures d'achat).
      */
     public function items(): HasMany
     {
-        return $this->hasMany(SaleItem::class)->orderBy('position', 'asc');
+        return $this->hasMany(SaleItem::class);
     }
 
     /**
-     * Calcul automatique des totaux (Total HT + Boxes)
-     * Bla TVA hit hadi Sale machi Invoice
+     * Calcul automatique des totaux (Total HT + Boxes + Poids).
+     *
+     * La vente est alimentée par les lignes de facture d'achat : le montant se
+     * calcule au prix réel pratiqué, et le poids / caisses sont repris au
+     * prorata de la quantité achetée sur chaque ligne de facture.
      */
     public function calculateTotals()
     {
-        $items = $this->items()->get();
+        $items = $this->items()->with('invoiceItem')->get();
 
-        // 1. Somme des montants (unit_count * unit_price)
-        $totalHT = $items->sum('amount');
+        // 1. Somme des montants (unit_count * real_price)
+        $totalHT = $items->sum(function ($item) {
+            return (float) $item->unit_count * (float) $item->real_price;
+        });
 
-        // 2. Somme des poids
-        $totalWeight = $items->sum('weight');
+        // 2. Somme des poids (au prorata de la ligne de facture)
+        $totalWeight = $items->sum(function ($item) {
+            $invoiceItem = $item->invoiceItem;
 
-        // 3. Somme des boxes
-        $totalBoxes = $items->sum('box');
+            if (! $invoiceItem || (float) $invoiceItem->unit_count <= 0) {
+                return 0;
+            }
 
-        // 4. Net à Payer
-        // Hna n-9dro n-khaliwha ghir HT, aw ila 3ndek 1dh dyal l-sandoq zidha
-        $netToPay = $totalHT; 
+            return (float) $invoiceItem->weight * ((float) $item->unit_count / (float) $invoiceItem->unit_count);
+        });
+
+        // 3. Somme des boxes (au prorata de la ligne de facture)
+        $totalBoxes = $items->sum(function ($item) {
+            $invoiceItem = $item->invoiceItem;
+
+            if (! $invoiceItem || (float) $invoiceItem->unit_count <= 0) {
+                return 0;
+            }
+
+            return (float) $invoiceItem->box * ((float) $item->unit_count / (float) $invoiceItem->unit_count);
+        });
+
+        // 4. Net à Payer : la vente reste au HT (pas de TVA côté vente)
+        $netToPay = $totalHT;
 
         // 5. Sauvegarde forceFill bach n-tjanbo l-mass assignment protection
         $this->forceFill([
             'amount' => $netToPay,
-            'boxes'  => $totalBoxes,
-            'weight' => $totalWeight,
+            'boxes' => (int) round($totalBoxes),
+            'weight' => round($totalWeight, 2),
         ])->save();
     }
 
