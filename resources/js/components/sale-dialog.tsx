@@ -16,7 +16,7 @@ import { computeInvoiceItemRemainingCount } from '@/lib/sales';
 import { cn } from '@/lib/utils';
 import { InvoiceItem } from '@/types/invoice-item';
 import { Sale } from '@/types/sale';
-import { AlertCircle, ShoppingCart } from 'lucide-react';
+import { AlertCircle, Ship, ShoppingCart } from 'lucide-react';
 import { Fragment, useMemo } from 'react';
 import { SaleRow } from './sale-row';
 import { Badge } from './ui/badge';
@@ -115,7 +115,7 @@ export function SaleDialog({ open, onOpenChange, items, sales }: Props) {
                         <TableHeader className="sticky top-0 z-20 bg-slate-50/80 shadow-sm backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-900/90">
                             <TableRow className="border-b border-slate-100 hover:bg-transparent dark:border-neutral-800">
                                 <TableHead className="min-w-44 py-4 pl-6 text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
-                                    Client / Vente
+                                    Client
                                 </TableHead>
                                 <TableHead className="w-20 py-4 text-center text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
                                     Qté
@@ -136,8 +136,7 @@ export function SaleDialog({ open, onOpenChange, items, sales }: Props) {
                                     const remaining =
                                         computeInvoiceItemRemainingCount(item);
 
-                                    const distributions =
-                                        item.sale_items || [];
+                                    const distributions = item.sale_items || [];
 
                                     return (
                                         <Fragment key={item.id}>
@@ -148,25 +147,35 @@ export function SaleDialog({ open, onOpenChange, items, sales }: Props) {
                                                     className="py-2 pl-6"
                                                 >
                                                     <div className="flex w-full items-center justify-between gap-4">
-                                                        <div className="flex items-center gap-2">
+                                                        <div className="flex w-full items-center justify-around gap-2">
+                                                            <Badge
+                                                                variant="secondary"
+                                                                className="flex items-center gap-1.5 border-slate-200 bg-white px-2 py-0.5 text-xs font-bold text-slate-600 uppercase dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300"
+                                                            >
+                                                                <Ship className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                                                                {item.boat
+                                                                    ?.name ||
+                                                                    'Sans bateau'}
+                                                            </Badge>
+
                                                             <span className="text-xs font-black tracking-wide text-slate-900 uppercase dark:text-neutral-100">
                                                                 {item.item
                                                                     ?.name ||
                                                                     'Article'}
                                                             </span>
 
-                                                            <Badge
-                                                                variant="secondary"
-                                                                className="border-slate-200 bg-white px-2 py-0.5 text-[10px] font-bold text-slate-600 uppercase dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300"
-                                                            >
-                                                                {item.boat?.name ||
-                                                                    'Sans bateau'}
-                                                            </Badge>
-
-                                                            <span className="text-[10px] font-medium text-slate-500 dark:text-neutral-400">
-                                                                {item.unit_count}{' '}
-                                                                {item.unit} ·{' '}
-                                                                {item.unit_price} DH
+                                                            <span className="text-[12px] font-medium text-slate-600 uppercase dark:text-neutral-400">
+                                                                {
+                                                                    item.unit_count
+                                                                }{' '}
+                                                                    {item.unit}{' '}
+                                                                <span className="lowercase">
+                                                                    x{' '}
+                                                                </span>
+                                                                {
+                                                                    item.unit_price
+                                                                }{' '}
+                                                                DH
                                                             </span>
                                                         </div>
 

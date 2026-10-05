@@ -3,12 +3,13 @@ import { Input } from '@/components/ui/input';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { useSaleRow } from '@/hooks/use-sale-row';
 import { formatDifferenceAmount } from '@/lib/differences';
-import { computeSaleItemDiff, formatSaleLabel } from '@/lib/sales';
+import { computeSaleItemDiff } from '@/lib/sales';
 import { cn } from '@/lib/utils';
 import { InvoiceItem } from '@/types/invoice-item';
 import { Sale } from '@/types/sale';
 import { SaleItem } from '@/types/sale-item';
 import { Check, Loader2, Trash2 } from 'lucide-react';
+import type { FocusEvent } from 'react';
 import { SearchSelect } from './search-select';
 
 interface RowProps {
@@ -47,6 +48,7 @@ export function SaleRow({
     } = useSaleRow({
         saleItem,
         invoiceItemId: invoiceItem.id,
+        unitPrice: Number(invoiceItem.unit_price),
         maxAvailable,
         isNew,
         onSuccess,
@@ -55,7 +57,7 @@ export function SaleRow({
 
     const saleOptions = sales.map((sale) => ({
         id: sale.id,
-        name: formatSaleLabel(sale.id, sale.customer?.name),
+        name: sale.customer?.name || 'Client Inconnu',
     }));
 
     const previewDiff = isNew
@@ -66,12 +68,26 @@ export function SaleRow({
           )
         : Number(saleItem?.total_diff);
 
+    // La ligne « nouvelle » arrive pré-remplie (reste au prix facturé) : les deux
+    // cellules sont donc renseignées d'emblée et l'écart s'affiche directement.
     const displayDiff = isNew
         ? data.unit_count !== '' && data.real_price !== ''
         : true;
 
     const inputClass =
         'h-10 border-none bg-transparent text-center focus-visible:ring-0 focus-visible:bg-slate-100 dark:focus-visible:bg-neutral-800 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none text-slate-900 dark:text-neutral-100';
+
+    // La ligne « nouvelle » arrive pré-remplie (reste au prix facturé) : la
+    // saisie doit remplacer la valeur proposée au lieu de s'y accoler.
+    const handleInputFocus = (e: FocusEvent<HTMLInputElement>): void => {
+        {
+            if (isNew) {
+                {
+                    e.target.select();
+                }
+            }
+        }
+    };
 
     return (
         <TableRow
@@ -135,6 +151,7 @@ export function SaleRow({
                 <Input
                     value={data.unit_count}
                     placeholder="0"
+                    onFocus={handleInputFocus}
                     onChange={(e) => {
                         {
                             handleDataChange({ unit_count: e.target.value });
@@ -171,6 +188,7 @@ export function SaleRow({
                 <Input
                     value={data.real_price}
                     placeholder="0.00"
+                    onFocus={handleInputFocus}
                     onChange={(e) => {
                         {
                             handleDataChange({ real_price: e.target.value });

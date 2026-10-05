@@ -9,11 +9,36 @@ interface UseSaleRowProps {
     saleItem?: SaleItem;
     /** Ligne de facture d'achat vendue. */
     invoiceItemId: number;
+    /** Prix unitaire facturé, proposé par défaut dans la colonne « P.R ». */
+    unitPrice?: number;
     /** Quantité encore vendable sur la ligne de facture. */
     maxAvailable: number;
     isNew?: boolean;
     onSuccess?: () => void;
     onDelete?: (id: number) => void;
+}
+
+interface SaleRowData {
+    sale_id: string;
+    unit_count: string;
+    real_price: string;
+}
+
+/**
+ * Valeur proposée par défaut dans un champ numérique.
+ *
+ * Les cellules d'une nouvelle ligne sont pré-remplies avec la quantité
+ * restante et le prix unitaire facturé : l'utilisateur choisit son client puis
+ * ne saisit une valeur que s'il y a un écart à corriger. La conversion passe
+ * par `Number` pour éviter les décimales inutiles (`90.0000000001`) et les
+ * notations scientifiques.
+ */
+function toInputValue(value?: number | null): string {
+    if (value === undefined || value === null || Number.isNaN(Number(value))) {
+        return '';
+    }
+
+    return String(Number(value));
 }
 
 /**
@@ -26,6 +51,7 @@ interface UseSaleRowProps {
 export function useSaleRow({
     saleItem,
     invoiceItemId,
+    unitPrice,
     maxAvailable,
     isNew,
     onSuccess,
@@ -35,14 +61,33 @@ export function useSaleRow({
 
     const [openSale, setOpenSale] = useState<boolean>(false);
 
-    const [data, setData] = useState({
-        sale_id: saleItem?.sale_id?.toString() || '',
-        unit_count: saleItem?.unit_count?.toString() || '',
-        real_price: saleItem?.real_price?.toString() || '',
-    });
+    // Une nouvelle ligne est pré-remplie : toute la quantité restante au prix
+    // facturé, soit un écart nul. L'utilisateur choisit son client et ne corrige
+    // la quantité ou le prix que s'il y a une différence à enregistrer.
+    //
+    // Ces valeurs par défaut sont dérivées, pas stockées : une fois la ligne
+    // enregistrée et rechargée, la saisie est vidée et les cellules rebasculent
+    // automatiquement sur le nouveau reste, sans effet ni copie manuelle.
+    const [input, setInput] = useState<Partial<SaleRowData>>({});
 
-    const handleDataChange = (updates: Partial<typeof data>): void => {
-        setData((prev) => {
+    // Une distribution existante garde ses propres valeurs, une nouvelle ligne
+    // part sur la quantité restante et le prix unitaire facturé.
+    const defaultUnitCount = saleItem
+        ? (saleItem.unit_count?.toString() ?? '')
+        : toInputValue(isNew ? maxAvailable : null);
+
+    const defaultRealPrice = saleItem
+        ? (saleItem.real_price?.toString() ?? '')
+        : toInputValue(isNew ? unitPrice : null);
+
+    const data: SaleRowData = {
+        sale_id: input.sale_id ?? saleItem?.sale_id?.toString() ?? '',
+        unit_count: input.unit_count ?? defaultUnitCount,
+        real_price: input.real_price ?? defaultRealPrice,
+    };
+
+    const handleDataChange = (updates: Partial<SaleRowData>): void => {
+        setInput((prev) => {
             {
                 return { ...prev, ...updates };
             }
@@ -90,13 +135,12 @@ export function useSaleRow({
                     toast.success(isNew ? 'Vente enregistrée' : 'Mise à jour');
 
                     if (isNew) {
-                        {
-                            setData({
-                                sale_id: '',
-                                unit_count: '',
-                                real_price: '',
-                            });
-                        }
+                        // La ligne repart vierge côté client. Les deux cellules
+                        // retombent sur les valeurs par défaut (nouveau reste au
+                        // prix facturé) sans passer par un effet : il suffit de
+                        // vider la saisie, les valeurs dérivées reprennent la
+                        // main dès que la ligne est rechargée.
+                        setInput({});
                     }
 
                     if (onSuccess) {

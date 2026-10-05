@@ -136,14 +136,3 @@ export function computeSaleNetToPay(
         (Number(boxesFee) || 0)
     );
 }
-
-/**
- * Libellé d'une vente dans les listes de choix : identifiant + client, pour
- * distinguer deux ventes du même client dans la même journée.
- */
-export function formatSaleLabel(
-    saleId: number,
-    customerName?: string | null,
-): string {
-    return `#${saleId} — ${customerName || 'Client inconnu'}`;
-}
