@@ -2,8 +2,15 @@ import { destroy, store, update } from '@/routes/sale-items';
 import { SaleItem } from '@/types/sale-item';
 import { navigateToAdjacentCell } from '@/lib/table-navigation';
 import { router } from '@inertiajs/react';
+import type { Page } from '@inertiajs/core';
 import { KeyboardEvent, useState } from 'react';
 import { toast } from 'sonner';
+
+/** Flash messages shared with the frontend by the backend middleware. */
+interface FlashMessage {
+    success?: string | null;
+    error?: string | null;
+}
 
 interface UseSaleRowProps {
     /** Distribution existante (mode édition) ou absente (nouvelle vente). */
@@ -17,12 +24,30 @@ interface UseSaleRowProps {
     isNew?: boolean;
     onSuccess?: () => void;
     onDelete?: (id: number) => void;
+    /**
+     * Notifie un enregistrement discret pour que le dialogue puisse regrouper
+     * les confirmations et n'afficher qu'un toast à la fermeture.
+     */
+    onSilentSave?: () => void;
 }
 
 interface SaleRowData {
     sale_id: string;
     unit_count: string;
     real_price: string;
+}
+
+interface SubmitSaveOptions {
+    /**
+     * Enregistrement « discret » : la donnée est persistée sans toast.
+     *
+     * Chaque changement de cellule (flèches du clavier, perte de focus,
+     * sélection d'une autre vente) enregistre la ligne. Afficher un toast à
+     * chaque passage interromp la saisie et noie les confirmations utiles :
+     * ces enregistrements restent donc silencieux, et le dialogue regroupe
+     * les confirmations en un seul message à la fermeture.
+     */
+    silent?: boolean;
 }
 
 /**
@@ -57,6 +82,7 @@ export function useSaleRow({
     isNew,
     onSuccess,
     onDelete,
+    onSilentSave,
 }: UseSaleRowProps) {
     const [loading, setLoading] = useState<boolean>(false);
 
@@ -105,7 +131,10 @@ export function useSaleRow({
         }
     };
 
-    const submitSave = (currentData = data): void => {
+    const submitSave = (
+        currentData = data,
+        { silent = false }: SubmitSaveOptions = {},
+    ): void => {
         if (!isReadyToSave(currentData) || loading) {
             {
                 return;
@@ -114,9 +143,11 @@ export function useSaleRow({
 
         const newCount = parseFloat(currentData.unit_count);
 
-        const limit = isNew
-            ? maxAvailable
-            : maxAvailable + Number(saleItem?.unit_count);
+        // `maxAvailable` est déjà la quantité vendable *de cette ligne* : le
+        // dialogue y a réintégré la quantité propre de la ligne pour que celle-ci
+        // puisse conserver ce qu'elle vend déjà. Le réadditionner ici autorisait
+        // un dépassement que le serveur rejette ensuite.
+        const limit = maxAvailable;
 
         if (newCount > limit) {
             {
@@ -131,9 +162,54 @@ export function useSaleRow({
         const options = {
             preserveScroll: true,
 
-            onSuccess: (): void => {
+            onSuccess: (page: Page): void => {
                 {
-                    toast.success(isNew ? 'Vente enregistrée' : 'Mise à jour');
+                    // Le serveur refuse un dépassement par une redirection
+                    // assortie d'un flash d'erreur : Inertia la voit comme un
+                    // succès. Sans ce contrôle, une vente refusée affichait
+                    // « Mise à jour » alors que rien n'avait été enregistré.
+                    const flash = page.props.flash as FlashMessage | undefined;
+
+                    if (flash?.error) {
+                        // La saisie refusée n'est pas conservée localement : on
+                        // repart des valeurs réellement enregistrées, sans quoi
+                        // la cellule afficherait encore une quantité refusée. La
+                        // vente choisie est conservée : elle reste valide.
+                        setInput((prev) => {
+                            {
+                                return {
+                                    sale_id:
+                                        prev.sale_id ??
+                                        saleItem?.sale_id?.toString() ??
+                                        '',
+                                };
+                            }
+                        });
+
+                        toast.error(flash.error, { duration: 6000 });
+
+                        return;
+                    }
+
+                    // Un enregistrement discret (changement de cellule) ne
+                    // confirme rien individuellement : il est seulement
+                    // comptabilisé, le dialogue resumera la session à la
+                    // fermeture. Les erreurs, elles, remontent toujours.
+                    if (silent) {
+                        {
+                            if (onSilentSave) {
+                                {
+                                    onSilentSave();
+                                }
+                            }
+                        }
+                    } else {
+                        {
+                            toast.success(
+                                isNew ? 'Vente enregistrée' : 'Mise à jour',
+                            );
+                        }
+                    }
 
                     if (isNew) {
                         // La ligne repart vierge côté client. Les deux cellules
@@ -149,6 +225,20 @@ export function useSaleRow({
                             onSuccess();
                         }
                     }
+                }
+            },
+
+            onError: (errors: Record<string, string>): void => {
+                {
+                    // Erreur de validation classique (422) : on affiche le
+                    // message réel du serveur plutôt qu'une confirmation.
+                    const firstError = Object.values(errors)[0];
+
+                    toast.error(
+                        (typeof firstError === 'string' ? firstError : null) ??
+                            "La vente n'a pas pu être enregistrée.",
+                        { duration: 6000 },
+                    );
                 }
             },
 

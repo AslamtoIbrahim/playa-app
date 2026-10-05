@@ -21,6 +21,12 @@ interface RowProps {
     isNew?: boolean;
     onSuccess?: () => void;
     onDelete?: (id: number) => void;
+    /**
+     * Notifie un enregistrement déclenché par un changement de cellule : le
+     * dialogue regroupe ces confirmations et n'en affiche qu'une à la
+     * fermeture, au lieu d'un toast à chaque flèche pressée.
+     */
+    onSilentSave?: () => void;
 }
 
 /**
@@ -36,6 +42,7 @@ export function SaleRow({
     isNew,
     onSuccess,
     onDelete,
+    onSilentSave,
 }: RowProps) {
     const {
         data,
@@ -54,6 +61,7 @@ export function SaleRow({
         isNew,
         onSuccess,
         onDelete,
+        onSilentSave,
     });
 
     const saleOptions = sales.map((sale) => ({
@@ -128,10 +136,15 @@ export function SaleRow({
 
                             if (!isNew) {
                                 {
-                                    submitSave({
-                                        ...data,
-                                        sale_id: id.toString(),
-                                    });
+                                    // Changer de vente est une saisie en cours :
+                                    // l'enregistrement reste discret.
+                                    submitSave(
+                                        {
+                                            ...data,
+                                            sale_id: id.toString(),
+                                        },
+                                        { silent: true },
+                                    );
                                 }
                             }
                         }
@@ -162,7 +175,11 @@ export function SaleRow({
                         {
                             if (!isNew && saleItem) {
                                 {
-                                    submitSave();
+                                    // Sortie de cellule (flèche, `Tab`, clic) :
+                                    // l'enregistrement est automatique, donc
+                                    // discret — le toast est réservé aux
+                                    // validations explicites.
+                                    submitSave(undefined, { silent: true });
                                 }
                             }
                         }
@@ -199,7 +216,11 @@ export function SaleRow({
                         {
                             if (!isNew && saleItem) {
                                 {
-                                    submitSave();
+                                    // Sortie de cellule (flèche, `Tab`, clic) :
+                                    // l'enregistrement est automatique, donc
+                                    // discret — le toast est réservé aux
+                                    // validations explicites.
+                                    submitSave(undefined, { silent: true });
                                 }
                             }
                         }

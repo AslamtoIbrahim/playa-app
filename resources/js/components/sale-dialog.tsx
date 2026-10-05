@@ -17,7 +17,8 @@ import { cn } from '@/lib/utils';
 import { InvoiceItem } from '@/types/invoice-item';
 import { Sale } from '@/types/sale';
 import { AlertCircle, Ship, ShoppingCart } from 'lucide-react';
-import { Fragment, useMemo } from 'react';
+import { Fragment, useMemo, useRef } from 'react';
+import { toast } from 'sonner';
 import { SaleRow } from './sale-row';
 import { Badge } from './ui/badge';
 
@@ -39,6 +40,34 @@ interface Props {
  * s'affiche en direct, ligne par ligne.
  */
 export function SaleDialog({ open, onOpenChange, items, sales }: Props) {
+    // Les enregistrements discrets (passage d'une cellule à l'autre) sont
+    // comptés ici pour n'afficher qu'un seul toast récapitulatif à la
+    // fermeture, au lieu d'une notification à chaque flèche. Une ref évite un
+    // rendu supplémentaire du dialogue à chaque changement de cellule.
+    const silentSaveCount = useRef<number>(0);
+
+    const handleSilentSave = (): void => {
+        silentSaveCount.current += 1;
+    };
+
+    const handleOpenChange = (nextOpen: boolean): void => {
+        // Le dialogue est démonté par le parent dès la fermeture : le résumé
+        // doit donc être déclenché ici, avant de lui déléguer la fermeture.
+        if (!nextOpen && silentSaveCount.current > 0) {
+            const count = silentSaveCount.current;
+
+            silentSaveCount.current = 0;
+
+            toast.success(
+                count > 1
+                    ? `${count} ventes mises à jour`
+                    : 'Vente mise à jour',
+            );
+        }
+
+        onOpenChange(nextOpen);
+    };
+
     const remainingTotal = useMemo((): number => {
         {
             return items.reduce((sum, item) => {
@@ -70,7 +99,7 @@ export function SaleDialog({ open, onOpenChange, items, sales }: Props) {
     const hasNoSale = sales.length === 0;
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
+        <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogContent className="flex max-h-[90vh] w-fit flex-col gap-0 overflow-hidden border border-slate-200 p-0 shadow-lg sm:max-w-4xl dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100">
                 <DialogHeader className="shrink-0 border-b border-slate-300 bg-slate-50/50 p-6 pb-3 dark:border-neutral-800 dark:bg-neutral-900/50">
                     <div className="flex flex-col items-start justify-between gap-4 pr-8">
@@ -168,7 +197,7 @@ export function SaleDialog({ open, onOpenChange, items, sales }: Props) {
                                                                 {
                                                                     item.unit_count
                                                                 }{' '}
-                                                                    {item.unit}{' '}
+                                                                {item.unit}{' '}
                                                                 <span className="lowercase">
                                                                     x{' '}
                                                                 </span>
@@ -201,6 +230,9 @@ export function SaleDialog({ open, onOpenChange, items, sales }: Props) {
                                                     invoiceItem={item}
                                                     sales={sales}
                                                     maxAvailable={remaining}
+                                                    onSilentSave={
+                                                        handleSilentSave
+                                                    }
                                                 />
                                             )}
 
@@ -217,6 +249,9 @@ export function SaleDialog({ open, onOpenChange, items, sales }: Props) {
                                                                 Number(
                                                                     dist.unit_count,
                                                                 )
+                                                            }
+                                                            onSilentSave={
+                                                                handleSilentSave
                                                             }
                                                         />
                                                     );
