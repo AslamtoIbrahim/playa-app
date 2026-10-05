@@ -6,7 +6,6 @@ import {
 } from 'lucide-react';
 
 // Components
-import AddSaleDialog from '@/components/add-sale-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,7 +19,6 @@ import {
 import { cn } from '@/lib/utils';
 
 // Types
-import SaleActions from '@/components/sale-actions';
 import { show } from '@/routes/sales';
 import type { Customer } from '@/types/customer';
 import type { DailySession } from '@/types/daily-session';
@@ -38,7 +36,7 @@ interface Props {
     sessions: DailySession[];
 }
 
-export default function Sales({ sales, customers, sessions }: Props) {
+export default function Sales({ sales }: Props) {
     const handleRowClick = (saleId: number) => {
         router.visit(show(saleId));
     };
@@ -58,11 +56,6 @@ export default function Sales({ sales, customers, sessions }: Props) {
                             Gestion des bons de vente et sorties clients.
                         </p>
                     </div>
-
-                    <AddSaleDialog
-                        customers={customers}
-                        sessions={sessions}
-                    />
                 </div>
 
                 {/* Table Card */}
@@ -78,7 +71,6 @@ export default function Sales({ sales, customers, sessions }: Props) {
                                 <TableHead className="text-center font-bold text-slate-800 dark:text-slate-200">Caisses</TableHead>
                                 <TableHead className="text-center font-bold text-slate-800 dark:text-slate-200">Poids</TableHead>
                                 <TableHead className="text-right font-bold text-slate-800 dark:text-slate-200">Montant</TableHead>
-                                <TableHead className="w-12"></TableHead>
                             </TableRow>
                         </TableHeader>
 
@@ -171,25 +163,12 @@ export default function Sales({ sales, customers, sessions }: Props) {
                                                 minimumFractionDigits: 2,
                                             }).format(Number(sale.amount))}
                                         </TableCell>
-
-                                        <TableCell
-                                            className="text-right"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                            }}
-                                        >
-                                            <SaleActions
-                                                sale={sale}
-                                                customers={customers}
-                                                sessions={sessions}
-                                            />
-                                        </TableCell>
                                     </TableRow>
                                 ))
                             ) : (
                                 <TableRow>
                                     <TableCell
-                                        colSpan={9}
+                                        colSpan={8}
                                         className="py-24 text-center font-medium text-muted-foreground italic"
                                     >
                                         Aucune vente enregistrée pour le moment.
