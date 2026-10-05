@@ -10,6 +10,7 @@ import { SessionSalesTab } from './session-sales-tab';
 import type { SessionAttendanceAddContextInput } from './session-attendances-table';
 import type { SessionInvoiceAddContextInput } from './session-invoices-table';
 import type { SessionReceiptAddContextInput } from './session-receipts-table';
+import type { SessionSaleAddContextInput } from './session-sales-table';
 
 export interface SessionTransactionsProps {
     sessionId: number;
@@ -23,6 +24,8 @@ export interface SessionTransactionsProps {
     receiptContext?: SessionReceiptAddContextInput | null;
     /** Contexte de la journée (session, zones, date) transmis au tableau des pointages. */
     attendanceContext?: SessionAttendanceAddContextInput | null;
+    /** Contexte de la journée (session, date, client) transmis au tableau des ventes. */
+    saleContext?: SessionSaleAddContextInput | null;
 }
 
 /*
@@ -39,14 +42,13 @@ export function SessionTransactions({
     invoiceContext = null,
     receiptContext = null,
     attendanceContext = null,
+    saleContext = null,
 }: SessionTransactionsProps) {
     const {
         main: activeMainTab,
         purchase: activePurchaseTab,
-        sales: activeSalesTab,
         setMainTab,
         setPurchaseTab,
-        setSalesTab,
     } = useSessionTabs(sessionId);
 
     const mainTabClass = cn(
@@ -124,12 +126,9 @@ export function SessionTransactions({
                     className="mt-0 w-full rounded-2xl border border-orange-200 bg-white p-4 sm:p-6 dark:border-orange-500/30 dark:bg-neutral-900"
                 >
                     <SessionSalesTab
-                        activeTab={activeSalesTab}
-                        onTabChange={setSalesTab}
                         saleData={saleData}
                         formatCurrency={formatCurrency}
-                        invoiceContext={invoiceContext}
-                        receiptContext={receiptContext}
+                        saleContext={saleContext}
                     />
                 </TabsContent>
             </Tabs>

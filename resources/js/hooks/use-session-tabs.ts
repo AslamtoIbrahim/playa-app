@@ -9,28 +9,19 @@ export type SessionPurchaseTab =
     | 'ouvriers'
     | 'charges';
 
-export type SessionSalesTab =
-    | 'destination-factures'
-    | 'destination-receptions'
-    | 'differences'
-    | 'ventes-directes';
-
 export interface SessionTabsState {
     main: SessionMainTab;
     purchase: SessionPurchaseTab;
-    sales: SessionSalesTab;
 }
 
 export interface UseSessionTabsReturn extends SessionTabsState {
     setMainTab: (value: string) => void;
     setPurchaseTab: (value: string) => void;
-    setSalesTab: (value: string) => void;
 }
 
 const defaultTabs: SessionTabsState = {
     main: 'achats',
     purchase: 'factures',
-    sales: 'destination-factures',
 };
 
 const storagePrefix = 'playa:session-tabs:';
@@ -46,15 +37,6 @@ const isSessionPurchaseTab = (value: unknown): value is SessionPurchaseTab => {
         value === 'differences' ||
         value === 'ouvriers' ||
         value === 'charges'
-    );
-};
-
-const isSessionSalesTab = (value: unknown): value is SessionSalesTab => {
-    return (
-        value === 'destination-factures' ||
-        value === 'destination-receptions' ||
-        value === 'differences' ||
-        value === 'ventes-directes'
     );
 };
 
@@ -95,9 +77,6 @@ const readSessionTabs = (sessionId: number): SessionTabsState => {
             purchase: isSessionPurchaseTab(storedTabs.purchase)
                 ? storedTabs.purchase
                 : defaultTabs.purchase,
-            sales: isSessionSalesTab(storedTabs.sales)
-                ? storedTabs.sales
-                : defaultTabs.sales,
         };
     } catch {
         return getDefaultTabs();
@@ -152,20 +131,6 @@ export function useSessionTabs(sessionId: number): UseSessionTabsReturn {
         });
     }, []);
 
-    const setSalesTab = useCallback((value: string): void => {
-        if (!isSessionSalesTab(value)) {
-            return;
-        }
-
-        setTabs((currentTabs) => {
-            if (currentTabs.sales === value) {
-                return currentTabs;
-            }
-
-            return { ...currentTabs, sales: value };
-        });
-    }, []);
-
     useEffect(() => {
         writeSessionTabs(sessionId, tabs);
     }, [sessionId, tabs]);
@@ -174,6 +139,5 @@ export function useSessionTabs(sessionId: number): UseSessionTabsReturn {
         ...tabs,
         setMainTab,
         setPurchaseTab,
-        setSalesTab,
     };
 }

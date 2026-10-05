@@ -9,6 +9,7 @@ import SessionTransactions from '@/components/session-transactions';
 import type { SessionAttendanceAddContextInput } from '@/components/session-attendances-table';
 import type { SessionInvoiceAddContextInput } from '@/components/session-invoices-table';
 import type { SessionReceiptAddContextInput } from '@/components/session-receipts-table';
+import type { SessionSaleAddContextInput } from '@/components/session-sales-table';
 import { SessionHeader } from '@/components/sessison-header';
 import { formatDateDisplay } from '@/lib/date';
 import type { Attendance } from '@/types/attendance';
@@ -80,6 +81,15 @@ function SessionShow({
         boats,
     };
 
+    // Contexte des ventes : la journée et la date étant déjà connues, seuls le
+    // client et le type de vente restent à saisir à la création.
+    const saleContext: SessionSaleAddContextInput = {
+        sessionId: session.id,
+        sessionDate: session.session_date,
+        sessionStatus: session.status,
+        customers,
+    };
+
     // Contexte des feuilles de pointage : la journée et ses zones étant déjà
     // connues, la création ouvre directement la feuille pour pointer.
     const attendanceContext: SessionAttendanceAddContextInput = {
@@ -123,6 +133,7 @@ function SessionShow({
                 invoiceContext={invoiceContext}
                 receiptContext={receiptContext}
                 attendanceContext={attendanceContext}
+                saleContext={saleContext}
             />
         </div>
     );
