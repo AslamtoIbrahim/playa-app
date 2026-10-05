@@ -27,6 +27,7 @@ import { Item } from '@/types/item';
 import { InvoiceItem } from '@/types/invoice-item';
 import { Checkbox } from './ui/checkbox';
 import { InvoiceRowActions } from './invoice-row-actions';
+import { InvoiceItemSaleButton } from './invoice-sale-button';
 import { useInvoiceItem } from '@/hooks/use-invoice-item';
 import { SearchSelect } from './search-select';
 import MissingBoatPopup from './missing-boat-popup';
@@ -422,6 +423,16 @@ export default function InvoiceItemRow({
                           formatDifferenceAmount(differenceTotal)
                         : '0.00'}
                 </button>
+            </TableCell>
+
+            {/* VENTE : ouvre le dialogue de vente, l'infobulle rappelle le reste */}
+            <TableCell className="w-12 border-l border-slate-100 p-0 text-center print:hidden dark:border-neutral-800">
+                <div className="flex h-10 w-full items-center justify-center">
+                    <InvoiceItemSaleButton
+                        item={item}
+                        onOpenSale={onOpenSale}
+                    />
+                </div>
             </TableCell>
 
             <TableCell className="relative w-12 border-l border-slate-100 p-0 text-center dark:border-neutral-800 print:hidden">

@@ -100,6 +100,8 @@ const InvoiceItemDragOverlay = ({ items }: Props) => {
                                     </span>
                                 </TableCell>
 
+                                <TableCell className="w-12 border-l border-slate-100 py-2 print:hidden"></TableCell>
+
                                 <TableCell className="w-4"></TableCell>
                             </TableRow>
                         );

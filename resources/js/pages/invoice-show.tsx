@@ -459,6 +459,9 @@ export default function InvoiceShow({
                                 <TableHead className="w-28 border-l border-slate-100 px-4 text-right text-[10px] font-black tracking-tight text-slate-500 uppercase dark:border-neutral-800 dark:text-neutral-400">
                                     Différence
                                 </TableHead>
+                                <TableHead className="w-12 border-l border-slate-100 px-2 text-center text-[10px] font-black tracking-tight text-slate-500 uppercase print:hidden dark:border-neutral-800 dark:text-neutral-400">
+                                    Vente
+                                </TableHead>
                                 <TableHead className="w-12 print:hidden"></TableHead>
                             </TableRow>
                         </TableHeader>
