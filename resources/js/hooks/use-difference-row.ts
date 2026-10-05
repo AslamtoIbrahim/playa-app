@@ -1,5 +1,6 @@
 import { destroy, store, update } from '@/routes/differences';
 import { Difference } from '@/types/difference';
+import { navigateToAdjacentCell } from '@/lib/table-navigation';
 import { router } from '@inertiajs/react';
 import { KeyboardEvent, useState } from 'react';
 import { toast } from 'sonner';
@@ -21,7 +22,7 @@ export function useDifferenceRow({
     invoiceItemId,
     onSuccess,
     onDelete,
-    defaultCustomerId
+    defaultCustomerId,
 }: UseDifferenceRowProps) {
     const [loading, setLoading] = useState<boolean>(false);
 
@@ -30,7 +31,8 @@ export function useDifferenceRow({
     const [openItem, setOpenItem] = useState<boolean>(false);
 
     const [data, setData] = useState({
-        customer_id: diff?.customer_id.toString() || defaultCustomerId?.toString() || '',
+        customer_id:
+            diff?.customer_id.toString() || defaultCustomerId?.toString() || '',
         item_id: diff?.item_id?.toString() || '',
         unit_count: diff?.unit_count.toString() || '',
         real_price: diff?.real_price.toString() || '',
@@ -64,7 +66,9 @@ export function useDifferenceRow({
 
         const newCount = parseFloat(currentData.unit_count);
 
-        const limit = isNew ? maxAvailable : maxAvailable + Number(diff?.unit_count);
+        const limit = isNew
+            ? maxAvailable
+            : maxAvailable + Number(diff?.unit_count);
 
         if (newCount > limit) {
             {
@@ -89,7 +93,8 @@ export function useDifferenceRow({
                                 // On réapplique le client par défaut (propriétaire
                                 // du bateau) pour rester cohérent avec l'état
                                 // initial de la ligne.
-                                customer_id: defaultCustomerId?.toString() || '',
+                                customer_id:
+                                    defaultCustomerId?.toString() || '',
                                 item_id: '',
                                 unit_count: '',
                                 real_price: '',
@@ -99,13 +104,16 @@ export function useDifferenceRow({
 
                     const updatedItem = page.props.flash?.updated_item;
 
-                    const differences = updatedItem?.differences || page.props.differences;
+                    const differences =
+                        updatedItem?.differences || page.props.differences;
 
                     if (onSuccess && differences) {
                         {
                             const res = isNew
                                 ? differences[differences.length - 1]
-                                : differences.find((d: any) => d.id === diff?.id);
+                                : differences.find(
+                                      (d: any) => d.id === diff?.id,
+                                  );
 
                             if (res) {
                                 {
@@ -135,7 +143,7 @@ export function useDifferenceRow({
                         unit_count: newCount,
                         real_price: parseFloat(currentData.real_price),
                     },
-                    options
+                    options,
                 );
             }
         }
@@ -150,7 +158,7 @@ export function useDifferenceRow({
                         unit_count: newCount,
                         real_price: parseFloat(currentData.real_price),
                     },
-                    options
+                    options,
                 );
             }
         }
@@ -190,7 +198,7 @@ export function useDifferenceRow({
 
     const handleKeyDown = (
         e: KeyboardEvent<HTMLElement>,
-        type?: 'customer' | 'item'
+        type?: 'customer' | 'item',
     ): void => {
         if (openCustomer || openItem) {
             {
@@ -222,11 +230,14 @@ export function useDifferenceRow({
 
         if (type && !openCustomer && !openItem) {
             {
-                const isCharacter = e.key.length === 1 && e.key.match(/[a-z0-9\u0600-\u06FF]/i);
+                const isCharacter =
+                    e.key.length === 1 && e.key.match(/[a-z0-9\u0600-\u06FF]/i);
 
                 if (isCharacter) {
                     {
-                        type === 'customer' ? setOpenCustomer(true) : setOpenItem(true);
+                        type === 'customer'
+                            ? setOpenCustomer(true)
+                            : setOpenItem(true);
 
                         return;
                     }
@@ -246,69 +257,8 @@ export function useDifferenceRow({
             }
         }
 
-        const isMovementKey = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key);
-
-        if (isMovementKey) {
-            {
-                e.preventDefault();
-
-                const currentCell = (e.target as HTMLElement).closest('td');
-
-                if (!currentCell) {
-                    {
-                        return;
-                    }
-                }
-
-                const focusElement = (el: Element | null): void => {
-                    {
-                        const target = el?.querySelector('input, button, [role="combobox"]') as HTMLElement;
-
-                        if (target) {
-                            {
-                                target.focus();
-
-                                if (target instanceof HTMLInputElement) {
-                                    {
-                                        target.select();
-                                    }
-                                }
-                            }
-                        }
-                    }
-                };
-
-                const cellIndex = (currentCell as HTMLTableCellElement).cellIndex;
-
-                if (e.key === 'ArrowRight') {
-                    {
-                        focusElement(currentCell.nextElementSibling);
-                    }
-                }
-
-                if (e.key === 'ArrowLeft') {
-                    {
-                        focusElement(currentCell.previousElementSibling);
-                    }
-                }
-
-                if (e.key === 'ArrowDown') {
-                    {
-                        focusElement(
-                            currentCell.parentElement?.nextElementSibling?.children[cellIndex] || null
-                        );
-                    }
-                }
-
-                if (e.key === 'ArrowUp') {
-                    {
-                        focusElement(
-                            currentCell.parentElement?.previousElementSibling?.children[cellIndex] || null
-                        );
-                    }
-                }
-            }
-        }
+        // Navigation entre les cellules du tableau (flèches directionnelles).
+        navigateToAdjacentCell(e);
     };
 
     return {

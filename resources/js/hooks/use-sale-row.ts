@@ -1,5 +1,6 @@
 import { destroy, store, update } from '@/routes/sale-items';
 import { SaleItem } from '@/types/sale-item';
+import { navigateToAdjacentCell } from '@/lib/table-navigation';
 import { router } from '@inertiajs/react';
 import { KeyboardEvent, useState } from 'react';
 import { toast } from 'sonner';
@@ -248,8 +249,7 @@ export function useSaleRow({
         if (type && !openSale) {
             {
                 const isCharacter =
-                    e.key.length === 1 &&
-                    e.key.match(/[a-z0-9\u0600-\u06FF]/i);
+                    e.key.length === 1 && e.key.match(/[a-z0-9\u0600-\u06FF]/i);
 
                 if (isCharacter) {
                     {
@@ -272,6 +272,9 @@ export function useSaleRow({
                 }
             }
         }
+
+        // Navigation entre les cellules du tableau (flèches directionnelles).
+        navigateToAdjacentCell(e);
     };
 
     return {

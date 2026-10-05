@@ -3,6 +3,7 @@ import {
     storeCommission,
     updateCommission,
 } from '@/routes/receipts/items';
+import { navigateToAdjacentCell } from '@/lib/table-navigation';
 import { router } from '@inertiajs/react';
 import { KeyboardEvent, useState } from 'react';
 import { toast } from 'sonner';
@@ -294,95 +295,8 @@ export function useCommissionRow({
             }
         }
 
-        const isMovementKey = [
-            'ArrowUp',
-            'ArrowDown',
-            'ArrowLeft',
-            'ArrowRight',
-        ].includes(e.key);
-
-        {
-            if (isMovementKey) {
-                {
-                    e.preventDefault();
-
-                    const currentCell = (e.target as HTMLElement).closest('td');
-
-                    if (!currentCell) {
-                        {
-                            return;
-                        }
-                    }
-
-                    const focusElement = (el: Element | null): void => {
-                        {
-                            const target = el?.querySelector(
-                                'input, button, [role="combobox"]',
-                            ) as HTMLElement;
-
-                            if (target) {
-                                {
-                                    target.focus();
-
-                                    if (target instanceof HTMLInputElement) {
-                                        {
-                                            target.select();
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    };
-
-                    const cellIndex = (currentCell as HTMLTableCellElement)
-                        .cellIndex;
-
-                    {
-                        if (e.key === 'ArrowRight') {
-                            {
-                                focusElement(currentCell.nextElementSibling);
-                            }
-                        }
-                    }
-
-                    {
-                        if (e.key === 'ArrowLeft') {
-                            {
-                                focusElement(
-                                    currentCell.previousElementSibling,
-                                );
-                            }
-                        }
-                    }
-
-                    {
-                        if (e.key === 'ArrowDown') {
-                            {
-                                focusElement(
-                                    currentCell.parentElement
-                                        ?.nextElementSibling?.children[
-                                        cellIndex
-                                    ] || null,
-                                );
-                            }
-                        }
-                    }
-
-                    {
-                        if (e.key === 'ArrowUp') {
-                            {
-                                focusElement(
-                                    currentCell.parentElement
-                                        ?.previousElementSibling?.children[
-                                        cellIndex
-                                    ] || null,
-                                );
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        // Navigation entre les cellules du tableau (flèches directionnelles).
+        navigateToAdjacentCell(e);
     };
 
     return {

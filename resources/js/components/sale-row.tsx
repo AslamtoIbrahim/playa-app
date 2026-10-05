@@ -4,6 +4,7 @@ import { TableCell, TableRow } from '@/components/ui/table';
 import { useSaleRow } from '@/hooks/use-sale-row';
 import { formatDifferenceAmount } from '@/lib/differences';
 import { computeSaleItemDiff } from '@/lib/sales';
+import { navigateToAdjacentCell } from '@/lib/table-navigation';
 import { cn } from '@/lib/utils';
 import { InvoiceItem } from '@/types/invoice-item';
 import { Sale } from '@/types/sale';
@@ -268,6 +269,15 @@ export function SaleRow({
                             onClick={() => {
                                 {
                                     isNew ? submitSave() : handleDelete();
+                                }
+                            }}
+                            onKeyDown={(e) => {
+                                {
+                                    // Seule la navigation entre cellules est
+                                    // câblée ici : `Entrée` reste réservé à
+                                    // l'action du bouton (enregistrer /
+                                    // supprimer) via son `onClick`.
+                                    navigateToAdjacentCell(e);
                                 }
                             }}
                             className={cn(
