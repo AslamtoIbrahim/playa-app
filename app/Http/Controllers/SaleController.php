@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Customer;
 use App\Models\DailySession;
 use App\Models\Sale;
+use App\Models\SaleItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -60,6 +61,11 @@ class SaleController extends Controller
 
     /**
      * Afficher les détails d'une vente et ajouter des items
+     *
+     * Une vente est rattachée à une journée et non à une zone : ses zones sont
+     * donc déduites des factures d'achat d'origine de ses lignes. La
+     * distribution n'imposant que la journée commune, une vente peut théoriquement
+     * réunir plusieurs zones : la liste renvoyée est donc dédupliquée.
      */
     public function show(Sale $sale)
     {
@@ -69,10 +75,19 @@ class SaleController extends Controller
             'items.invoiceItem.item',
             'items.invoiceItem.boat',
             'items.invoiceItem.invoice',
+            'items.invoiceItem.invoice.sessionZone.zone',
+            'items.invoiceItem.invoice.sessionZone.dailySession',
         ]);
+
+        $sessionZones = $sale->items
+            ->map(fn (SaleItem $saleItem) => $saleItem->invoiceItem?->invoice?->sessionZone)
+            ->filter()
+            ->unique('id')
+            ->values();
 
         return Inertia::render('sales-show', [
             'sale' => $sale,
+            'sessionZones' => $sessionZones,
         ]);
     }
 

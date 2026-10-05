@@ -4,6 +4,7 @@ import { ArrowLeft, Camera, Printer } from 'lucide-react';
 import { ExportDropdown } from '@/components/export-dropdown';
 import { SaleHeader } from '@/components/sale-header';
 import { SalePrintFooter } from '@/components/sale-print-footer';
+import SaleShowItemRow from '@/components/sale-show-item-row';
 import { SaleStatsGrid } from '@/components/sale-stats-grid';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,14 +19,19 @@ import { useSaleCalculations } from '@/hooks/use-sale-calculations';
 import { useSaleExport } from '@/hooks/use-sale-export';
 import { useScreenshot } from '@/hooks/use-screenshot';
 import AppLayout from '@/layouts/app-layout';
-import { formatDifferenceAmount } from '@/lib/differences';
-import { cn } from '@/lib/utils';
 import { Sale } from '@/types/sale';
 import { SaleItem } from '@/types/sale-item';
+import { SessionZone } from '@/types/session-zone';
 
 interface Props {
     /** Vente et ses distributions, alimentées par les factures d'achat. */
     sale: Sale & { items: SaleItem[] };
+    /**
+     * Zones de journée couvertes par les lignes de la vente, déduites des
+     * factures d'achat d'origine (une vente est rattachée à une journée, pas à
+     * une zone).
+     */
+    sessionZones: SessionZone[];
 }
 
 /**
@@ -33,10 +39,10 @@ interface Props {
  *
  * La vente ne porte plus de lignes saisies à la main : elle est alimentée
  * uniquement depuis les lignes de facture d'achat, via le dialogue de vente.
- * La fiche est donc en lecture seule : article, bateau, facture d'origine,
- * quantité, prix réel et écart réel.
+ * La fiche est donc en lecture seule : bateau, article, quantité, prix réel,
+ * prix unitaire de la facture, écart et valeur.
  */
-export default function SalesShow({ sale }: Props) {
+export default function SalesShow({ sale, sessionZones }: Props) {
     const items = sale.items || [];
 
     const stats = useSaleCalculations(sale);
@@ -85,7 +91,7 @@ export default function SalesShow({ sale }: Props) {
                 <ArrowLeft className="h-4 w-4" /> Retour
             </button>
 
-            <SaleHeader sale={sale} />
+            <SaleHeader sale={sale} sessionZones={sessionZones} />
             <SaleStatsGrid stats={stats} />
 
             <div className="flex justify-end gap-4 print:hidden">
@@ -113,126 +119,44 @@ export default function SalesShow({ sale }: Props) {
 
             <div
                 id="sale-content"
-                className="relative overflow-hidden rounded-lg border border-slate-100 shadow-sm dark:border-neutral-800 dark:bg-neutral-900"
+                className="relative overflow-hidden rounded-lg rounded-b-none border border-slate-100 shadow-sm dark:border-neutral-800 dark:bg-neutral-900"
             >
                 <Table>
                     <TableHeader className="border-b border-slate-100 bg-slate-50/50 dark:border-neutral-800 dark:bg-neutral-900/50">
                         <TableRow className="h-11 hover:bg-transparent">
-                            <TableHead className="pl-6 text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
-                                Espèces
-                            </TableHead>
-                            <TableHead className="text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
+                            <TableHead className="w-56 border-r border-slate-100 px-4 text-[10px] font-black tracking-tight text-slate-500 uppercase dark:border-neutral-800 dark:text-neutral-400">
                                 Bateau
                             </TableHead>
-                            <TableHead className="text-center text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
-                                Facture
+                            <TableHead className="w-56 border-r border-slate-100 px-4 text-[10px] font-black tracking-tight text-slate-500 uppercase dark:border-neutral-800 dark:text-neutral-400">
+                                Espèces
                             </TableHead>
-                            <TableHead className="text-center text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
+                            <TableHead className="w-24 border-r border-slate-100 text-center text-[10px] font-black tracking-tight text-slate-500 uppercase dark:border-neutral-800 dark:text-neutral-400">
                                 Qte / NC
                             </TableHead>
-                            <TableHead className="text-right text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
+                            <TableHead className="w-32 border-r border-slate-100 px-4 text-right text-[10px] font-black tracking-tight text-slate-500 uppercase dark:border-neutral-800 dark:text-neutral-400">
                                 Prix Réel
                             </TableHead>
-                            <TableHead className="text-right text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
+                            <TableHead className="w-32 border-r border-slate-100 px-4 text-right text-[10px] font-black tracking-tight text-slate-500 uppercase dark:border-neutral-800 dark:text-neutral-400">
                                 P.U Facture
                             </TableHead>
-                            <TableHead className="px-4 text-right text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
-                                Diff Total
-                            </TableHead>
-                            <TableHead className="px-6 text-right text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
+                            <TableHead className="w-36 border-r border-slate-100 px-6 text-right text-[10px] font-black tracking-tight text-slate-500 uppercase dark:border-neutral-800 dark:text-neutral-400">
                                 Valeur DH
+                            </TableHead>
+                            <TableHead className="w-32 border-l border-slate-100 px-6 text-right text-[10px] font-black tracking-tight text-slate-500 uppercase dark:border-neutral-800 dark:text-neutral-400">
+                                Diff Total
                             </TableHead>
                         </TableRow>
                     </TableHeader>
 
                     <TableBody>
                         {items.length > 0 ? (
-                            items.map((item) => {
-                                {
-                                    const invoiceItem = item.invoice_item;
-
-                                    const value =
-                                        Number(item.unit_count) *
-                                        Number(item.real_price);
-
-                                    const diff = Number(item.total_diff);
-
-                                    return (
-                                        <TableRow
-                                            key={item.id}
-                                            className="border-b border-slate-100 hover:bg-slate-50/40 dark:border-neutral-800 dark:hover:bg-neutral-800/40"
-                                        >
-                                            <TableCell className="pl-6 text-xs font-medium text-slate-900 capitalize dark:text-neutral-100">
-                                                {invoiceItem?.item?.name ||
-                                                    'Article'}
-                                            </TableCell>
-
-                                            <TableCell className="text-xs text-slate-600 dark:text-neutral-300">
-                                                {invoiceItem?.boat?.name || '—'}
-                                            </TableCell>
-
-                                            <TableCell className="text-center font-mono text-xs text-slate-500 dark:text-neutral-400">
-                                                {invoiceItem?.invoice
-                                                    ?.invoice_number
-                                                    ? `#${invoiceItem.invoice.invoice_number}`
-                                                    : '—'}
-                                            </TableCell>
-
-                                            <TableCell className="text-center text-xs font-bold text-slate-900 dark:text-neutral-100">
-                                                {item.unit_count}{' '}
-                                                <span className="text-[10px] font-normal text-slate-500 uppercase dark:text-neutral-400">
-                                                    {invoiceItem?.unit}
-                                                </span>
-                                            </TableCell>
-
-                                            <TableCell className="text-right text-xs font-medium text-slate-700 dark:text-neutral-200">
-                                                {Number(
-                                                    item.real_price,
-                                                ).toLocaleString('fr-FR', {
-                                                    minimumFractionDigits: 2,
-                                                })}
-                                            </TableCell>
-
-                                            <TableCell className="text-right text-xs text-slate-400 dark:text-neutral-500">
-                                                {invoiceItem
-                                                    ? Number(
-                                                          invoiceItem.unit_price,
-                                                      ).toLocaleString(
-                                                          'fr-FR',
-                                                          {
-                                                              minimumFractionDigits: 2,
-                                                          },
-                                                      )
-                                                    : '—'}
-                                            </TableCell>
-
-                                            <TableCell
-                                                className={cn(
-                                                    'px-4 text-right text-xs font-bold',
-                                                    diff < 0
-                                                        ? 'text-red-600 dark:text-red-400'
-                                                        : diff > 0
-                                                          ? 'text-green-600 dark:text-green-400'
-                                                          : 'text-slate-600 dark:text-neutral-300',
-                                                )}
-                                            >
-                                                {(diff > 0 ? '+' : '') +
-                                                    formatDifferenceAmount(diff)}
-                                            </TableCell>
-
-                                            <TableCell className="px-6 text-right text-xs font-bold text-slate-900 dark:text-neutral-100">
-                                                {value.toLocaleString('fr-FR', {
-                                                    minimumFractionDigits: 2,
-                                                })}
-                                            </TableCell>
-                                        </TableRow>
-                                    );
-                                }
-                            })
+                            items.map((item) => (
+                                <SaleShowItemRow key={item.id} item={item} />
+                            ))
                         ) : (
                             <TableRow>
                                 <TableCell
-                                    colSpan={8}
+                                    colSpan={7}
                                     className="py-24 text-center font-medium text-muted-foreground italic"
                                 >
                                     Aucune ligne de vente enregistrée pour le
