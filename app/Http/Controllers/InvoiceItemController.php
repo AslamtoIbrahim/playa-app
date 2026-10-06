@@ -2,8 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Difference;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
+use App\Models\Receipt;
+use App\Models\ReceiptItem;
+use App\Models\Sale;
+use App\Models\SaleItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -15,15 +20,15 @@ class InvoiceItemController extends Controller
     public function store(Request $request, Invoice $invoice)
     {
         $validated = $request->validate([
-            'boat_id'    => 'nullable|exists:boats,id',
-            'item_id'    => 'nullable|exists:items,id',
+            'boat_id' => 'nullable|exists:boats,id',
+            'item_id' => 'nullable|exists:items,id',
             'unit_count' => 'nullable|numeric',
             'unit_price' => 'nullable|numeric',
-            'weight'     => 'nullable|numeric',
-            'unit'       => 'nullable|string',
-            'box'        => 'nullable|integer', // Field jdid
-            'target_id'  => 'nullable|exists:invoice_items,id',
-            'direction'  => 'nullable|in:above,below',
+            'weight' => 'nullable|numeric',
+            'unit' => 'nullable|string',
+            'box' => 'nullable|integer', // Field jdid
+            'target_id' => 'nullable|exists:invoice_items,id',
+            'direction' => 'nullable|in:above,below',
         ]);
 
         $unitCount = floatval($validated['unit_count'] ?? 0);
@@ -51,15 +56,15 @@ class InvoiceItemController extends Controller
             }
 
             $invoice->items()->create([
-                'boat_id'    => $validated['boat_id'] ?? null,
-                'item_id'    => $validated['item_id'] ?? null,
-                'unit'       => $validated['unit'] ?? 'caisse',
-                'box'        => $validated['box'] ?? 0, // Added here
+                'boat_id' => $validated['boat_id'] ?? null,
+                'item_id' => $validated['item_id'] ?? null,
+                'unit' => $validated['unit'] ?? 'caisse',
+                'box' => $validated['box'] ?? 0, // Added here
                 'unit_count' => $unitCount,
                 'unit_price' => $unitPrice,
-                'weight'     => floatval($validated['weight'] ?? 0),
-                'amount'     => $rowAmount,
-                'position'   => $position,
+                'weight' => floatval($validated['weight'] ?? 0),
+                'amount' => $rowAmount,
+                'position' => $position,
             ]);
 
             $invoice->refresh();
@@ -76,14 +81,14 @@ class InvoiceItemController extends Controller
     public function update(Request $request, Invoice $invoice, InvoiceItem $item)
     {
         $validated = $request->validate([
-            'item_id'    => 'nullable|exists:items,id',
-            'boat_id'    => 'nullable|exists:boats,id',
+            'item_id' => 'nullable|exists:items,id',
+            'boat_id' => 'nullable|exists:boats,id',
             'unit_count' => 'nullable|numeric',
             'unit_price' => 'nullable|numeric',
-            'weight'     => 'nullable|numeric',
-            'unit'       => 'nullable|string',
-            'box'        => 'nullable|integer', // Field jdid
-            'position'   => 'nullable|integer',
+            'weight' => 'nullable|numeric',
+            'unit' => 'nullable|string',
+            'box' => 'nullable|integer', // Field jdid
+            'position' => 'nullable|integer',
         ]);
 
         $unitCount = floatval($validated['unit_count'] ?? $item->unit_count ?? 0);
@@ -94,15 +99,15 @@ class InvoiceItemController extends Controller
 
         DB::transaction(function () use ($item, $invoice, $validated, $rowAmount) {
             $item->update([
-                'item_id'    => $validated['item_id'] ?? $item->item_id,
-                'boat_id'    => $validated['boat_id'] ?? $item->boat_id,
-                'unit'       => $validated['unit'] ?? $item->unit ?? 'caisse',
-                'box'        => $validated['box'] ?? $item->box ?? 0, // Added here
+                'item_id' => $validated['item_id'] ?? $item->item_id,
+                'boat_id' => $validated['boat_id'] ?? $item->boat_id,
+                'unit' => $validated['unit'] ?? $item->unit ?? 'caisse',
+                'box' => $validated['box'] ?? $item->box ?? 0, // Added here
                 'unit_count' => $validated['unit_count'] ?? $item->unit_count ?? 0,
                 'unit_price' => $validated['unit_price'] ?? $item->unit_price ?? 0,
-                'weight'     => $validated['weight'] ?? $item->weight ?? 0,
-                'amount'     => $rowAmount,
-                'position'   => $validated['position'] ?? $item->position,
+                'weight' => $validated['weight'] ?? $item->weight ?? 0,
+                'amount' => $rowAmount,
+                'position' => $validated['position'] ?? $item->position,
             ]);
 
             $invoice->refresh();
@@ -136,15 +141,15 @@ class InvoiceItemController extends Controller
                 $itemsData = collect($validated['items'])->map(function ($item, $index) use ($invoice, $lastPosition) {
                     return [
                         'invoice_id' => $invoice->id,
-                        'boat_id'    => $item['boat_id'] ?? null,
-                        'item_id'    => $item['item_id'] ?? null,
-                        'unit'       => $item['unit'] ?? 'caisse',
-                        'box'        => $item['box'] ?? 0, // Added here
+                        'boat_id' => $item['boat_id'] ?? null,
+                        'item_id' => $item['item_id'] ?? null,
+                        'unit' => $item['unit'] ?? 'caisse',
+                        'box' => $item['box'] ?? 0, // Added here
                         'unit_count' => $item['unit_count'],
                         'unit_price' => $item['unit_price'],
-                        'weight'     => $item['weight'] ?? 0,
-                        'amount'     => $item['unit_count'] * $item['unit_price'],
-                        'position'   => $lastPosition + ($index + 1),
+                        'weight' => $item['weight'] ?? 0,
+                        'amount' => $item['unit_count'] * $item['unit_price'],
+                        'position' => $lastPosition + ($index + 1),
                         'created_at' => now(),
                         'updated_at' => now(),
                     ];
@@ -157,7 +162,7 @@ class InvoiceItemController extends Controller
                 $invoice->calculateTotals();
             });
 
-            return back()->with('success', count($validated['items']) . ' articles importés.');
+            return back()->with('success', count($validated['items']).' articles importés.');
         } catch (\Exception $e) {
             return back()->with('error', 'Erreur lors de l\'importation.');
         }
@@ -170,7 +175,7 @@ class InvoiceItemController extends Controller
     {
         $validated = $request->validate([
             'ids' => 'required|array',
-            'ids.*' => 'exists:invoice_items,id'
+            'ids.*' => 'exists:invoice_items,id',
         ]);
 
         try {
@@ -218,7 +223,7 @@ class InvoiceItemController extends Controller
     {
         $validated = $request->validate([
             'items' => 'required|array',
-            'items.*' => 'exists:invoice_items,id'
+            'items.*' => 'exists:invoice_items,id',
         ]);
 
         DB::transaction(function () use ($validated, $invoice) {
@@ -241,18 +246,18 @@ class InvoiceItemController extends Controller
             DB::transaction(function () use ($invoice, $item) {
 
                 // 1. كنقلبو على الـ ReceiptItems اللي مرتبطين بهاد السطر قبل ما نمسحوهم
-                $receiptItemIds = \App\Models\ReceiptItem::where('invoice_item_id', $item->id)->pluck('receipt_id');
+                $receiptItemIds = ReceiptItem::where('invoice_item_id', $item->id)->pluck('receipt_id');
 
                 // 2. مسح الفروقات
-                \App\Models\Difference::where('invoice_item_id', $item->id)->delete();
+                Difference::where('invoice_item_id', $item->id)->delete();
 
                 // 3. مسح سطر العمولة من وصولات الاستلام
-                \App\Models\ReceiptItem::where('invoice_item_id', $item->id)->delete();
+                ReceiptItem::where('invoice_item_id', $item->id)->delete();
 
                 // 4. تنظيف الـ Receipts: إذا بقاو خاويين نمسحوهم، وإلا نعاودو نحسبو الـ Total ديالهم
                 if ($receiptItemIds->isNotEmpty()) {
                     foreach ($receiptItemIds->unique() as $receiptId) {
-                        $receipt = \App\Models\Receipt::find($receiptId);
+                        $receipt = Receipt::find($receiptId);
                         if ($receipt) {
                             if ($receipt->items()->count() == 0) {
                                 $receipt->delete(); // مسح الـ Receipt كامل إذا رجع خاوي
@@ -263,11 +268,30 @@ class InvoiceItemController extends Controller
                     }
                 }
 
-                // 5. مسح سطر الفاتورة
+                // 5. Recorde les ventes touchées avant suppression : la suppression
+                // en masse ne déclenche pas les événements du modèle SaleItem, donc
+                // les totaux de la vente doivent être recalculés explicitement.
+                $affectedSaleIds = SaleItem::where('invoice_item_id', $item->id)->pluck('sale_id');
+
+                // 6. Supprimer les SaleItems liés à cette invoice item
+                SaleItem::where('invoice_item_id', $item->id)->delete();
+
+                // 7. Supprimer les Differences liées
+                Difference::where('invoice_item_id', $item->id)->delete();
+
+                // 8. Supprimer les ReceiptItems liés
+                ReceiptItem::where('invoice_item_id', $item->id)->delete();
+
+                // 9. Supprimer le s-item himself
                 $item->delete();
 
                 $invoice->refresh();
                 $invoice->calculateTotals();
+
+                // Recalculer les totaux des ventes qui perdaient cette ligne.
+                Sale::whereIn('id', $affectedSaleIds)->get()->each(function ($sale) {
+                    $sale->calculateTotals();
+                });
             });
 
             return back()->with('success', 'Suppression réussie et nettoyage effectué. ✅');
@@ -283,7 +307,7 @@ class InvoiceItemController extends Controller
     {
         $validated = $request->validate([
             'ids' => 'required|array',
-            'ids.*' => 'integer|exists:invoice_items,id'
+            'ids.*' => 'integer|exists:invoice_items,id',
         ]);
 
         try {
@@ -291,15 +315,21 @@ class InvoiceItemController extends Controller
                 $ids = $validated['ids'];
 
                 // نجيبو كاع الـ Receipts اللي يقدروا يتأثروا
-                $receiptIds = \App\Models\ReceiptItem::whereIn('invoice_item_id', $ids)->pluck('receipt_id')->unique();
+                $receiptIds = ReceiptItem::whereIn('invoice_item_id', $ids)->pluck('receipt_id')->unique();
+
+                // Recorde les ventes touchées avant suppression : la suppression
+                // en masse ne déclenche pas les événements du modèle SaleItem, donc
+                // les totaux de la vente doivent être recalculés explicitement.
+                $affectedSaleIds = SaleItem::whereIn('invoice_item_id', $ids)->pluck('sale_id')->unique();
 
                 // مسح التوابع
-                \App\Models\Difference::whereIn('invoice_item_id', $ids)->delete();
-                \App\Models\ReceiptItem::whereIn('invoice_item_id', $ids)->delete();
+                Difference::whereIn('invoice_item_id', $ids)->delete();
+                ReceiptItem::whereIn('invoice_item_id', $ids)->delete();
+                SaleItem::whereIn('invoice_item_id', $ids)->delete();
 
                 // تنظيف الـ Receipts
                 foreach ($receiptIds as $receiptId) {
-                    $receipt = \App\Models\Receipt::find($receiptId);
+                    $receipt = Receipt::find($receiptId);
                     if ($receipt) {
                         if ($receipt->items()->count() == 0) {
                             $receipt->delete();
@@ -314,9 +344,14 @@ class InvoiceItemController extends Controller
 
                 $invoice->refresh();
                 $invoice->calculateTotals();
+
+                // Recalculer les totaux des ventes qui perdaient ces lignes.
+                Sale::whereIn('id', $affectedSaleIds)->get()->each(function ($sale) {
+                    $sale->calculateTotals();
+                });
             });
 
-            return back()->with('success', count($validated['ids']) . ' supprimés avec nettoyage. ✅');
+            return back()->with('success', count($validated['ids']).' supprimés avec nettoyage. ✅');
         } catch (\Exception $e) {
             return back()->with('error', 'Erreur suppression groupée.');
         }

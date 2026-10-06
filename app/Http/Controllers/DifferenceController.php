@@ -17,8 +17,10 @@ class DifferenceController extends Controller
     public function index()
     {
         // 1. Differences (الأساس: أي تقرير لازم يبدا من هنا)
+        // ن exclude الاختلافات المرتبطة بعناصر فاتورة محذوفة (soft-deleted)
         $diffs = DB::table('differences')
             ->join('invoice_items', 'differences.invoice_item_id', '=', 'invoice_items.id')
+            ->whereNull('invoice_items.deleted_at')
             ->join('invoices', 'invoice_items.invoice_id', '=', 'invoices.id')
             ->select(
                 'differences.customer_id',

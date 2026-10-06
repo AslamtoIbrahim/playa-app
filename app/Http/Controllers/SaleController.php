@@ -79,6 +79,11 @@ class SaleController extends Controller
             'items.invoiceItem.invoice.sessionZone.dailySession',
         ]);
 
+        // Filter out sale items whose invoice item is soft-deleted
+        $sale->items = $sale->items->filter(function ($item) {
+            return ! is_null($item->invoiceItem) && ! is_null($item->invoiceItem->fresh());
+        })->values();
+
         $sessionZones = $sale->items
             ->map(fn (SaleItem $saleItem) => $saleItem->invoiceItem?->invoice?->sessionZone)
             ->filter()

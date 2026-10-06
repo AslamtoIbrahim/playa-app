@@ -18,11 +18,19 @@ import {
     verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { Head, router } from '@inertiajs/react';
-import { ArrowLeft, Camera, Copy, Printer, ShoppingCart, Trash2, X } from 'lucide-react';
+import {
+    ArrowLeft,
+    Camera,
+    Copy,
+    Printer,
+    ShoppingCart,
+    Trash2,
+    X,
+} from 'lucide-react';
 import { useState } from 'react';
 
 // UI Components
-import { DeleteManyItemsDialog } from '@/components/delete-many-items';
+import { DeleteInvoiceItemsDialog } from '@/components/delete-invoice-items-dialog';
 import InvoiceItemDragOverlay from '@/components/invoice-item-drag-overlay';
 import InvoiceItemRow from '@/components/invoice-item-row';
 import { Button } from '@/components/ui/button';
@@ -53,6 +61,7 @@ import AppLayout from '@/layouts/app-layout';
 import { invoices } from '@/routes';
 import {
     bulkStore,
+    destroy,
     destroyMany,
     duplicateMany,
     reorder,
@@ -131,7 +140,14 @@ export default function InvoiceShow({
         .filter((item): item is InvoiceItem => Boolean(item));
 
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
-    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    /**
+     * Lignes ciblées par la suppression en cours : sélection multiple ou
+     * ligne unique (menu de ligne). `single` détermine la route utilisée.
+     */
+    const [deleteTarget, setDeleteTarget] = useState<{
+        ids: number[];
+        single: boolean;
+    } | null>(null);
     const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
 
     // الحسابات
@@ -146,18 +162,57 @@ export default function InvoiceShow({
     );
 
     // --- Logic: Actions ---
-    const confirmBulkDelete = () => {
+    /**
+     * Lines targeted by the current delete dialog, used to count the linked
+     * differences and sales shown in the warning.
+     */
+    const deleteTargetItems = deleteTarget
+        ? invoice.items.filter((item) => deleteTarget.ids.includes(item.id))
+        : [];
+
+    const relatedDifferenceCount = deleteTargetItems.reduce(
+        (sum, item) => sum + (item.differences?.length ?? 0),
+        0,
+    );
+
+    const relatedSaleCount = deleteTargetItems.reduce(
+        (sum, item) => sum + (item.sale_items?.length ?? 0),
+        0,
+    );
+
+    const closeDeleteDialog = () => {
+        setDeleteTarget(null);
+    };
+
+    const confirmDelete = () => {
+        if (!deleteTarget || deleteTarget.ids.length === 0) {
+            return;
+        }
+
+        const { ids, single } = deleteTarget;
+
+        const onSuccess = () => {
+            setSelectedIds((prev) => prev.filter((id) => !ids.includes(id)));
+            closeDeleteDialog();
+        };
+
+        if (single) {
+            router.delete(destroy([invoice.id, ids[0]]), {
+                onSuccess,
+                preserveScroll: true,
+            });
+
+            return;
+        }
+
         router.post(
             destroyMany(invoice.id),
             {
                 _method: 'DELETE',
-                ids: selectedIds,
+                ids,
             },
             {
-                onSuccess: () => {
-                    setSelectedIds([]);
-                    setIsDeleteDialogOpen(false);
-                },
+                onSuccess,
                 preserveScroll: true,
             },
         );
@@ -307,6 +362,20 @@ export default function InvoiceShow({
         setIsSaleOpen(true);
     };
 
+    /** Suppression d'une seule ligne (menu de ligne) via le dialogue. */
+    const handleOpenDelete = (item: InvoiceItem) => {
+        setDeleteTarget({ ids: [item.id], single: true });
+    };
+
+    /** Suppression de toutes les lignes cochées via le dialogue. */
+    const handleOpenBulkDelete = () => {
+        if (selectedIds.length === 0) {
+            return;
+        }
+
+        setDeleteTarget({ ids: selectedIds, single: false });
+    };
+
     return (
         <div className="mx-auto min-h-screen max-w-7xl space-y-5 bg-white p-6 font-sans text-slate-900 dark:bg-neutral-950 dark:text-neutral-100">
             <Head title={`Facture ${invoice.invoice_number}`} />
@@ -386,7 +455,7 @@ export default function InvoiceShow({
                                 variant="destructive"
                                 size="sm"
                                 className="h-8 gap-2 text-xs"
-                                onClick={() => setIsDeleteDialogOpen(true)}
+                                onClick={handleOpenBulkDelete}
                             >
                                 <Trash2 className="h-3.5 w-3.5" /> Supprimer
                             </Button>
@@ -459,7 +528,7 @@ export default function InvoiceShow({
                                 <TableHead className="w-28 border-l border-slate-100 px-4 text-right text-[10px] font-black tracking-tight text-slate-500 uppercase dark:border-neutral-800 dark:text-neutral-400">
                                     Différence
                                 </TableHead>
-                                <TableHead className="w-12 border-l border-slate-100 px-2 text-center text-[10px] font-black tracking-tight text-slate-500 uppercase print:hidden dark:border-neutral-800 dark:text-neutral-400">
+                                <TableHead className="w-12 border-l border-slate-100 px-2 text-center text-[10px] font-black tracking-tight text-slate-500 uppercase dark:border-neutral-800 dark:text-neutral-400 print:hidden">
                                     Vente
                                 </TableHead>
                                 <TableHead className="w-12 print:hidden"></TableHead>
@@ -503,6 +572,7 @@ export default function InvoiceShow({
                                         }}
                                         onOpenDifference={handleOpenDifference}
                                         onOpenSale={handleOpenSale}
+                                        onDelete={handleOpenDelete}
                                     />
                                 ))}
                             </SortableContext>
@@ -536,11 +606,17 @@ export default function InvoiceShow({
 
             <InvoicePrintFooter stats={stats} />
 
-            <DeleteManyItemsDialog
-                open={isDeleteDialogOpen}
-                onOpenChange={setIsDeleteDialogOpen}
-                onConfirm={confirmBulkDelete}
-                count={selectedIds.length}
+            <DeleteInvoiceItemsDialog
+                open={deleteTarget !== null}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        closeDeleteDialog();
+                    }
+                }}
+                onConfirm={confirmDelete}
+                count={deleteTarget?.ids.length ?? 0}
+                differenceCount={relatedDifferenceCount}
+                saleCount={relatedSaleCount}
             />
 
             {/* Difference Dialog Component */}

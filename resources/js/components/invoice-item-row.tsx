@@ -43,6 +43,8 @@ interface Props {
     onSelectChange?: (checked: boolean) => void;
     onOpenDifference: (item: InvoiceItem) => void;
     onOpenSale: (item: InvoiceItem) => void;
+    /** Ouvre le dialogue de suppression (différences / ventes liées). */
+    onDelete?: (item: InvoiceItem) => void;
     owners: Owner[];
     categories: Category[];
 }
@@ -57,6 +59,7 @@ export default function InvoiceItemRow({
     onSelectChange,
     onOpenDifference,
     onOpenSale,
+    onDelete,
     owners,
     categories,
 }: Props) {
@@ -426,7 +429,7 @@ export default function InvoiceItemRow({
             </TableCell>
 
             {/* VENTE : ouvre le dialogue de vente, l'infobulle rappelle le reste */}
-            <TableCell className="w-12 border-l border-slate-100 p-0 text-center print:hidden dark:border-neutral-800">
+            <TableCell className="w-12 border-l border-slate-100 p-0 text-center dark:border-neutral-800 print:hidden">
                 <div className="flex h-10 w-full items-center justify-center">
                     <InvoiceItemSaleButton
                         item={item}
@@ -470,6 +473,9 @@ export default function InvoiceItemRow({
                                     data={data}
                                     onOpenDifference={onOpenDifference}
                                     onOpenSale={onOpenSale}
+                                    onDelete={(target) => {
+                                        onDelete?.(target);
+                                    }}
                                 />
                             </div>
                         )}
