@@ -39,7 +39,7 @@ interface Props {
  *
  * La vente ne porte plus de lignes saisies à la main : elle est alimentée
  * uniquement depuis les lignes de facture d'achat, via le dialogue de vente.
- * La fiche est donc en lecture seule : bateau, article, quantité, prix réel,
+ * La fiche est donc en lecture seule : bateau, article, quantité, unité, prix réel,
  * prix unitaire de la facture, écart et valeur.
  */
 export default function SalesShow({ sale, sessionZones }: Props) {
@@ -133,6 +133,9 @@ export default function SalesShow({ sale, sessionZones }: Props) {
                             <TableHead className="w-24 border-r border-slate-100 text-center text-[10px] font-black tracking-tight text-slate-500 uppercase dark:border-neutral-800 dark:text-neutral-400">
                                 Qte / NC
                             </TableHead>
+                            <TableHead className="w-24 border-r border-slate-100 text-center text-[10px] font-black tracking-tight text-slate-500 uppercase dark:border-neutral-800 dark:text-neutral-400">
+                                Unité
+                            </TableHead>
                             <TableHead className="w-32 border-r border-slate-100 px-4 text-right text-[10px] font-black tracking-tight text-slate-500 uppercase dark:border-neutral-800 dark:text-neutral-400">
                                 Prix Réel
                             </TableHead>
@@ -156,7 +159,7 @@ export default function SalesShow({ sale, sessionZones }: Props) {
                         ) : (
                             <TableRow>
                                 <TableCell
-                                    colSpan={7}
+                                    colSpan={8}
                                     className="py-24 text-center font-medium text-muted-foreground italic"
                                 >
                                     Aucune ligne de vente enregistrée pour le

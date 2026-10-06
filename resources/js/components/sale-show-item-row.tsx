@@ -12,10 +12,10 @@ interface Props {
  * Ligne en lecture seule de la fiche d'une vente.
  *
  * La vente est alimentée depuis les lignes de facture d'achat : la ligne affiche
- * donc le bateau et l'article de la facture d'origine, la quantité vendue, le prix
- * réel pratiqué, le prix unitaire de la facture, l'écart en résultant et la
- * valeur de la vente. Les montants sont alignés à droite comme sur la fiche
- * facture, la dernière colonne (l'écart) étant isolée par un filet.
+ * donc le bateau et l'article de la facture d'origine, la quantité vendue, son
+ * unité, le prix réel pratiqué, le prix unitaire de la facture, l'écart en
+ * résultant et la valeur de la vente. Les montants sont alignés à droite comme
+ * sur la fiche facture, la dernière colonne (l'écart) étant isolée par un filet.
  */
 export function SaleShowItemRow({ item }: Props) {
     const invoiceItem = item.invoice_item;
@@ -35,10 +35,11 @@ export function SaleShowItemRow({ item }: Props) {
             </TableCell>
 
             <TableCell className="w-24 border-r border-slate-100 text-center text-sm font-bold text-slate-900 dark:border-neutral-800 dark:text-neutral-100">
-                {item.unit_count}{' '}
-                <span className="text-[10px] font-normal text-slate-500 uppercase dark:text-neutral-400">
-                    {invoiceItem?.unit}
-                </span>
+                {item.unit_count}
+            </TableCell>
+
+            <TableCell className="w-24 border-r border-slate-100 px-4 text-center text-xs font-medium text-slate-500 uppercase dark:border-neutral-800 dark:text-neutral-400">
+                {invoiceItem?.unit || '—'}
             </TableCell>
 
             <TableCell className="w-32 border-r border-slate-100 px-4 text-right text-sm font-medium text-slate-700 dark:border-neutral-800 dark:text-neutral-200">
