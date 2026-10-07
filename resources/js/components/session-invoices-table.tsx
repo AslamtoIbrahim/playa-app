@@ -206,10 +206,7 @@ export function SessionInvoicesTable({
                                                 'purchase' &&
                                                 canAddInvoice &&
                                                 (invoice.items?.length ?? 0) >
-                                                    0 &&
-                                                computeInvoiceRemainingTotals(
-                                                    invoice,
-                                                ).hasRemaining && (
+                                                    0 && (
                                                     <SellWholeInvoiceDialog
                                                         invoice={invoice}
                                                         customers={
@@ -217,6 +214,11 @@ export function SessionInvoicesTable({
                                                         }
                                                         formatCurrency={
                                                             formatCurrency
+                                                        }
+                                                        disabled={
+                                                            !computeInvoiceRemainingTotals(
+                                                                invoice,
+                                                            ).hasRemaining
                                                         }
                                                     />
                                                 )}

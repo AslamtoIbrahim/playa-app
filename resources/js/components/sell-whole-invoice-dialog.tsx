@@ -36,6 +36,11 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover';
 import { Spinner } from '@/components/ui/spinner';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { computeInvoiceRemainingTotals } from '@/lib/sales';
 import { cn, commandItemClass } from '@/lib/utils';
 import { sell } from '@/routes/invoices';
@@ -54,6 +59,13 @@ export interface SellWholeInvoiceDialogProps {
     customers: Customer[];
     formatCurrency: (amount: number) => string;
     trigger?: ReactNode;
+
+    /**
+     * When true, the invoice is fully sold: the trigger stays visible but
+     * disabled and hovering it hints that the invoice has already been sold.
+     * A custom `trigger` is ignored while disabled.
+     */
+    disabled?: boolean;
 }
 
 /**
@@ -69,6 +81,7 @@ export default function SellWholeInvoiceDialog({
     customers,
     formatCurrency,
     trigger,
+    disabled = false,
 }: SellWholeInvoiceDialogProps) {
     const [open, setOpen] = useState<boolean>(false);
     const [clientComboOpen, setClientComboOpen] = useState<boolean>(false);
@@ -94,22 +107,49 @@ export default function SellWholeInvoiceDialog({
         }
     };
 
+    const triggerButton = (
+        <Button
+            variant="ghost"
+            size="icon"
+            disabled={disabled}
+            aria-label={
+                disabled
+                    ? 'Cette facture a été entièrement vendue.'
+                    : 'Vendre le reste de la facture'
+            }
+            title={disabled ? undefined : 'Vendre le reste de la facture'}
+            className="h-8 w-8 text-emerald-500 hover:bg-emerald-50 hover:text-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-500/10 dark:hover:text-emerald-300"
+        >
+            <ShoppingCart className="h-4 w-4" />
+        </Button>
+    );
+
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
-            <DialogTrigger asChild>
-                {trigger ?? (
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label="Vendre le reste de la facture"
-                        title="Vendre le reste de la facture"
-                        className="h-8 w-8 text-emerald-500 hover:bg-emerald-50 hover:text-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-500/10 dark:hover:text-emerald-300"
+            {disabled ? (
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        {/* The disabled button is pointer-transparent
+                            (`disabled:pointer-events-none`), so the tooltip
+                            listeners live on this span: the hover hint still
+                            shows on a disabled control. */}
+                        <span className="inline-flex">{triggerButton}</span>
+                    </TooltipTrigger>
+
+                    <TooltipContent
+                        side="top"
+                        align="center"
+                        className="border border-slate-200 bg-white font-medium text-slate-900 shadow-lg dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+                        arrowClassName="bg-white fill-white dark:bg-neutral-900 dark:fill-neutral-900"
                     >
-                        {/* <HandCoins className="h-4 w-4" /> */}
-                        <ShoppingCart className="h-4 w-4" />
-                    </Button>
-                )}
-            </DialogTrigger>
+                        <p>Cette facture a été entièrement vendue.</p>
+                    </TooltipContent>
+                </Tooltip>
+            ) : (
+                <DialogTrigger asChild>
+                    {trigger ?? triggerButton}
+                </DialogTrigger>
+            )}
 
             <DialogContent className="sm:max-w-112.5">
                 <DialogHeader>
