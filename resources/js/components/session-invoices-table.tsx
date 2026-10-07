@@ -4,6 +4,7 @@ import { Lock, Plus, ShieldCheck } from 'lucide-react';
 import AddInvoiceDialog from '@/components/add-invoice-dialog';
 import DeleteInvoiceDialog from '@/components/delete-invoice-dialog';
 import EditInvoiceDialog from '@/components/edit-invoice-dialog';
+import SellInvoiceDialog from '@/components/sell-invoice-dialog';
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -15,6 +16,7 @@ import {
 } from '@/components/ui/table';
 import { show as showInvoice } from '@/routes/invoices';
 import type { Caution } from '@/types/caution';
+import type { Customer } from '@/types/customer';
 import type { SessionStatus } from '@/types/daily-session';
 import type { Billable, Invoice } from '@/types/invoice';
 import type { OfficeRoom } from '@/types/office-room';
@@ -40,6 +42,11 @@ export interface SessionInvoiceAddContext {
     billables: Billable[];
     officeRooms: OfficeRoom[];
     cautions: Caution[];
+    /**
+     * Clients déjà utilisés par les ventes de la journée : seuls proposés
+     * pour vendre une facture en entier à un seul client.
+     */
+    sellCustomers: Customer[];
 }
 
 export type SessionInvoiceAddContextInput = Omit<
@@ -194,6 +201,22 @@ export function SessionInvoicesTable({
                                 >
                                     {invoiceContext ? (
                                         <div className="flex items-center justify-end gap-1">
+                                            {invoiceContext.type ===
+                                                'purchase' &&
+                                                canAddInvoice &&
+                                                (invoice.items?.length ?? 0) >
+                                                    0 && (
+                                                    <SellInvoiceDialog
+                                                        invoice={invoice}
+                                                        customers={
+                                                            invoiceContext.sellCustomers
+                                                        }
+                                                        formatCurrency={
+                                                            formatCurrency
+                                                        }
+                                                    />
+                                                )}
+
                                             <EditInvoiceDialog
                                                 invoice={invoice}
                                                 billables={

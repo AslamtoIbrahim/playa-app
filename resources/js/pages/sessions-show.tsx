@@ -61,6 +61,18 @@ function SessionShow({
     // La session, la zone et la date sont déjà connues : le dialogue de création
     // se limite donc au compte et au bureau. Le même contexte alimente les
     // actions de ligne (modifier / archiver).
+    //
+    // `sellCustomers` : les clients des ventes déjà créées dans la journée —
+    // seuls clients proposés pour vendre une facture en entier à un seul client.
+    const sellCustomers: Customer[] = [
+        ...new Map(
+            (saleData.sales ?? [])
+                .map((sale) => sale.customer)
+                .filter((customer): customer is Customer => Boolean(customer))
+                .map((customer) => [customer.id, customer] as const),
+        ).values(),
+    ];
+
     const invoiceContext: SessionInvoiceAddContextInput = {
         sessionDate: session.session_date,
         sessionStatus: session.status,
@@ -68,6 +80,7 @@ function SessionShow({
         billables,
         officeRooms,
         cautions,
+        sellCustomers,
     };
 
     // Contexte des bons de réception : la session, la zone et la date étant

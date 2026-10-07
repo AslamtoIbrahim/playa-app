@@ -70,6 +70,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('invoices', [InvoiceController::class, 'store'])->name('invoices.store');
     Route::get('invoices/{invoice}', [InvoiceController::class, 'show'])->name('invoices.show');
     Route::patch('invoices/{invoice}', [InvoiceController::class, 'update'])->name('invoices.update');
+    Route::post('invoices/{invoice}/sell', [InvoiceController::class, 'sell'])->name('invoices.sell');
     Route::delete('invoices/{invoice}', [InvoiceController::class, 'destroy'])->name('invoices.destroy');
 
     // Invoice Items (Details) Routes

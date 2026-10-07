@@ -184,6 +184,87 @@ class InvoiceController extends Controller
     }
 
     /**
+     * Vendre la totalité d'une facture à un seul client.
+     *
+     * Toutes les lignes restantes sont distribuées vers la vente du client
+     * choisi (dans la même journée) au prix facturé : aucune différence n'est
+     * créée ici — elle reste ajustable ligne par ligne depuis la fiche facture.
+     */
+    public function sell(Request $request, Invoice $invoice)
+    {
+        $validated = $request->validate([
+            'customer_id' => 'required|exists:customers,id',
+        ], [
+            'customer_id.required' => 'Veuillez choisir le client vendeur.',
+            'customer_id.exists' => "Ce client n'existe pas.",
+        ]);
+
+        $session = $invoice->sessionZone?->dailySession;
+
+        if (! $session) {
+            return back()->with('error', "Cette facture n'est rattachée à aucune journée.");
+        }
+
+        if ($session->status === 'closed') {
+            return back()->with('error', 'Action impossible : La journée est clôturée.');
+        }
+
+        $result = DB::transaction(function () use ($request, $validated, $invoice, $session) {
+            // Lignes encore vendables : on ne vend que le reste, au prix facturé.
+            $remainingItems = [];
+
+            foreach ($invoice->items as $invoiceItem) {
+                $alreadySold = (float) $invoiceItem->saleItems()->sum('unit_count');
+                $remaining = (float) $invoiceItem->unit_count - $alreadySold;
+
+                if ($remaining > 0) {
+                    $remainingItems[] = [$invoiceItem, $remaining];
+                }
+            }
+
+            if ($remainingItems === []) {
+                return null;
+            }
+
+            // La vente du client dans la journée : réutilisée, créée sinon.
+            $sale = Sale::where('session_id', $session->id)
+                ->where('customer_id', $validated['customer_id'])
+                ->latest('id')
+                ->first();
+
+            if (! $sale) {
+                $sale = Sale::create([
+                    'date' => $session->session_date,
+                    'customer_id' => $validated['customer_id'],
+                    'session_id' => $session->id,
+                    'created_by' => $request->user()->id,
+                    'type' => 'normal',
+                    'amount' => 0,
+                    'boxes' => 0,
+                    'weight' => 0,
+                ]);
+            }
+
+            foreach ($remainingItems as [$invoiceItem, $remaining]) {
+                $invoiceItem->saleItems()->create([
+                    'sale_id' => $sale->id,
+                    'unit_count' => $remaining,
+                    // Prix facturé : total_diff = 0, aucune différence.
+                    'real_price' => $invoiceItem->unit_price,
+                ]);
+            }
+
+            return $sale;
+        });
+
+        if (! $result) {
+            return back()->with('error', 'Cette facture est déjà entièrement vendue.');
+        }
+
+        return back()->with('success', "Facture vendue à {$result->customer->name}. ✅");
+    }
+
+    /**
      * Archiver une facture (Soft Delete)
      */
     public function destroy(Invoice $invoice)
