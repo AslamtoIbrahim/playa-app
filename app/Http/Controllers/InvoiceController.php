@@ -179,6 +179,7 @@ class InvoiceController extends Controller
             ])),
             'customers' => Customer::all(['id', 'name']),
             'sales' => $sales,
+            'session' => $session,
             'backUrl' => $backUrl,
         ]);
     }

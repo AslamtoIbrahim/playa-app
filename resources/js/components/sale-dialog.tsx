@@ -21,6 +21,9 @@ import { Fragment, useMemo, useRef } from 'react';
 import { toast } from 'sonner';
 import { SaleRow } from './sale-row';
 import { Badge } from './ui/badge';
+import MissingDialogSale from './missing-dialog-sale';
+import type { DailySession } from '@/types/daily-session';
+import type { Customer } from '@/types/customer';
 
 interface Props {
     open: boolean;
@@ -29,6 +32,10 @@ interface Props {
     items: InvoiceItem[];
     /** Ventes de la journée en cours, seules cibles possibles. */
     sales: Sale[];
+    /** Session courante (via sa zone) pour créer la vente manquante. */
+    session: DailySession | null;
+    /** Clients disponibles pour la nouvelle vente. */
+    customers: Customer[];
 }
 
 /**
@@ -39,7 +46,14 @@ interface Props {
  * (donc des clients différents) jusqu'à épuisement. Le total de l'écart réel
  * s'affiche en direct, ligne par ligne.
  */
-export function SaleDialog({ open, onOpenChange, items, sales }: Props) {
+export function SaleDialog({
+    open,
+    onOpenChange,
+    items,
+    sales,
+    session,
+    customers,
+}: Props) {
     // Les enregistrements discrets (passage d'une cellule à l'autre) sont
     // comptés ici pour n'afficher qu'un seul toast récapitulatif à la
     // fermeture, au lieu d'une notification à chaque flèche. Une ref évite un
@@ -130,10 +144,17 @@ export function SaleDialog({ open, onOpenChange, items, sales }: Props) {
                             </div>
                         </div>
 
-                        {hasNoSale && (
-                            <div className="flex w-full items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-400">
-                                <ShoppingCart className="h-3.5 w-3.5" />
-                                Créez d'abord une vente pour cette journée.
+                        {hasNoSale && session && customers.length > 0 && (
+                            <div className="flex w-full items-center gap-2">
+                                <div className="flex w-full items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-400">
+                                    <ShoppingCart className="h-3.5 w-3.5" />
+                                    Aucune vente pour cette journée.
+                                </div>
+                                <MissingDialogSale
+                                    sessionId={session.id}
+                                    sessionDate={session.session_date}
+                                    customers={customers}
+                                />
                             </div>
                         )}
                     </div>

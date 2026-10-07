@@ -69,13 +69,25 @@ class SaleItemController extends Controller
     }
 
     /**
-     * 2. Mettre à jour une distribution (quantité et/ou prix réel).
+     * 2. Update a distribution (quantity, real price and/or target sale).
+     *
+     * The client IS the target sale: changing it must follow the same rule as
+     * creation — the target sale has to belong to the session of the source
+     * invoice line. Totals of BOTH sales are recalculated when the line moves.
      */
     public function update(Request $request, SaleItem $saleItem)
     {
         $validated = $request->validate([
+            'sale_id' => 'sometimes|integer|exists:sales,id',
             'unit_count' => 'nullable|numeric|min:0.01',
             'real_price' => 'nullable|numeric|min:0',
+        ], [
+            'sale_id.integer' => "L'identifiant de vente est invalide.",
+            'sale_id.exists' => "Cette vente n'existe pas.",
+            'unit_count.numeric' => 'La quantité doit être un nombre.',
+            'unit_count.min' => 'La quantité doit être au moins 0.01.',
+            'real_price.numeric' => 'Le prix réel doit être un nombre.',
+            'real_price.min' => 'Le prix réel ne peut pas être négatif.',
         ]);
 
         return DB::transaction(function () use ($validated, $saleItem) {
@@ -95,10 +107,35 @@ class SaleItemController extends Controller
                 }
             }
 
+            $previousSaleId = (int) $saleItem->sale_id;
+            $targetSaleId = isset($validated['sale_id']) ? (int) $validated['sale_id'] : null;
+
+            // Client switch: moving the line to another sale is only allowed
+            // when that sale shares the session of the source invoice line.
+            if ($targetSaleId !== null && $targetSaleId !== $previousSaleId) {
+                $sale = Sale::findOrFail($targetSaleId);
+
+                $invoiceSessionId = $invoiceItem?->invoice?->sessionZone?->daily_session_id;
+
+                if ($invoiceSessionId === null || (int) $sale->session_id !== (int) $invoiceSessionId) {
+                    return back()->with('error', 'La vente doit appartenir à la même journée que la facture.');
+                }
+            }
+
+            // Reset the relation so the `saved` hook targets the new sale.
+            $saleItem->unsetRelation('sale');
+
             $saleItem->update([
+                'sale_id' => $targetSaleId ?? $saleItem->sale_id,
                 'unit_count' => $newCount,
                 'real_price' => $validated['real_price'] ?? $saleItem->real_price,
             ]);
+
+            // The `saved` hook recomputed the target sale: when the line moved,
+            // the previous sale must drop it from its totals as well.
+            if ($targetSaleId !== null && $targetSaleId !== $previousSaleId) {
+                Sale::find($previousSaleId)?->calculateTotals();
+            }
 
             return back()->with('success', 'Ligne mise à jour.');
         });

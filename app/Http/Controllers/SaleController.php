@@ -28,6 +28,10 @@ class SaleController extends Controller
 
     /**
      * Créer une nouvelle vente (Header)
+     *
+     * `redirect=back` keeps the caller on the current page (sale created from
+     * the invoice distribution dialog); the default lands on the new sale's
+     * sheet so its items can be filled in.
      */
     public function store(Request $request)
     {
@@ -36,6 +40,17 @@ class SaleController extends Controller
             'customer_id' => 'required|exists:customers,id',
             'session_id' => 'required|exists:daily_sessions,id',
             'type' => 'required|in:normal,usine',
+            'redirect' => 'sometimes|in:back,show',
+        ], [
+            'date.required' => 'La date est obligatoire.',
+            'date.date' => 'La date est invalide.',
+            'customer_id.required' => 'Veuillez choisir un client.',
+            'customer_id.exists' => "Ce client n'existe pas.",
+            'session_id.required' => 'La journée est obligatoire.',
+            'session_id.exists' => "Cette journée n'existe pas.",
+            'type.required' => 'Le type de vente est obligatoire.',
+            'type.in' => 'Le type de vente est invalide.',
+            'redirect.in' => 'Paramètre de redirection invalide.',
         ]);
 
         $session = DailySession::findOrFail($validated['session_id']);
@@ -54,6 +69,10 @@ class SaleController extends Controller
             'boxes' => 0,
             'weight' => 0,
         ]);
+
+        if (($validated['redirect'] ?? 'show') === 'back') {
+            return back()->with('success', 'Vente créée avec succès.');
+        }
 
         return redirect()->route('sales.show', $sale->id)
             ->with('success', 'Opération de vente créée avec succès.');

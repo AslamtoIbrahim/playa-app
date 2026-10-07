@@ -266,9 +266,12 @@ export function useSaleRow({
 
         if (!isNew && saleItem) {
             {
+                // `sale_id` is part of the payload: selecting another client
+                // in the row re-targets the distribution to that sale.
                 router.patch(
                     update(saleItem.id),
                     {
+                        sale_id: parseInt(currentData.sale_id),
                         unit_count: newCount,
                         real_price: parseFloat(currentData.real_price),
                     },

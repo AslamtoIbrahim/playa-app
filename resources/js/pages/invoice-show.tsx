@@ -73,6 +73,7 @@ import { Invoice } from '@/types/invoice';
 import { InvoiceItem } from '@/types/invoice-item';
 import { Item } from '@/types/item';
 import { Sale } from '@/types/sale';
+import type { DailySession } from '@/types/daily-session';
 import { toast } from 'sonner';
 
 interface Props {
@@ -84,6 +85,8 @@ interface Props {
     customers: Customer[];
     /** Ventes de la même journée : seules cibles possibles pour une vente. */
     sales: Sale[];
+    /** Session courante (via sa zone) pour créer la vente manquante. */
+    session: DailySession | null;
     /** URL de retour explicite fournie par le backend (journée liée ou liste). */
     backUrl: string;
 }
@@ -96,6 +99,7 @@ export default function InvoiceShow({
     categories,
     customers,
     sales,
+    session,
     backUrl,
 }: Props) {
     // --- State Management (Manual Synchronization) ---
@@ -640,6 +644,8 @@ export default function InvoiceShow({
                     onOpenChange={setIsSaleOpen}
                     items={saleItems}
                     sales={sales}
+                    session={session}
+                    customers={customers}
                 />
             )}
         </div>
