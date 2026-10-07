@@ -5,7 +5,7 @@ import {
     ChevronsUpDown,
     Package,
     Scale,
-    ShoppingCart
+    ShoppingCart,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
@@ -36,6 +36,7 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover';
 import { Spinner } from '@/components/ui/spinner';
+import { computeInvoiceRemainingTotals } from '@/lib/sales';
 import { cn, commandItemClass } from '@/lib/utils';
 import { sell } from '@/routes/invoices';
 import type { Customer } from '@/types/customer';
@@ -47,7 +48,7 @@ interface FlashMessage {
     error?: string | null;
 }
 
-export interface SellInvoiceDialogProps {
+export interface SellWholeInvoiceDialogProps {
     invoice: Invoice;
     /** Clients déjà utilisés par les ventes de la journée. */
     customers: Customer[];
@@ -56,22 +57,26 @@ export interface SellInvoiceDialogProps {
 }
 
 /**
- * Vend la totalité d'une facture à un seul client.
+ * Sells the unsold remainder of a purchase invoice to a single customer.
  *
- * Le dialogue affiche les totaux de la facture (montant / poids / caisses) et
- * laisse choisir le client vendeur. Toutes les lignes partent au prix facturé,
- * sans différence : les écarts restent ajustables plus tard depuis la fiche
- * facture.
+ * The dialog displays the totals of the remaining quantity only (amount /
+ * weight / boxes): lines or quantities already distributed to sales are
+ * excluded. The backend enforces the same rule and refuses an invoice that is
+ * already fully sold.
  */
-export default function SellInvoiceDialog({
+export default function SellWholeInvoiceDialog({
     invoice,
     customers,
     formatCurrency,
     trigger,
-}: SellInvoiceDialogProps) {
+}: SellWholeInvoiceDialogProps) {
     const [open, setOpen] = useState<boolean>(false);
     const [clientComboOpen, setClientComboOpen] = useState<boolean>(false);
     const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
+
+    // Totals of the quantity still sellable: already-sold lines are excluded.
+    const remaining = computeInvoiceRemainingTotals(invoice);
+    const hasRemaining = remaining.hasRemaining;
 
     const hasCustomers = customers.length > 0;
 
@@ -96,8 +101,8 @@ export default function SellInvoiceDialog({
                     <Button
                         variant="ghost"
                         size="icon"
-                        aria-label="Vendre la facture"
-                        title="Vendre la facture"
+                        aria-label="Vendre le reste de la facture"
+                        title="Vendre le reste de la facture"
                         className="h-8 w-8 text-emerald-500 hover:bg-emerald-50 hover:text-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-500/10 dark:hover:text-emerald-300"
                     >
                         {/* <HandCoins className="h-4 w-4" /> */}
@@ -109,46 +114,65 @@ export default function SellInvoiceDialog({
             <DialogContent className="sm:max-w-112.5">
                 <DialogHeader>
                     <DialogTitle className="font-black text-slate-900 uppercase dark:text-neutral-100">
-                        Vendre la facture
+                        Vendre le reste de la facture
                     </DialogTitle>
 
                     <DialogDescription>
-                        Choisissez le client vendeur : la facture sera vendue en
-                        une seule fois, sans différence de prix.
+                        Choisissez le client vendeur : seul le reste non vendu
+                        sera vendu, au prix facturé. Les quantités déjà vendues
+                        à d'autres clients sont exclues.
                     </DialogDescription>
                 </DialogHeader>
 
-                {/* Totaux de la facture : montant, poids et caisses. */}
-                <div className="grid grid-cols-3 gap-3 pt-2">
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-center dark:border-neutral-700 dark:bg-neutral-800/60">
-                        <span className="flex items-center justify-center gap-1 text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
-                            <Banknote className="h-3.5 w-3.5" /> Montant
-                        </span>
+                {/* Totaux du reste non vendu : montant, poids et caisses. */}
+                <div className="space-y-2 pt-2">
+                    <span className="flex items-center gap-1 text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
+                        Reste à vendre
+                    </span>
 
-                        <p className="mt-1 text-sm font-black text-slate-900 dark:text-neutral-100">
-                            {formatCurrency(invoice.amount)}
-                        </p>
+                    <div className="grid grid-cols-3 gap-3">
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-center dark:border-neutral-700 dark:bg-neutral-800/60">
+                            <span className="flex items-center justify-center gap-1 text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
+                                <Banknote className="h-3.5 w-3.5" /> Montant
+                            </span>
+
+                            <p className="mt-1 text-sm font-black text-slate-900 dark:text-neutral-100">
+                                {formatCurrency(remaining.amount)}
+                            </p>
+                        </div>
+
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-center dark:border-neutral-700 dark:bg-neutral-800/60">
+                            <span className="flex items-center justify-center gap-1 text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
+                                <Scale className="h-3.5 w-3.5" /> Poids Kg
+                            </span>
+
+                            <p className="mt-1 text-sm font-black text-slate-900 dark:text-neutral-100">
+                                {remaining.weight}
+                            </p>
+                        </div>
+
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-center dark:border-neutral-700 dark:bg-neutral-800/60">
+                            <span className="flex items-center justify-center gap-1 text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
+                                <Package className="h-3.5 w-3.5" /> Caisses
+                            </span>
+
+                            <p className="mt-1 text-sm font-black text-slate-900 dark:text-neutral-100">
+                                {remaining.boxes}
+                            </p>
+                        </div>
                     </div>
 
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-center dark:border-neutral-700 dark:bg-neutral-800/60">
-                        <span className="flex items-center justify-center gap-1 text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
-                            <Scale className="h-3.5 w-3.5" /> Poids Kg
-                        </span>
+                    <p className="text-[11px] leading-relaxed text-slate-500 dark:text-neutral-400">
+                        Seules les lignes non vendues partent au client choisi,
+                        au prix facturé.
+                    </p>
 
-                        <p className="mt-1 text-sm font-black text-slate-900 dark:text-neutral-100">
-                            {invoice.weight ?? 0}
-                        </p>
-                    </div>
-
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-center dark:border-neutral-700 dark:bg-neutral-800/60">
-                        <span className="flex items-center justify-center gap-1 text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
-                            <Package className="h-3.5 w-3.5" /> Caisses
-                        </span>
-
-                        <p className="mt-1 text-sm font-black text-slate-900 dark:text-neutral-100">
-                            {invoice.boxes ?? 0}
-                        </p>
-                    </div>
+                    {!hasRemaining && (
+                        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed font-medium text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+                            Facture déjà entièrement vendue : aucun article
+                            restant à vendre.
+                        </div>
+                    )}
                 </div>
 
                 <Form
@@ -165,7 +189,8 @@ export default function SellInvoiceDialog({
                         }
 
                         toast.success(
-                            flash?.success ?? 'Facture vendue avec succès ! ✅',
+                            flash?.success ??
+                                'Reste de la facture vendu avec succès ! ✅',
                         );
                         handleOpenChange(false);
                     }}
@@ -278,6 +303,7 @@ export default function SellInvoiceDialog({
                                     type="submit"
                                     disabled={
                                         processing ||
+                                        !hasRemaining ||
                                         !hasCustomers ||
                                         !selectedCustomerId
                                     }
@@ -286,7 +312,7 @@ export default function SellInvoiceDialog({
                                     {processing && (
                                         <Spinner className="mr-2 h-4 w-4" />
                                     )}
-                                    Vendre la facture
+                                    Vendre le reste
                                 </Button>
                             </div>
                         </>

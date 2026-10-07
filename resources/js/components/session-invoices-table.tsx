@@ -4,7 +4,7 @@ import { Lock, Plus, ShieldCheck } from 'lucide-react';
 import AddInvoiceDialog from '@/components/add-invoice-dialog';
 import DeleteInvoiceDialog from '@/components/delete-invoice-dialog';
 import EditInvoiceDialog from '@/components/edit-invoice-dialog';
-import SellInvoiceDialog from '@/components/sell-invoice-dialog';
+import SellWholeInvoiceDialog from '@/components/sell-whole-invoice-dialog';
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -14,6 +14,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { computeInvoiceRemainingTotals } from '@/lib/sales';
 import { show as showInvoice } from '@/routes/invoices';
 import type { Caution } from '@/types/caution';
 import type { Customer } from '@/types/customer';
@@ -205,8 +206,11 @@ export function SessionInvoicesTable({
                                                 'purchase' &&
                                                 canAddInvoice &&
                                                 (invoice.items?.length ?? 0) >
-                                                    0 && (
-                                                    <SellInvoiceDialog
+                                                    0 &&
+                                                computeInvoiceRemainingTotals(
+                                                    invoice,
+                                                ).hasRemaining && (
+                                                    <SellWholeInvoiceDialog
                                                         invoice={invoice}
                                                         customers={
                                                             invoiceContext.sellCustomers

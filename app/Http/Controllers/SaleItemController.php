@@ -33,7 +33,10 @@ class SaleItemController extends Controller
         return DB::transaction(function () use ($validated) {
             $sale = Sale::findOrFail($validated['sale_id']);
 
-            $invoiceItem = InvoiceItem::with('invoice.sessionZone')->findOrFail($validated['invoice_item_id']);
+            // Row lock: concurrent submissions cannot exceed the remaining quantity.
+            $invoiceItem = InvoiceItem::with('invoice.sessionZone')
+                ->lockForUpdate()
+                ->findOrFail($validated['invoice_item_id']);
 
             // La vente doit appartenir à la même journée que la facture d'achat.
             $invoiceSessionId = $invoiceItem->invoice?->sessionZone?->daily_session_id;

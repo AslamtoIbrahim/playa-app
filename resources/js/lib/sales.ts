@@ -1,3 +1,4 @@
+import type { Invoice } from '@/types/invoice';
 import type { InvoiceItem } from '@/types/invoice-item';
 import type { SaleItem } from '@/types/sale-item';
 
@@ -135,4 +136,75 @@ export function computeSaleNetToPay(
         (Number(taxAmount) || 0) +
         (Number(boxesFee) || 0)
     );
+}
+
+/** Totals of the quantity of a purchase invoice that is still sellable. */
+export interface InvoiceRemainingTotals {
+    /** Net amount of the remainder (HT + 3 % tax + 1 DH per box). */
+    amount: number;
+
+    /** Weight of the remainder, prorated per line. */
+    weight: number;
+
+    /** Boxes of the remainder, prorated per line. */
+    boxes: number;
+
+    /** Number of invoice lines that still carry a sellable quantity. */
+    remainingLines: number;
+
+    /** Whether at least one unit is still sellable. */
+    hasRemaining: boolean;
+}
+
+/**
+ * Totals of the unsold remainder of a purchase invoice.
+ *
+ * Only the quantity still sellable per line is counted: quantities already
+ * distributed to sales are excluded, exactly like `InvoiceController::sell()`.
+ * Weight and boxes are prorated by the remaining ratio on each line, and the
+ * amount mirrors `Invoice::calculateTotals()` (HT + 3 % tax + 1 DH per box) so
+ * it stays comparable with the invoice's own `amount`.
+ */
+export function computeInvoiceRemainingTotals(
+    invoice?: Pick<Invoice, 'items'> | null,
+): InvoiceRemainingTotals {
+    let remainingHt = 0;
+    let weight = 0;
+    let boxes = 0;
+    let remainingLines = 0;
+
+    for (const item of invoice?.items ?? []) {
+        const remaining = Math.max(computeInvoiceItemRemainingCount(item), 0);
+
+        if (remaining <= 0) {
+            continue;
+        }
+
+        const unitCount = Number(item.unit_count) || 0;
+
+        remainingLines += 1;
+        remainingHt += remaining * (Number(item.unit_price) || 0);
+
+        if (unitCount > 0) {
+            const ratio = remaining / unitCount;
+
+            weight += (Number(item.weight) || 0) * ratio;
+            boxes += (Number(item.box) || 0) * ratio;
+        }
+    }
+
+    const roundedWeight = Math.round(weight * 100) / 100;
+    const roundedBoxes = Math.round(boxes * 100) / 100;
+    const amount =
+        remainingHt +
+        computeSaleTax(remainingHt) +
+        computeSaleBoxesFee(roundedBoxes);
+
+    return {
+        amount: Math.round(amount * 100) / 100,
+        weight: roundedWeight,
+        boxes: roundedBoxes,
+        remainingLines,
+        hasRemaining: remainingLines > 0,
+    };
 }

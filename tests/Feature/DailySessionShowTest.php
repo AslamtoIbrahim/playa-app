@@ -14,6 +14,8 @@ use App\Models\Item;
 use App\Models\OfficeRoom;
 use App\Models\Receipt;
 use App\Models\ReceiptItem;
+use App\Models\Sale;
+use App\Models\SaleItem;
 use App\Models\SessionZone;
 use App\Models\User;
 use App\Models\Worker;
@@ -145,6 +147,7 @@ function createSessionWithTransactions(): array
         'zone',
         'sessionZone',
         'purchaseInvoice',
+        'purchaseInvoiceItem',
         'difference',
         'receipt',
         'attendance',
@@ -287,5 +290,38 @@ test('la page de la journée expose les données du dialogue de création de fac
             ->has('boats', 1)
             ->where('boats.0.id', $data['boat']->id)
             ->where('boats.0.name', 'Bateau test')
+        );
+});
+
+test('the session page exposes sale distributions so only the remainder can be sold', function () {
+    $data = createSessionWithTransactions();
+    $user = User::factory()->create();
+
+    $sale = Sale::create([
+        'date' => now()->toDateString(),
+        'customer_id' => $data['customer']->id,
+        'session_id' => $data['session']->id,
+        'created_by' => $user->id,
+    ]);
+
+    // 4 of the 10 units of the purchase line are already sold to a customer.
+    SaleItem::create([
+        'sale_id' => $sale->id,
+        'invoice_item_id' => $data['purchaseInvoiceItem']->id,
+        'unit_count' => 4,
+        'real_price' => 100,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('sessions.show', $data['session']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('sessions-show')
+            // The sell dialog relies on `sale_items` to show the remainder only.
+            ->has('purchaseData.invoices.0.items.0.sale_items', 1)
+            ->where(
+                'purchaseData.invoices.0.items.0.sale_items.0.unit_count',
+                fn ($unitCount) => (float) $unitCount === 4.0,
+            )
         );
 });

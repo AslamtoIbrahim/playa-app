@@ -62,7 +62,7 @@ class DailySessionController extends Controller
         // 1. Achats data
         $purchases = Invoice::whereIn('session_zone_id', $sessionZoneIds)
             ->where('type', 'purchase')
-            ->with(['items.differences', 'items.receiptItems', 'items.item', 'items.boat', 'billable', 'caution', 'sessionZone.zone'])
+            ->with(['items.differences', 'items.receiptItems', 'items.item', 'items.boat', 'items.saleItems', 'billable', 'caution', 'sessionZone.zone'])
             ->get();
 
         $purchaseDifferences = Difference::whereHas('invoiceItem.invoice', function ($q) use ($sessionZoneIds) {

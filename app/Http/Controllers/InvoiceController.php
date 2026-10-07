@@ -211,9 +211,11 @@ class InvoiceController extends Controller
 
         $result = DB::transaction(function () use ($request, $validated, $invoice, $session) {
             // Lignes encore vendables : on ne vend que le reste, au prix facturé.
+            // Row lock: two concurrent submissions cannot distribute the same
+            // remaining quantity twice.
             $remainingItems = [];
 
-            foreach ($invoice->items as $invoiceItem) {
+            foreach ($invoice->items()->lockForUpdate()->get() as $invoiceItem) {
                 $alreadySold = (float) $invoiceItem->saleItems()->sum('unit_count');
                 $remaining = (float) $invoiceItem->unit_count - $alreadySold;
 
