@@ -38,7 +38,9 @@ export function useTaxFreeRow({
     };
 
     const submitSave = (currentData = data): void => {
-        if (loading) return;
+        if (loading) {
+return;
+}
 
         const newCount = parseFloat(currentData.unit_count) || 0;
         
@@ -69,13 +71,19 @@ export function useTaxFreeRow({
     };
 
     const handleDelete = (): void => {
-        if (!diff || loading) return;
+        if (!diff || loading) {
+return;
+}
+
         setLoading(true);
         router.delete(destroy(diff.id), {
             preserveScroll: true,
             onSuccess: () => {
                 toast.success('Supprimé');
-                if (onDelete) onDelete(diff.id);
+
+                if (onDelete) {
+onDelete(diff.id);
+}
             },
             onFinish: () => setLoading(false),
         });

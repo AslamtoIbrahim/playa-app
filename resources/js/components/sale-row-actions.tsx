@@ -56,7 +56,9 @@ export function SaleRowActions({ saleId, item, data }: SaleRowActionsProps) {
 
             <DropdownMenuContent align="start" className="w-56">
                 <DropdownMenuItem
-                    onClick={() => { return handleAddRow('above'); }}
+                    onClick={() => {
+ return handleAddRow('above'); 
+}}
                     className="cursor-pointer text-xs"
                 >
                     <ArrowUpToLine className="mr-2 h-4 w-4 text-slate-400" />
@@ -64,7 +66,9 @@ export function SaleRowActions({ saleId, item, data }: SaleRowActionsProps) {
                 </DropdownMenuItem>
 
                 <DropdownMenuItem
-                    onClick={() => { return handleAddRow('below'); }}
+                    onClick={() => {
+ return handleAddRow('below'); 
+}}
                     className="cursor-pointer text-xs"
                 >
                     <ArrowDownToLine className="mr-2 h-4 w-4 text-slate-400" />
@@ -74,7 +78,9 @@ export function SaleRowActions({ saleId, item, data }: SaleRowActionsProps) {
                 <DropdownMenuSeparator />
 
                 <DropdownMenuItem
-                    onClick={() => { return handleAddRow('below', true); }}
+                    onClick={() => {
+ return handleAddRow('below', true); 
+}}
                     className="cursor-pointer text-xs"
                 >
                     <Copy className="mr-2 h-4 w-4 text-slate-400" />

@@ -37,10 +37,12 @@ export default function DeleteReceiptDialog({ receiptId, amount, trigger }: Prop
         router.delete(destroy(receiptId).url, {
             onSuccess: (page) => {
                 const flash = page.props.flash as any;
+
                 if (flash?.success) {
                     toast.success(flash.success);
                     setOpen(false);
                 }
+
                 if (flash?.error) {
                     toast.error(flash.error, {
                         duration: 6000,
