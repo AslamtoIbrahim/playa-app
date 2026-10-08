@@ -4,6 +4,7 @@ import { router } from '@inertiajs/react';
 import AddReceiptDialog from '@/components/add-receipt-dialog';
 import DeleteReceiptDialog from '@/components/delete-receipt-dialog';
 import EditReceiptDialog from '@/components/edit-receipt-dialog';
+import SellReceiptDialog from '@/components/sell-receipt-dialog';
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -15,8 +16,9 @@ import {
 } from '@/components/ui/table';
 import type { Boat } from '@/types/boat';
 import type { Customer } from '@/types/customer';
-import type { SessionStatus } from '@/types/daily-session';
+import type { DailySession, SessionStatus } from '@/types/daily-session';
 import type { Receipt } from '@/types/receipt';
+import type { Sale } from '@/types/sale';
 import type { SessionZone } from '@/types/session-zone';
 import { show as showReceipt } from '@/routes/receipts';
 
@@ -52,6 +54,10 @@ export interface SessionReceiptsTableProps {
      */
     receiptContext?: SessionReceiptAddContext | null;
     title?: string;
+    /** Ventes de la journée : cibles possibles pour vendre un bon. */
+    sales?: Sale[];
+    /** Session courante pour créer la vente manquante depuis le dialogue. */
+    session?: DailySession | null;
 }
 
 export function SessionReceiptsTable({
@@ -60,6 +66,8 @@ export function SessionReceiptsTable({
     emptyMessage,
     receiptContext,
     title = 'Bons de réception',
+    sales = [],
+    session = null,
 }: SessionReceiptsTableProps) {
     const canAddReceipt = receiptContext?.sessionStatus === 'open';
 
@@ -127,6 +135,10 @@ export function SessionReceiptsTable({
                             Montant total
                         </TableHead>
 
+                        <TableHead className="text-right">
+                            Vendu / Reste
+                        </TableHead>
+
                         <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
@@ -153,6 +165,29 @@ export function SessionReceiptsTable({
                                     {formatCurrency(receipt.total_amount)}
                                 </TableCell>
 
+                                <TableCell className="text-right text-xs text-neutral-500 dark:text-neutral-400">
+                                    {(() => {
+                                        const sold = (
+                                            receipt.sale_charges ?? []
+                                        ).reduce(
+                                            (sum, charge) =>
+                                                sum +
+                                                Number(charge.amount || 0),
+                                            0,
+                                        );
+
+                                        const rest =
+                                            Number(receipt.total_amount || 0) -
+                                            sold;
+
+                                        if (sold <= 0) {
+                                            return '—';
+                                        }
+
+                                        return `${formatCurrency(sold)} / ${formatCurrency(Math.max(rest, 0))}`;
+                                    })()}
+                                </TableCell>
+
                                 <TableCell
                                     className="text-right"
                                     onClick={(event) => {
@@ -162,6 +197,15 @@ export function SessionReceiptsTable({
                                     {receiptContext?.sessionStatus ===
                                     'open' ? (
                                         <div className="flex items-center justify-end gap-1">
+                                            <SellReceiptDialog
+                                                receipt={receipt}
+                                                sales={sales}
+                                                session={session}
+                                                customers={
+                                                    receiptContext.customers
+                                                }
+                                            />
+
                                             <EditReceiptDialog
                                                 receipt={receipt}
                                                 customers={
@@ -190,7 +234,7 @@ export function SessionReceiptsTable({
                             </TableRow>
                         ))
                     ) : (
-                        <SessionEmptyRow colSpan={4}>
+                        <SessionEmptyRow colSpan={5}>
                             {emptyMessage}
                         </SessionEmptyRow>
                     )}

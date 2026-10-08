@@ -141,6 +141,7 @@ function SessionShow({
             <SessionTransactions
                 key={session.id}
                 sessionId={session.id}
+                session={session}
                 purchaseData={purchaseData}
                 saleData={saleData}
                 attendances={attendances}

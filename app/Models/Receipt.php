@@ -59,6 +59,30 @@ class Receipt extends Model
     }
 
     /**
+     * Montants de ce bon vendus/imputés à des ventes (SaleCharges).
+     */
+    public function saleCharges(): HasMany
+    {
+        return $this->hasMany(SaleCharge::class, 'receipt_id');
+    }
+
+    /**
+     * Montant déjà vendu de ce bon (somme des SaleCharges).
+     */
+    public function soldAmount(): float
+    {
+        return (float) $this->saleCharges()->sum('amount');
+    }
+
+    /**
+     * Montant encore vendable : total_amount moins les charges déjà imputées.
+     */
+    public function remainingAmount(): float
+    {
+        return (float) $this->total_amount - $this->soldAmount();
+    }
+
+    /**
      * Automatic calculation logic
      */
     protected static function boot()

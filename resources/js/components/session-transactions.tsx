@@ -2,7 +2,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSessionTabs } from '../hooks/use-session-tabs';
 import { cn } from '@/lib/utils';
 import type { Attendance } from '@/types/attendance';
-import type { SessionGroupData } from '@/types/daily-session';
+import type { DailySession, SessionGroupData } from '@/types/daily-session';
 import type { SessionSaleData } from '@/types/sale';
 
 import { SessionPurchasesTab } from './session-purchases-tab';
@@ -14,6 +14,7 @@ import type { SessionSaleAddContextInput } from './session-sales-table';
 
 export interface SessionTransactionsProps {
     sessionId: number;
+    session?: DailySession | null;
     purchaseData: SessionGroupData;
     saleData: SessionSaleData;
     attendances: Attendance[];
@@ -35,6 +36,7 @@ export interface SessionTransactionsProps {
 */
 export function SessionTransactions({
     sessionId,
+    session = null,
     purchaseData,
     saleData,
     attendances,
@@ -117,6 +119,8 @@ export function SessionTransactions({
                         invoiceContext={invoiceContext}
                         receiptContext={receiptContext}
                         attendanceContext={attendanceContext}
+                        sales={saleData.sales ?? []}
+                        session={session}
                     />
                 </TabsContent>
 

@@ -118,7 +118,7 @@ class ReceiptController extends Controller
      */
     public function destroy(Receipt $receipt)
     {
-        if ($receipt->items()->count() > 0 || $receipt->total_amount > 0) {
+        if ($receipt->items()->count() > 0 || $receipt->total_amount > 0 || $receipt->saleCharges()->exists()) {
             return back()->with('error', 'Suppression impossible : Ce bon contient des données.');
         }
 

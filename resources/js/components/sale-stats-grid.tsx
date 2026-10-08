@@ -57,7 +57,7 @@ export function SaleStatsGrid({ stats }: { stats: SaleStats }) {
                 </CardContent>
             </Card>
 
-            {/* Total Valeur */}
+            {/* Total Valeur (lignes + bons imputés) */}
             <Card className="flex h-24 flex-col justify-center border-amber-200 bg-white shadow-none dark:border-amber-800 dark:bg-slate-900">
                 <CardContent className="p-4 py-0">
                     <p className="mb-1 text-[9px] font-bold tracking-wider text-slate-400 uppercase dark:text-slate-500">
@@ -73,6 +73,12 @@ export function SaleStatsGrid({ stats }: { stats: SaleStats }) {
                         </span>
                         <Banknote className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                     </div>
+
+                    {stats.totalCharges > 0 ? (
+                        <p className="mt-1 text-[10px] font-medium text-slate-500 dark:text-slate-400">
+                            {`dont bons : ${stats.formattedTotalCharges} DH`}
+                        </p>
+                    ) : null}
                 </CardContent>
             </Card>
 

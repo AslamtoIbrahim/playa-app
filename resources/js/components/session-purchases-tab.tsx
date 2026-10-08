@@ -7,6 +7,8 @@ import type { SessionGroupData } from '@/types/daily-session';
 import { SessionAttendancesTable } from './session-attendances-table';
 import type { SessionAttendanceAddContextInput } from './session-attendances-table';
 import { groupDifferencesByReport } from '@/lib/differences';
+import type { DailySession } from '@/types/daily-session';
+import type { Sale } from '@/types/sale';
 
 import { SessionDifferencesTable } from './session-differences-table';
 import { SessionInvoicesTable } from './session-invoices-table';
@@ -28,6 +30,10 @@ export interface SessionPurchasesTabProps {
     receiptContext?: SessionReceiptAddContextInput | null;
     /** Contexte de la journée : création d'une feuille de pointage pour les zones de la journée. */
     attendanceContext?: SessionAttendanceAddContextInput | null;
+    /** Ventes de la journée : cibles pour vendre un bon. */
+    sales?: Sale[];
+    /** Session courante pour créer la vente manquante. */
+    session?: DailySession | null;
 }
 
 function ChargesPlaceholder() {
@@ -49,6 +55,8 @@ export function SessionPurchasesTab({
     invoiceContext = null,
     receiptContext = null,
     attendanceContext = null,
+    sales = [],
+    session = null,
 }: SessionPurchasesTabProps) {
     const differenceReports = groupDifferencesByReport(
         purchaseData.differences ?? [],
@@ -169,7 +177,8 @@ export function SessionPurchasesTab({
                             value="charges"
                             className={purchaseSubTabClass}
                         >
-                            Charges
+                            {/* Charges */}
+                            Frais
                             <span className="ml-2 text-xs opacity-70">0</span>
                         </TabsTrigger>
                     </SessionTabTotalHint>
@@ -198,6 +207,8 @@ export function SessionPurchasesTab({
                     formatCurrency={formatCurrency}
                     emptyMessage="Aucun bon de réception trouvé pour cette session."
                     receiptContext={receiptContext}
+                    sales={sales}
+                    session={session}
                 />
             </TabsContent>
 

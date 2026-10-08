@@ -1,5 +1,7 @@
 import type { Invoice } from '@/types/invoice';
 import type { InvoiceItem } from '@/types/invoice-item';
+import type { Receipt } from '@/types/receipt';
+import type { SaleCharge } from '@/types/sale-charge';
 import type { SaleItem } from '@/types/sale-item';
 
 /**
@@ -136,6 +138,60 @@ export function computeSaleNetToPay(
         (Number(taxAmount) || 0) +
         (Number(boxesFee) || 0)
     );
+}
+
+/**
+ * Montant d'un bon déjà imputé à des ventes.
+ *
+ * C'est la somme des `SaleCharges.amount` du bon : la part de son
+ * `total_amount` déjà vendue à des ventes (clients) de la journée.
+ */
+export function computeReceiptSoldAmount(
+    receipt?: Pick<Receipt, 'sale_charges'> | null,
+): number {
+    if (!receipt) {
+        return 0;
+    }
+
+    return (receipt.sale_charges ?? []).reduce((sum, charge) => {
+        return sum + (Number(charge.amount) || 0);
+    }, 0);
+}
+
+/**
+ * Montant encore vendable d'un bon de réception.
+ *
+ * C'est exactement le « RESTE » affiché dans le dialogue de vente du bon : le
+ * `total_amount` diminué des charges déjà enregistrées. La valeur est négative
+ * si les charges dépassent le bon (cas anormal, signalé en rouge).
+ */
+export function computeReceiptRemainingAmount(
+    receipt?: Pick<Receipt, 'total_amount' | 'sale_charges'> | null,
+): number {
+    if (!receipt) {
+        return 0;
+    }
+
+    return Number(receipt.total_amount) - computeReceiptSoldAmount(receipt);
+}
+
+/**
+ * Montant total des bons imputés à une vente.
+ *
+ * C'est la part des charges dans le `amount` enregistré par
+ * `Sale::calculateTotals()` : les lignes de facture et les charges ne se
+ * recouvrent jamais, il n'y a donc pas de double comptage.
+ */
+export function computeSaleChargesTotal(
+    charges?: Pick<SaleCharge, 'amount'>[] | null,
+): number {
+    if (!charges) {
+        return 0;
+    }
+
+    return charges.reduce((sum, charge) => {
+        return sum + (Number(charge.amount) || 0);
+    }, 0);
 }
 
 /** Totals of the quantity of a purchase invoice that is still sellable. */

@@ -1,5 +1,6 @@
 import type { Customer } from './customer';
 import type { DailySession, SessionGroupData } from './daily-session';
+import type { SaleCharge } from './sale-charge';
 import type { SaleItem } from './sale-item';
 
 export interface Sale {
@@ -18,6 +19,7 @@ export interface Sale {
     customer?: Customer;
     session?: DailySession;
     items?: SaleItem[];
+    charges?: SaleCharge[];
 
     // Totals (Calculated in Backend)
     amount: number; // Mablagh l-idmali

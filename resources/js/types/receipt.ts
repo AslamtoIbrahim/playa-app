@@ -2,6 +2,7 @@
 
 import { Boat } from './boat';
 import { Customer } from './customer';
+import { SaleCharge } from './sale-charge';
 import { SessionZone } from './session-zone';
 
 export interface Receipt {
@@ -16,6 +17,7 @@ export interface Receipt {
     boat?: Boat;
     customer?: Customer;
     session_zone?: SessionZone;
+    sale_charges?: SaleCharge[];
     created_at?: string;
     updated_at?: string;
     deleted_at?: string | null;

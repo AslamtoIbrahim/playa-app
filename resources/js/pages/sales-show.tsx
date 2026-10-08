@@ -4,6 +4,7 @@ import { ArrowLeft, Camera, Printer } from 'lucide-react';
 import { ExportDropdown } from '@/components/export-dropdown';
 import { SaleHeader } from '@/components/sale-header';
 import { SalePrintFooter } from '@/components/sale-print-footer';
+import { SaleReceiptChargesTable } from '@/components/sale-receipt-charges-table';
 import SaleShowItemRow from '@/components/sale-show-item-row';
 import { SaleStatsGrid } from '@/components/sale-stats-grid';
 import { Button } from '@/components/ui/button';
@@ -20,12 +21,13 @@ import { useSaleExport } from '@/hooks/use-sale-export';
 import { useScreenshot } from '@/hooks/use-screenshot';
 import AppLayout from '@/layouts/app-layout';
 import { Sale } from '@/types/sale';
+import { SaleCharge } from '@/types/sale-charge';
 import { SaleItem } from '@/types/sale-item';
 import { SessionZone } from '@/types/session-zone';
 
 interface Props {
     /** Vente et ses distributions, alimentées par les factures d'achat. */
-    sale: Sale & { items: SaleItem[] };
+    sale: Sale & { items: SaleItem[]; charges?: SaleCharge[] };
     /**
      * Zones de journée couvertes par les lignes de la vente, déduites des
      * factures d'achat d'origine (une vente est rattachée à une journée, pas à
@@ -170,6 +172,10 @@ export default function SalesShow({ sale, sessionZones }: Props) {
                     </TableBody>
                 </Table>
             </div>
+
+            {(sale.charges?.length ?? 0) > 0 ? (
+                <SaleReceiptChargesTable charges={sale.charges ?? []} />
+            ) : null}
 
             <SalePrintFooter stats={stats} />
         </div>

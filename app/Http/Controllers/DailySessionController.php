@@ -81,11 +81,11 @@ class DailySessionController extends Controller
                 })->orWhereHas('items.invoiceItem.invoice', function ($q2) {
                     $q2->where('type', 'purchase');
                 });
-            })->with(['items.invoiceItem.invoice', 'customer', 'boat', 'sessionZone.zone'])->get();
+            })->with(['items.invoiceItem.invoice', 'customer', 'boat', 'sessionZone.zone', 'saleCharges.sale.customer'])->get();
 
         // 2. Ventes data & tracking
         $sales = Sale::where('session_id', $session->id)
-            ->with(['customer', 'items.invoiceItem.item', 'items.invoiceItem.boat'])
+            ->with(['customer', 'items.invoiceItem.item', 'items.invoiceItem.boat', 'charges.receipt.boat', 'charges.receipt.customer'])
             ->get();
 
         $saleInvoices = Invoice::whereIn('session_zone_id', $sessionZoneIds)
@@ -100,7 +100,7 @@ class DailySessionController extends Controller
         $saleReceipts = Receipt::whereIn('session_zone_id', $sessionZoneIds)
             ->whereHas('items.invoiceItem.invoice', function ($q) {
                 $q->where('type', 'sale');
-            })->with(['items.invoiceItem.invoice', 'customer', 'boat', 'sessionZone.zone'])->get();
+            })->with(['items.invoiceItem.invoice', 'customer', 'boat', 'sessionZone.zone', 'saleCharges.sale.customer'])->get();
 
         // 3. Ouvries (Attendance / Workers)
         $attendances = Attendance::whereIn('session_zone_id', $sessionZoneIds)

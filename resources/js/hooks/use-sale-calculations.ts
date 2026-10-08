@@ -1,6 +1,7 @@
 import { formatDifferenceAmount } from '@/lib/differences';
 import {
     computeSaleBoxesFee,
+    computeSaleChargesTotal,
     computeSaleNetToPay,
     computeSaleTax,
     computeSaleTotalDiff,
@@ -11,9 +12,11 @@ import { useMemo } from 'react';
 /**
  * Synthèse financière d'une vente.
  *
- * La valeur totale est celle enregistrée par `Sale::calculateTotals()`, c'est-à-dire
- * la somme des lignes au prix réel. Le net à payer affiché la majore de l'écart des
- * lignes, de la taxe de 3 % et des frais de caisse, comme sur la fiche facture.
+ * La valeur totale est celle enregistrée par `Sale::calculateTotals()` :
+ * les lignes au prix réel PLUS les bons imputés (SaleCharges). Le net à payer
+ * affiché la majore de l'écart des lignes, de la taxe de 3 % et des frais de
+ * caisse, comme sur la fiche facture. La part des bons est exposée à part
+ * (même source `sale.charges` que le tableau des bons) sans double comptage.
  */
 export const useSaleCalculations = (sale: Sale) => {
     return useMemo(() => {
@@ -21,6 +24,9 @@ export const useSaleCalculations = (sale: Sale) => {
             const totalValeur = Number(sale.amount || 0);
             const totalBoxes = Number(sale.boxes || 0);
             const totalWeight = Number(sale.weight || 0);
+
+            // Part des bons imputés dans la valeur (même source que le tableau).
+            const totalCharges = computeSaleChargesTotal(sale.charges);
 
             // Somme des écarts des lignes, comme la colonne « Diff Total ».
             const totalDiff = computeSaleTotalDiff(sale.items);
@@ -65,11 +71,13 @@ export const useSaleCalculations = (sale: Sale) => {
                 totalBoxes,
                 totalWeight,
                 totalDiff,
+                totalCharges,
                 taxAmount,
                 boxesFee,
                 netToPay,
                 formattedNetToPay: formatCurrency(netToPay),
                 formattedTotalValeur: formatCurrency(totalValeur),
+                formattedTotalCharges: formatCurrency(totalCharges),
                 formattedTotalDiff: formatSigned(totalDiff),
                 formattedTaxAmount: formatCurrency(taxAmount),
                 formattedTaxAndBoxes: formatSigned(taxAndBoxes),
@@ -79,5 +87,5 @@ export const useSaleCalculations = (sale: Sale) => {
 
             return result;
         }
-    }, [sale.amount, sale.boxes, sale.weight, sale.items]);
+    }, [sale.amount, sale.boxes, sale.weight, sale.items, sale.charges]);
 };

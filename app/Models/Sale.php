@@ -55,11 +55,21 @@ class Sale extends Model
     }
 
     /**
+     * Montants de bons de réception imputés à cette vente.
+     */
+    public function charges(): HasMany
+    {
+        return $this->hasMany(SaleCharge::class);
+    }
+
+    /**
      * Calcul automatique des totaux (Total HT + Boxes + Poids).
      *
      * La vente est alimentée par les lignes de facture d'achat : le montant se
      * calcule au prix réel pratiqué, et le poids / caisses sont repris au
-     * prorata de la quantité achetée sur chaque ligne de facture.
+     * prorata de la quantité achetée sur chaque ligne de facture. Les montants
+     * des bons de réception imputés (SaleCharges) s'ajoutent au montant, sans
+     * toucher au poids ni aux caisses (une charge ne porte que de l'argent).
      */
     public function calculateTotals()
     {
@@ -69,6 +79,10 @@ class Sale extends Model
         $totalHT = $items->sum(function ($item) {
             return (float) $item->unit_count * (float) $item->real_price;
         });
+
+        // 1b. Montants des bons imputés à cette vente (pas de double comptage :
+        // les charges ne recouvrent jamais les lignes de facture).
+        $chargesTotal = (float) $this->charges()->sum('amount');
 
         // 2. Somme des poids (au prorata de la ligne de facture)
         $totalWeight = $items->sum(function ($item) {
@@ -93,7 +107,7 @@ class Sale extends Model
         });
 
         // 4. Net à Payer : la vente reste au HT (pas de TVA côté vente)
-        $netToPay = $totalHT;
+        $netToPay = $totalHT + $chargesTotal;
 
         // 5. Sauvegarde forceFill bach n-tjanbo l-mass assignment protection
         $this->forceFill([

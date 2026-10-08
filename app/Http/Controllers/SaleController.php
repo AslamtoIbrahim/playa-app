@@ -96,6 +96,9 @@ class SaleController extends Controller
             'items.invoiceItem.invoice',
             'items.invoiceItem.invoice.sessionZone.zone',
             'items.invoiceItem.invoice.sessionZone.dailySession',
+            'charges.receipt.boat',
+            'charges.receipt.customer',
+            'charges.receipt.sessionZone.zone',
         ]);
 
         // Filter out sale items whose invoice item is soft-deleted

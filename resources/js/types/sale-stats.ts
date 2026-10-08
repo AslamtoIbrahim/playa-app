@@ -4,6 +4,9 @@ export interface SaleStats {
     totalBoxes: number;
     totalWeight: number;
 
+    /** Part des bons de réception imputés dans la valeur totale. */
+    totalCharges: number;
+
     /** Somme des écarts des lignes de la vente (« Diff Total »). */
     totalDiff: number;
 
@@ -23,6 +26,7 @@ export interface SaleStats {
 
     formattedNetToPay: string;
     formattedTotalValeur: string;
+    formattedTotalCharges: string;
     formattedBoxes: string;
     formattedWeight: string;
 

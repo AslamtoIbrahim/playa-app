@@ -16,6 +16,7 @@ use App\Http\Controllers\OfficeRoomController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ReceiptController;
 use App\Http\Controllers\ReceiptItemController;
+use App\Http\Controllers\SaleChargeController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SaleItemController;
 use App\Http\Controllers\WorkerController;
@@ -189,6 +190,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('sale-items', [SaleItemController::class, 'store'])->name('sale-items.store');
     Route::patch('sale-items/{saleItem}', [SaleItemController::class, 'update'])->name('sale-items.update');
     Route::delete('sale-items/{saleItem}', [SaleItemController::class, 'destroy'])->name('sale-items.destroy');
+
+    // --- Sale Charges (Imputation d'un bon de réception vers une vente) ---
+    Route::post('sale-charges', [SaleChargeController::class, 'store'])->name('sale-charges.store');
+    Route::patch('sale-charges/{saleCharge}', [SaleChargeController::class, 'update'])->name('sale-charges.update');
+    Route::delete('sale-charges/{saleCharge}', [SaleChargeController::class, 'destroy'])->name('sale-charges.destroy');
 
     // --- Workers Routes ---
     Route::get('workers', [WorkerController::class, 'index'])->name('workers');
