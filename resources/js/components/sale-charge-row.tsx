@@ -19,6 +19,7 @@ interface RowProps {
     sales: Sale[];
     maxAvailable: number;
     isNew?: boolean;
+    excludedSaleIds?: number[];
     onSuccess?: () => void;
     onDelete?: (id: number) => void;
     onSilentSave?: () => void;
@@ -32,6 +33,7 @@ export function SaleChargeRow({
     sales,
     maxAvailable,
     isNew,
+    excludedSaleIds = [],
     onSuccess,
     onDelete,
     onSilentSave,
@@ -48,10 +50,18 @@ export function SaleChargeRow({
         onSilentSave,
     });
 
-    const saleOptions = sales.map((sale) => ({
-        id: sale.id,
-        name: sale.customer?.name || 'Client Inconnu',
-    }));
+    const saleOptions = sales
+        .filter((sale) => {
+            if (isNew && excludedSaleIds.includes(sale.id)) {
+                return false;
+            }
+
+            return true;
+        })
+        .map((sale) => ({
+            id: sale.id,
+            name: sale.customer?.name || 'Client Inconnu',
+        }));
 
     const canCreateSale = session !== null && customers.length > 0;
     const createSaleSession = canCreateSale ? session : null;

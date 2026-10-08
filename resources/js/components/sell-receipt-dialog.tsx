@@ -82,7 +82,7 @@ export function SellReceiptDialog({
                 )}
             </DialogTrigger>
 
-            <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl">
+            <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
                 <DialogHeader className="border-b p-6 pb-3">
                     <div className="flex w-full items-center justify-between pr-8">
                         <DialogTitle>{`Vendre le bon #${receipt.id}`}</DialogTitle>
@@ -134,6 +134,9 @@ export function SellReceiptDialog({
                                     isNew
                                     receiptId={receipt.id}
                                     sales={sales}
+                                    excludedSaleIds={charges.map(
+                                        (charge) => charge.sale_id,
+                                    )}
                                     maxAvailable={remaining}
                                     onSilentSave={handleSilentSave}
                                     session={session}
