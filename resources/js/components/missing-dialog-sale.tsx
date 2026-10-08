@@ -28,6 +28,7 @@ import { Form } from '@inertiajs/react';
 import { Check, ChevronsUpDown, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import MissingCustomerCompanyPopup from './missing-customer-company-popup';
 
 type MissingDialogSaleProps = {
     /** Daily session that will own the created sale. */
@@ -36,6 +37,11 @@ type MissingDialogSaleProps = {
     sessionDate: string;
     /** Customers offered to start the sale from. */
     customers: Customer[];
+    /**
+     * Optional search text typed in the caller (e.g. a client name with no
+     * match): pre-fills the customer search when the dialog opens.
+     */
+    initialCustomerName?: string;
 };
 
 /**
@@ -55,6 +61,7 @@ export default function MissingDialogSale({
     sessionId,
     sessionDate,
     customers,
+    initialCustomerName = '',
 }: MissingDialogSaleProps) {
     const [open, setOpen] = useState(false);
     const [customerId, setCustomerId] = useState('');
@@ -65,6 +72,18 @@ export default function MissingDialogSale({
         (customer) => customer.id.toString() === customerId,
     );
 
+    // Inline customer creation (same pattern as `add-boat-dialog`): when the
+    // typed text matches no existing customer, offer a "+" that pre-fills the
+    // creation popup with the search text.
+    const trimmedClientSearch = clientSearch.trim();
+    const hasClientMatch =
+        trimmedClientSearch === '' ||
+        customers.some((customer) =>
+            customer.name
+                .toLowerCase()
+                .includes(trimmedClientSearch.toLowerCase()),
+        );
+
     return (
         <Dialog
             open={open}
@@ -73,7 +92,7 @@ export default function MissingDialogSale({
 
                 if (nextOpen) {
                     setCustomerId('');
-                    setClientSearch('');
+                    setClientSearch(initialCustomerName);
                     setClientOpen(false);
                 }
             }}
@@ -161,11 +180,26 @@ export default function MissingDialogSale({
                             align="start"
                         >
                             <Command>
-                                <CommandInput
-                                    placeholder="Rechercher..."
-                                    value={clientSearch}
-                                    onValueChange={setClientSearch}
-                                />
+                                <div className="flex items-center gap-2 p-1">
+                                    <div className="min-w-0 flex-1">
+                                        <CommandInput
+                                            placeholder="Rechercher..."
+                                            value={clientSearch}
+                                            onValueChange={setClientSearch}
+                                        />
+                                    </div>
+
+                                    {trimmedClientSearch !== '' &&
+                                        !hasClientMatch && (
+                                            <div className="shrink-0">
+                                                <MissingCustomerCompanyPopup
+                                                    initialName={
+                                                        trimmedClientSearch
+                                                    }
+                                                />
+                                            </div>
+                                        )}
+                                </div>
                                 <CommandList>
                                     <CommandEmpty>
                                         Aucun client trouvé.

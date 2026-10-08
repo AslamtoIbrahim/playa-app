@@ -46,6 +46,7 @@ import { cn, commandItemClass } from '@/lib/utils';
 import { sell } from '@/routes/invoices';
 import type { Customer } from '@/types/customer';
 import type { Invoice } from '@/types/invoice';
+import MissingDialogSale from './missing-dialog-sale';
 
 /** Flash messages shared with the frontend by the backend middleware. */
 interface FlashMessage {
@@ -57,6 +58,15 @@ export interface SellWholeInvoiceDialogProps {
     invoice: Invoice;
     /** Clients déjà utilisés par les ventes de la journée. */
     customers: Customer[];
+    /**
+     * All session customers, used to create a missing day sale inline
+     * without leaving this dialog.
+     */
+    allCustomers?: Customer[];
+    /** Session ID pour créer une vente manquante. */
+    sessionId?: number;
+    /** Date de la session (ISO ou yyyy-MM-dd). */
+    sessionDate?: string;
     formatCurrency: (amount: number) => string;
     trigger?: ReactNode;
 
@@ -79,6 +89,9 @@ export interface SellWholeInvoiceDialogProps {
 export default function SellWholeInvoiceDialog({
     invoice,
     customers,
+    allCustomers = [],
+    sessionId,
+    sessionDate,
     formatCurrency,
     trigger,
     disabled = false,
@@ -86,12 +99,38 @@ export default function SellWholeInvoiceDialog({
     const [open, setOpen] = useState<boolean>(false);
     const [clientComboOpen, setClientComboOpen] = useState<boolean>(false);
     const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
+    const [clientSearch, setClientSearch] = useState<string>('');
 
     // Totals of the quantity still sellable: already-sold lines are excluded.
     const remaining = computeInvoiceRemainingTotals(invoice);
     const hasRemaining = remaining.hasRemaining;
 
     const hasCustomers = customers.length > 0;
+
+    // Inline creation gets the full customer list so a brand-new day client
+    // can be picked, while the sell combobox stays limited to existing sales.
+    const canCreateSale =
+        sessionId !== undefined &&
+        sessionDate !== undefined &&
+        allCustomers.length > 0;
+
+    // Inline sale creation (same pattern as `add-boat-dialog`): when the typed
+    // text matches no existing day sale, offer a "+" next to the search that
+    // opens the sale creation with the search pre-filled.
+    const trimmedClientSearch = clientSearch.trim();
+    const hasClientMatch =
+        trimmedClientSearch === '' ||
+        customers.some((customer) =>
+            customer.name
+                .toLowerCase()
+                .includes(trimmedClientSearch.toLowerCase()),
+        );
+
+    const showCreateSaleAction =
+        canCreateSale && trimmedClientSearch !== '' && !hasClientMatch;
+
+    const createSaleSessionId = canCreateSale ? sessionId : undefined;
+    const createSaleSessionDate = canCreateSale ? sessionDate : undefined;
 
     const selectedCustomer =
         customers.find(
@@ -104,6 +143,7 @@ export default function SellWholeInvoiceDialog({
         if (!nextOpen) {
             setSelectedCustomerId('');
             setClientComboOpen(false);
+            setClientSearch('');
         }
     };
 
@@ -245,9 +285,11 @@ export default function SellWholeInvoiceDialog({
                             />
 
                             <div className="grid gap-2">
-                                <Label className="text-xs font-bold text-slate-500 uppercase dark:text-neutral-400">
-                                    Client vendeur
-                                </Label>
+                                <div className="flex items-center justify-between gap-2">
+                                    <Label className="text-xs font-bold text-slate-500 uppercase dark:text-neutral-400">
+                                        Client vendeur
+                                    </Label>
+                                </div>
 
                                 {hasCustomers ? (
                                     <Popover
@@ -277,7 +319,40 @@ export default function SellWholeInvoiceDialog({
                                             align="start"
                                         >
                                             <Command>
-                                                <CommandInput placeholder="Rechercher un client..." />
+                                                <div className="flex items-center gap-2 p-1">
+                                                    <div className="min-w-0 flex-1">
+                                                        <CommandInput
+                                                            placeholder="Rechercher un client..."
+                                                            value={clientSearch}
+                                                            onValueChange={
+                                                                setClientSearch
+                                                            }
+                                                        />
+                                                    </div>
+
+                                                    {showCreateSaleAction &&
+                                                        createSaleSessionId !==
+                                                            undefined &&
+                                                        createSaleSessionDate !==
+                                                            undefined && (
+                                                            <div className="shrink-0">
+                                                                <MissingDialogSale
+                                                                    sessionId={
+                                                                        createSaleSessionId
+                                                                    }
+                                                                    sessionDate={
+                                                                        createSaleSessionDate
+                                                                    }
+                                                                    customers={
+                                                                        allCustomers
+                                                                    }
+                                                                    initialCustomerName={
+                                                                        trimmedClientSearch
+                                                                    }
+                                                                />
+                                                            </div>
+                                                        )}
+                                                </div>
 
                                                 <CommandList>
                                                     <CommandEmpty>
@@ -327,11 +402,26 @@ export default function SellWholeInvoiceDialog({
                                         </PopoverContent>
                                     </Popover>
                                 ) : (
-                                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed font-medium text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
-                                        Aucune vente créée pour cette journée :
-                                        créez d'abord une vente dans l'onglet «
-                                        Ventes », puis revenez vendre la
-                                        facture.
+                                    <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
+                                        <p className="text-xs leading-relaxed font-medium text-amber-700 dark:text-amber-300">
+                                            Aucune vente créée pour cette
+                                            journée : créez une vente ici, puis
+                                            choisissez son client.
+                                        </p>
+
+                                        {createSaleSessionId !== undefined &&
+                                            createSaleSessionDate !==
+                                                undefined && (
+                                                <MissingDialogSale
+                                                    sessionId={
+                                                        createSaleSessionId
+                                                    }
+                                                    sessionDate={
+                                                        createSaleSessionDate
+                                                    }
+                                                    customers={allCustomers}
+                                                />
+                                            )}
                                     </div>
                                 )}
 

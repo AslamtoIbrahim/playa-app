@@ -74,6 +74,7 @@ function SessionShow({
     ];
 
     const invoiceContext: SessionInvoiceAddContextInput = {
+        sessionId: session.id,
         sessionDate: session.session_date,
         sessionStatus: session.status,
         sessionZones,
@@ -81,6 +82,7 @@ function SessionShow({
         officeRooms,
         cautions,
         sellCustomers,
+        allCustomers: customers,
     };
 
     // Contexte des bons de réception : la session, la zone et la date étant

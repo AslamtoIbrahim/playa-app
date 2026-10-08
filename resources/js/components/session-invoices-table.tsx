@@ -37,6 +37,7 @@ import {
  */
 export interface SessionInvoiceAddContext {
     type: 'sale' | 'purchase';
+    sessionId: number;
     sessionDate: string;
     sessionStatus: SessionStatus;
     sessionZones: SessionZone[];
@@ -48,6 +49,11 @@ export interface SessionInvoiceAddContext {
      * pour vendre une facture en entier à un seul client.
      */
     sellCustomers: Customer[];
+    /**
+     * All session customers: used to create a missing day sale inline
+     * without leaving the sell dialog.
+     */
+    allCustomers: Customer[];
 }
 
 export type SessionInvoiceAddContextInput = Omit<
@@ -212,8 +218,17 @@ export function SessionInvoicesTable({
                                                         customers={
                                                             invoiceContext.sellCustomers
                                                         }
+                                                        allCustomers={
+                                                            invoiceContext.allCustomers
+                                                        }
                                                         formatCurrency={
                                                             formatCurrency
+                                                        }
+                                                        sessionId={
+                                                            invoiceContext.sessionId
+                                                        }
+                                                        sessionDate={
+                                                            invoiceContext.sessionDate
                                                         }
                                                         disabled={
                                                             !computeInvoiceRemainingTotals(

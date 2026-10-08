@@ -6,11 +6,14 @@ import { formatDifferenceAmount } from '@/lib/differences';
 import { computeSaleItemDiff } from '@/lib/sales';
 import { navigateToAdjacentCell } from '@/lib/table-navigation';
 import { cn } from '@/lib/utils';
+import type { Customer } from '@/types/customer';
+import type { DailySession } from '@/types/daily-session';
 import { InvoiceItem } from '@/types/invoice-item';
 import { Sale } from '@/types/sale';
 import { SaleItem } from '@/types/sale-item';
 import { Check, Loader2, Trash2 } from 'lucide-react';
 import type { FocusEvent } from 'react';
+import MissingDialogSale from './missing-dialog-sale';
 import { SearchSelect } from './search-select';
 
 interface RowProps {
@@ -27,6 +30,10 @@ interface RowProps {
      * fermeture, au lieu d'un toast à chaque flèche pressée.
      */
     onSilentSave?: () => void;
+    /** Session courante pour créer une vente manquante depuis la recherche. */
+    session?: DailySession | null;
+    /** Clients disponibles pour la nouvelle vente. */
+    customers?: Customer[];
 }
 
 /**
@@ -43,6 +50,8 @@ export function SaleRow({
     onSuccess,
     onDelete,
     onSilentSave,
+    session = null,
+    customers = [],
 }: RowProps) {
     const {
         data,
@@ -68,6 +77,12 @@ export function SaleRow({
         id: sale.id,
         name: sale.customer?.name || 'Client Inconnu',
     }));
+
+    // Inline sale creation (same pattern as `add-boat-dialog`): the row search
+    // filters day sales, so a typed name with no match opens `MissingDialogSale`
+    // with the search pre-filled to create that day sale.
+    const canCreateSale = session !== null && customers.length > 0;
+    const createSaleSession = canCreateSale ? session : null;
 
     const previewDiff = isNew
         ? computeSaleItemDiff(
@@ -128,6 +143,20 @@ export function SaleRow({
                             handleKeyDown(e, 'sale');
                         }
                     }}
+                    renderNoMatchAction={
+                        createSaleSession !== null
+                            ? (search) => (
+                                  <MissingDialogSale
+                                      sessionId={createSaleSession.id}
+                                      sessionDate={
+                                          createSaleSession.session_date
+                                      }
+                                      customers={customers}
+                                      initialCustomerName={search}
+                                  />
+                              )
+                            : undefined
+                    }
                     onSelect={(id) => {
                         {
                             handleDataChange({ sale_id: id.toString() });

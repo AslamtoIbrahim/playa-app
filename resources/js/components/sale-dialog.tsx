@@ -112,6 +112,8 @@ export function SaleDialog({
 
     const hasNoSale = sales.length === 0;
 
+    const canCreateSale = session !== null && customers.length > 0;
+
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogContent className="flex max-h-[90vh] w-fit flex-col gap-0 overflow-hidden border border-slate-200 p-0 shadow-lg sm:max-w-4xl dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100">
@@ -141,10 +143,11 @@ export function SaleDialog({
                                         <AlertCircle className="h-3.5 w-3.5" />
                                     )}
                                 </div>
+
                             </div>
                         </div>
 
-                        {hasNoSale && session && customers.length > 0 && (
+                        {hasNoSale && canCreateSale && (
                             <div className="flex w-full items-center gap-2">
                                 <div className="flex w-full items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-400">
                                     <ShoppingCart className="h-3.5 w-3.5" />
@@ -254,6 +257,8 @@ export function SaleDialog({
                                                     onSilentSave={
                                                         handleSilentSave
                                                     }
+                                                    session={session}
+                                                    customers={customers}
                                                 />
                                             )}
 
@@ -273,6 +278,10 @@ export function SaleDialog({
                                                             }
                                                             onSilentSave={
                                                                 handleSilentSave
+                                                            }
+                                                            session={session}
+                                                            customers={
+                                                                customers
                                                             }
                                                         />
                                                     );
