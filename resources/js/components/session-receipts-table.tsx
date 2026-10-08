@@ -1,11 +1,13 @@
-import { Lock, Plus } from 'lucide-react';
+import { CircleCheck, Hourglass, Lock, Plus } from 'lucide-react';
 import { router } from '@inertiajs/react';
 
 import AddReceiptDialog from '@/components/add-receipt-dialog';
 import DeleteReceiptDialog from '@/components/delete-receipt-dialog';
 import EditReceiptDialog from '@/components/edit-receipt-dialog';
 import SellReceiptDialog from '@/components/sell-receipt-dialog';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import {
     Table,
     TableBody,
@@ -135,9 +137,7 @@ export function SessionReceiptsTable({
                             Montant total
                         </TableHead>
 
-                        <TableHead className="text-right">
-                            Vendu / Reste
-                        </TableHead>
+                        <TableHead className="text-right">Reste</TableHead>
 
                         <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -165,7 +165,7 @@ export function SessionReceiptsTable({
                                     {formatCurrency(receipt.total_amount)}
                                 </TableCell>
 
-                                <TableCell className="text-right text-xs text-neutral-500 dark:text-neutral-400">
+                                <TableCell className="text-right">
                                     {(() => {
                                         const sold = (
                                             receipt.sale_charges ?? []
@@ -179,12 +179,33 @@ export function SessionReceiptsTable({
                                         const rest =
                                             Number(receipt.total_amount || 0) -
                                             sold;
+                                        const clampedRest = Math.max(rest, 0);
+                                        const isCompleted =
+                                            clampedRest <= 0.005;
 
-                                        if (sold <= 0) {
-                                            return '—';
-                                        }
+                                        return (
+                                            <Badge
+                                                variant="outline"
+                                                className={cn(
+                                                    'gap-1.5 rounded-full px-2.5 py-0.5 font-mono text-xs font-bold tabular-nums',
+                                                    isCompleted
+                                                        ? 'border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/50 dark:text-green-400'
+                                                        : 'border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-900/50 dark:bg-orange-950/40 dark:text-orange-400',
+                                                )}
+                                            >
+                                                {isCompleted ? (
+                                                    <CircleCheck className="h-3 w-3" />
+                                                ) : (
+                                                    <Hourglass className="h-3 w-3" />
+                                                )}
 
-                                        return `${formatCurrency(sold)} / ${formatCurrency(Math.max(rest, 0))}`;
+                                                {isCompleted
+                                                    ? 'Terminée'
+                                                    : formatCurrency(
+                                                          clampedRest,
+                                                      )}
+                                            </Badge>
+                                        );
                                     })()}
                                 </TableCell>
 
