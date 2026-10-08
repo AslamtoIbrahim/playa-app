@@ -6,17 +6,14 @@ import type { SessionGroupData } from '@/types/daily-session';
 
 import { SessionAttendancesTable } from './session-attendances-table';
 import type { SessionAttendanceAddContextInput } from './session-attendances-table';
-import { groupDifferencesByReport } from '@/lib/differences';
 import type { DailySession } from '@/types/daily-session';
 import type { Sale } from '@/types/sale';
 
-import { SessionDifferencesTable } from './session-differences-table';
 import { SessionInvoicesTable } from './session-invoices-table';
 import type { SessionInvoiceAddContextInput } from './session-invoices-table';
 import { SessionReceiptsTable } from './session-receipts-table';
 import type { SessionReceiptAddContextInput } from './session-receipts-table';
 import { SessionTabTotalHint } from './session-tab-total-hint';
-import { SessionTableShell } from './session-table-shell';
 
 export interface SessionPurchasesTabProps {
     activeTab: SessionPurchaseTab;
@@ -36,16 +33,6 @@ export interface SessionPurchasesTabProps {
     session?: DailySession | null;
 }
 
-function ChargesPlaceholder() {
-    return (
-        <SessionTableShell>
-            <div className="flex h-72 items-center justify-center px-6 text-center text-sm text-neutral-500 dark:text-neutral-400">
-                Aucune charge enregistrée pour le moment.
-            </div>
-        </SessionTableShell>
-    );
-}
-
 export function SessionPurchasesTab({
     activeTab,
     onTabChange,
@@ -58,20 +45,12 @@ export function SessionPurchasesTab({
     sales = [],
     session = null,
 }: SessionPurchasesTabProps) {
-    const differenceReports = groupDifferencesByReport(
-        purchaseData.differences ?? [],
-    );
-
     const invoicesTotal = purchaseData.invoices.reduce(
         (sum, invoice) => sum + Number(invoice.amount ?? 0),
         0,
     );
     const receiptsTotal = purchaseData.receipts.reduce(
         (sum, receipt) => sum + Number(receipt.total_amount ?? 0),
-        0,
-    );
-    const differencesTotal = (purchaseData.differences ?? []).reduce(
-        (sum, difference) => sum + Number(difference.total_diff ?? 0),
         0,
     );
     const attendancesTotal = attendances.reduce(
@@ -137,22 +116,6 @@ export function SessionPurchasesTab({
                     </SessionTabTotalHint>
 
                     <SessionTabTotalHint
-                        total={differencesTotal}
-                        formatCurrency={formatCurrency}
-                        tone="blue"
-                    >
-                        <TabsTrigger
-                            value="differences"
-                            className={purchaseSubTabClass}
-                        >
-                            Différences
-                            <span className="ml-2 text-xs opacity-70">
-                                {differenceReports.length}
-                            </span>
-                        </TabsTrigger>
-                    </SessionTabTotalHint>
-
-                    <SessionTabTotalHint
                         total={attendancesTotal}
                         formatCurrency={formatCurrency}
                         tone="blue"
@@ -165,21 +128,6 @@ export function SessionPurchasesTab({
                             <span className="ml-2 text-xs opacity-70">
                                 {attendances.length}
                             </span>
-                        </TabsTrigger>
-                    </SessionTabTotalHint>
-
-                    <SessionTabTotalHint
-                        total={0}
-                        formatCurrency={formatCurrency}
-                        tone="blue"
-                    >
-                        <TabsTrigger
-                            value="charges"
-                            className={purchaseSubTabClass}
-                        >
-                            {/* Charges */}
-                            Frais
-                            <span className="ml-2 text-xs opacity-70">0</span>
                         </TabsTrigger>
                     </SessionTabTotalHint>
                 </TabsList>
@@ -212,15 +160,6 @@ export function SessionPurchasesTab({
                 />
             </TabsContent>
 
-            {/* Différences content */}
-            <TabsContent value="differences" className="mt-0">
-                <SessionDifferencesTable
-                    differences={purchaseData.differences}
-                    formatCurrency={formatCurrency}
-                    emptyMessage="Aucune différence enregistrée pour cette session."
-                />
-            </TabsContent>
-
             {/* Ouvriers content */}
             <TabsContent value="ouvriers" className="mt-0">
                 <SessionAttendancesTable
@@ -228,12 +167,10 @@ export function SessionPurchasesTab({
                     formatCurrency={formatCurrency}
                     emptyMessage="Aucun pointage d'ouvriers trouvé pour cette session."
                     attendanceContext={attendanceContext}
+                    sales={sales}
+                    session={session}
+                    customers={receiptContext?.customers ?? []}
                 />
-            </TabsContent>
-
-            {/* Charges content */}
-            <TabsContent value="charges" className="mt-0">
-                <ChargesPlaceholder />
             </TabsContent>
         </Tabs>
     );

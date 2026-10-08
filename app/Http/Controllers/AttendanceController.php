@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Attendance;
+use App\Models\Customer;
+use App\Models\Sale;
 use App\Models\SessionZone; // Add SessionZone import
 use App\Models\Worker;
 use Illuminate\Http\Request;
@@ -16,7 +18,7 @@ class AttendanceController extends Controller
      */
     public function index()
     {
-        $attendances = Attendance::with(['sessionZone.dailySession', 'sessionZone.zone', 'items.worker'])
+        $attendances = Attendance::with(['sessionZone.dailySession', 'sessionZone.zone', 'items.worker', 'saleWorkers.sale.customer'])
             ->latest()
             ->paginate(10);
 
@@ -30,13 +32,23 @@ class AttendanceController extends Controller
      */
     public function show(Request $request, Attendance $attendance)
     {
-        $attendance->load(['sessionZone.dailySession', 'sessionZone.zone', 'items.worker']); // Changed 'session' to 'sessionZone.dailySession'
+        $attendance->load(['sessionZone.dailySession', 'sessionZone.zone', 'items.worker', 'saleWorkers.sale.customer']); // Changed 'session' to 'sessionZone.dailySession'
 
         $availableWorkers = Worker::orderBy('name')->get();
 
+        // Ventes de la journée du pointage + clients : nécessaire au dialogue
+        // d'imputation des salaires (SaleWorkers) et à la création d'une vente
+        // manquante depuis ce même dialogue.
+        $session = $attendance->sessionZone?->dailySession;
+
+        $sales = $session !== null
+            ? Sale::where('session_id', $session->id)->with('customer')->get()
+            : collect();
+
+        $customers = Customer::select('id', 'name')->get();
+
         // Retour explicite : la journée d'origine quand la feuille est ouverte
         // depuis celle-ci, sinon la liste des pointages.
-        $session = $attendance->sessionZone?->dailySession;
         $openedFromSession = $session !== null
             && $request->integer('from_session') === $session->id;
 
@@ -47,6 +59,8 @@ class AttendanceController extends Controller
         return Inertia::render('attendances-show', [
             'attendance' => $attendance,
             'availableWorkers' => $availableWorkers,
+            'sales' => $sales,
+            'customers' => $customers,
             'backUrl' => $backUrl,
         ]);
     }

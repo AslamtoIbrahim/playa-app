@@ -1,4 +1,5 @@
 import { AttendanceItem } from './attendance-item';
+import { SaleWorker } from './sale-worker';
 import { SessionZone } from './session-zone';
 
 export interface Attendance {
@@ -8,6 +9,7 @@ export interface Attendance {
     total_wage: number;
     session_zone?: SessionZone;
     items?: AttendanceItem[];
+    sale_workers?: SaleWorker[];
     created_at?: string;
     updated_at?: string;
     deleted_at?: string | null;

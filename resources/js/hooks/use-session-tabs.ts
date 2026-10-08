@@ -2,12 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 export type SessionMainTab = 'achats' | 'ventes';
 
-export type SessionPurchaseTab =
-    | 'factures'
-    | 'receipts'
-    | 'differences'
-    | 'ouvriers'
-    | 'charges';
+export type SessionPurchaseTab = 'factures' | 'receipts' | 'ouvriers';
 
 export interface SessionTabsState {
     main: SessionMainTab;
@@ -31,13 +26,7 @@ const isSessionMainTab = (value: unknown): value is SessionMainTab => {
 };
 
 const isSessionPurchaseTab = (value: unknown): value is SessionPurchaseTab => {
-    return (
-        value === 'factures' ||
-        value === 'receipts' ||
-        value === 'differences' ||
-        value === 'ouvriers' ||
-        value === 'charges'
-    );
+    return value === 'factures' || value === 'receipts' || value === 'ouvriers';
 };
 
 const getStorageKey = (sessionId: number): string => {

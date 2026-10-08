@@ -19,6 +19,7 @@ use App\Http\Controllers\ReceiptItemController;
 use App\Http\Controllers\SaleChargeController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SaleItemController;
+use App\Http\Controllers\SaleWorkerController;
 use App\Http\Controllers\WorkerController;
 use App\Http\Controllers\ZoneController;
 use Illuminate\Support\Facades\Route;
@@ -195,6 +196,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('sale-charges', [SaleChargeController::class, 'store'])->name('sale-charges.store');
     Route::patch('sale-charges/{saleCharge}', [SaleChargeController::class, 'update'])->name('sale-charges.update');
     Route::delete('sale-charges/{saleCharge}', [SaleChargeController::class, 'destroy'])->name('sale-charges.destroy');
+
+    // --- Sale Workers (Imputation d'une part de masse salariale vers une vente) ---
+    Route::post('sale-workers', [SaleWorkerController::class, 'store'])->name('sale-workers.store');
+    Route::patch('sale-workers/{saleWorker}', [SaleWorkerController::class, 'update'])->name('sale-workers.update');
+    Route::delete('sale-workers/{saleWorker}', [SaleWorkerController::class, 'destroy'])->name('sale-workers.destroy');
 
     // --- Workers Routes ---
     Route::get('workers', [WorkerController::class, 'index'])->name('workers');

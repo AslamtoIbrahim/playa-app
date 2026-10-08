@@ -3,6 +3,7 @@ import { Lock, Plus, Trash2 } from 'lucide-react';
 
 import AddAttendanceDialog from '@/components/add-attendance-dialog';
 import DeleteAttendanceDialog from '@/components/delete-attendance-dialog';
+import SaleWorkersDialog from '@/components/sale-workers-dialog';
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -14,7 +15,9 @@ import {
 } from '@/components/ui/table';
 import { show as showAttendance } from '@/routes/attendances';
 import type { Attendance } from '@/types/attendance';
-import type { SessionStatus } from '@/types/daily-session';
+import type { Customer } from '@/types/customer';
+import type { DailySession, SessionStatus } from '@/types/daily-session';
+import type { Sale } from '@/types/sale';
 import type { SessionZone } from '@/types/session-zone';
 
 import {
@@ -48,6 +51,12 @@ export interface SessionAttendancesTableProps {
      */
     attendanceContext?: SessionAttendanceAddContext | null;
     title?: string;
+    /** Ventes de la journée : cibles pour imputer une part du pointage. */
+    sales?: Sale[];
+    /** Session courante pour créer la vente manquante depuis le dialogue. */
+    session?: DailySession | null;
+    /** Clients disponibles pour la nouvelle vente. */
+    customers?: Customer[];
 }
 
 export function SessionAttendancesTable({
@@ -56,6 +65,9 @@ export function SessionAttendancesTable({
     emptyMessage,
     attendanceContext,
     title = 'Feuilles de pointage',
+    sales = [],
+    session = null,
+    customers = [],
 }: SessionAttendancesTableProps) {
     const canAddAttendance = attendanceContext?.sessionStatus === 'open';
 
@@ -163,6 +175,13 @@ export function SessionAttendancesTable({
                                     {attendanceContext?.sessionStatus ===
                                     'open' ? (
                                         <div className="flex items-center justify-end gap-1">
+                                            <SaleWorkersDialog
+                                                attendance={attendance}
+                                                sales={sales}
+                                                session={session}
+                                                customers={customers}
+                                            />
+
                                             <DeleteAttendanceDialog
                                                 attendanceId={attendance.id}
                                                 date={attendance.date}

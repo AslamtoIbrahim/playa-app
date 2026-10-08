@@ -63,6 +63,14 @@ class Sale extends Model
     }
 
     /**
+     * Parts de masse salariale imputées à cette vente (SaleWorkers).
+     */
+    public function workers(): HasMany
+    {
+        return $this->hasMany(SaleWorker::class);
+    }
+
+    /**
      * Calcul automatique des totaux (Total HT + Boxes + Poids).
      *
      * La vente est alimentée par les lignes de facture d'achat : le montant se
@@ -83,6 +91,11 @@ class Sale extends Model
         // 1b. Montants des bons imputés à cette vente (pas de double comptage :
         // les charges ne recouvrent jamais les lignes de facture).
         $chargesTotal = (float) $this->charges()->sum('amount');
+
+        // 1c. Parts de masse salariale imputées (SaleWorkers) : une part ne
+        // porte que de l'argent, sans poids ni caisses, et sans double comptage
+        // avec les lignes de facture ni avec les bons.
+        $workersTotal = (float) $this->workers()->sum('amount');
 
         // 2. Somme des poids (au prorata de la ligne de facture)
         $totalWeight = $items->sum(function ($item) {
@@ -106,8 +119,9 @@ class Sale extends Model
             return (float) $invoiceItem->box * ((float) $item->unit_count / (float) $invoiceItem->unit_count);
         });
 
-        // 4. Net à Payer : la vente reste au HT (pas de TVA côté vente)
-        $netToPay = $totalHT + $chargesTotal;
+        // 4. Net à Payer : la vente reste au HT (pas de TVA côté vente),
+        // augmentée des bons imputés et des parts ouvriers affectées.
+        $netToPay = $totalHT + $chargesTotal + $workersTotal;
 
         // 5. Sauvegarde forceFill bach n-tjanbo l-mass assignment protection
         $this->forceFill([

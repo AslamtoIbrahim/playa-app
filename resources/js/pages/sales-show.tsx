@@ -7,6 +7,7 @@ import { SalePrintFooter } from '@/components/sale-print-footer';
 import { SaleReceiptChargesTable } from '@/components/sale-receipt-charges-table';
 import SaleShowItemRow from '@/components/sale-show-item-row';
 import { SaleStatsGrid } from '@/components/sale-stats-grid';
+import { SaleWorkersTable } from '@/components/sale-workers-table';
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -23,17 +24,27 @@ import AppLayout from '@/layouts/app-layout';
 import { Sale } from '@/types/sale';
 import { SaleCharge } from '@/types/sale-charge';
 import { SaleItem } from '@/types/sale-item';
+import { SaleWorker } from '@/types/sale-worker';
 import { SessionZone } from '@/types/session-zone';
+import type { Customer } from '@/types/customer';
 
 interface Props {
     /** Vente et ses distributions, alimentées par les factures d'achat. */
-    sale: Sale & { items: SaleItem[]; charges?: SaleCharge[] };
+    sale: Sale & {
+        items: SaleItem[];
+        charges?: SaleCharge[];
+        workers?: SaleWorker[];
+    };
     /**
      * Zones de journée couvertes par les lignes de la vente, déduites des
      * factures d'achat d'origine (une vente est rattachée à une journée, pas à
      * une zone).
      */
     sessionZones: SessionZone[];
+    /** Ventes de la journée : cibles possibles du dialogue SaleWorkers. */
+    sales?: Sale[];
+    /** Clients disponibles pour créer une vente manquante depuis le dialogue. */
+    customers?: Customer[];
 }
 
 /**
@@ -44,7 +55,12 @@ interface Props {
  * La fiche est donc en lecture seule : bateau, article, quantité, unité, prix réel,
  * prix unitaire de la facture, écart et valeur.
  */
-export default function SalesShow({ sale, sessionZones }: Props) {
+export default function SalesShow({
+    sale,
+    sessionZones,
+    sales = [],
+    customers = [],
+}: Props) {
     const items = sale.items || [];
 
     const stats = useSaleCalculations(sale);
@@ -173,9 +189,29 @@ export default function SalesShow({ sale, sessionZones }: Props) {
                 </Table>
             </div>
 
-            {(sale.charges?.length ?? 0) > 0 ? (
-                <SaleReceiptChargesTable charges={sale.charges ?? []} />
-            ) : null}
+            {/* Bons imputés (SaleCharges) + parts ouvrières (SaleWorkers) :
+                même source de vérité que les statistiques ci-dessus. */}
+            <div
+                className={
+                    (sale.charges?.length ?? 0) > 0 ||
+                    (sale.workers?.length ?? 0) > 0
+                        ? 'grid grid-cols-1 gap-4 lg:grid-cols-2'
+                        : ''
+                }
+            >
+                {(sale.charges?.length ?? 0) > 0 ? (
+                    <SaleReceiptChargesTable charges={sale.charges ?? []} />
+                ) : null}
+
+                {(sale.workers?.length ?? 0) > 0 ? (
+                    <SaleWorkersTable
+                        workers={sale.workers ?? []}
+                        sales={sales}
+                        session={sale.session ?? null}
+                        customers={customers}
+                    />
+                ) : null}
+            </div>
 
             <SalePrintFooter stats={stats} />
         </div>

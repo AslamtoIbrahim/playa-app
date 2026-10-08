@@ -99,6 +99,9 @@ class SaleController extends Controller
             'charges.receipt.boat',
             'charges.receipt.customer',
             'charges.receipt.sessionZone.zone',
+            'workers.attendance.saleWorkers.sale.customer',
+            'workers.attendance.sessionZone.zone',
+            'workers.attendance.sessionZone.dailySession',
         ]);
 
         // Filter out sale items whose invoice item is soft-deleted
@@ -112,9 +115,19 @@ class SaleController extends Controller
             ->unique('id')
             ->values();
 
+        // Ventes de la journée + clients : alimentent le dialogue
+        // d'imputation des salaires ouvert depuis la fiche de la vente.
+        $daySales = Sale::where('session_id', $sale->session_id)
+            ->with('customer')
+            ->get();
+
+        $customers = Customer::select('id', 'name')->get();
+
         return Inertia::render('sales-show', [
             'sale' => $sale,
             'sessionZones' => $sessionZones,
+            'sales' => $daySales,
+            'customers' => $customers,
         ]);
     }
 

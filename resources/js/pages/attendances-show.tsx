@@ -38,17 +38,24 @@ import AddWorkersDialog from '@/components/add-workers-dialog';
 import AttendanceItemRow from '@/components/attendance-item-row';
 import DeleteWorkersDialog from '@/components/delete-workers-dialog';
 import { ExportDropdown } from '@/components/export-dropdown';
+import SaleWorkersDialog from '@/components/sale-workers-dialog';
 import { Badge } from '@/components/ui/badge';
 import { useAttendanceExport } from '@/hooks/use-attendance-export';
 import { useScreenshot } from '@/hooks/use-screenshot';
 import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
 import { attendances } from '@/routes';
+import type { Customer } from '@/types/customer';
+import type { Sale } from '@/types/sale';
 import { format } from 'date-fns/format';
 
 interface Props {
     attendance: Attendance;
     availableWorkers: Worker[];
+    /** Ventes de la journée du pointage : cibles du dialogue d'imputation. */
+    sales?: Sale[];
+    /** Clients disponibles pour créer une vente manquante. */
+    customers?: Customer[];
     /** URL de retour explicite fournie par le backend (journée liée ou liste). */
     backUrl: string;
 }
@@ -56,6 +63,8 @@ interface Props {
 export default function AttendancesShow({
     attendance,
     availableWorkers,
+    sales = [],
+    customers = [],
     backUrl,
 }: Props) {
     const [isAddDialogOpen, setIsAddDialogOpen] = useState<boolean>(false);
@@ -139,6 +148,13 @@ export default function AttendancesShow({
                 </div>
 
                 <div className="flex items-center gap-3">
+                    <SaleWorkersDialog
+                        attendance={attendance}
+                        sales={sales}
+                        session={attendance.session_zone?.daily_session ?? null}
+                        customers={customers}
+                    />
+
                     <Button
                         onClick={() => {
                             setIsAddDialogOpen(true);

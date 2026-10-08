@@ -1,8 +1,10 @@
+import type { Attendance } from '@/types/attendance';
 import type { Invoice } from '@/types/invoice';
 import type { InvoiceItem } from '@/types/invoice-item';
 import type { Receipt } from '@/types/receipt';
 import type { SaleCharge } from '@/types/sale-charge';
 import type { SaleItem } from '@/types/sale-item';
+import type { SaleWorker } from '@/types/sale-worker';
 
 /**
  * Taux de TVA appliqué aux ventes, aligné sur `Invoice::calculateTotals()`.
@@ -191,6 +193,63 @@ export function computeSaleChargesTotal(
 
     return charges.reduce((sum, charge) => {
         return sum + (Number(charge.amount) || 0);
+    }, 0);
+}
+
+/**
+ * Montant d'un pointage déjà réparti entre des ventes.
+ *
+ * C'est la somme des `SaleWorkers.amount` du pointage : la part de son
+ * `total_wage` déjà affectée à des ventes (clients) de la journée.
+ */
+export function computeAttendanceSoldAmount(
+    attendance?: Pick<Attendance, 'sale_workers'> | null,
+): number {
+    if (!attendance) {
+        return 0;
+    }
+
+    return (attendance.sale_workers ?? []).reduce((sum, worker) => {
+        return sum + (Number(worker.amount) || 0);
+    }, 0);
+}
+
+/**
+ * Montant encore répartissable d'un pointage.
+ *
+ * C'est exactement le « RESTE » affiché dans le dialogue d'imputation : le
+ * `total_wage` diminué des parts déjà enregistrées. La valeur est négative si
+ * les parts dépassent le pointage (cas anormal, signalé en rouge).
+ */
+export function computeAttendanceRemainingAmount(
+    attendance?: Pick<Attendance, 'total_wage' | 'sale_workers'> | null,
+): number {
+    if (!attendance) {
+        return 0;
+    }
+
+    return (
+        Number(attendance.total_wage) - computeAttendanceSoldAmount(attendance)
+    );
+}
+
+/**
+ * Montant total des parts ouvrières imputées à une vente.
+ *
+ * Source de vérité des statistiques de vente : la somme des
+ * `SaleWorkers.amount` rattachés à la vente. Le `total_wage` du pointage ne
+ * doit jamais être utilisé ici, car un pointage peut être réparti sur
+ * plusieurs ventes (pas de double comptage).
+ */
+export function computeSaleWorkersTotal(
+    workers?: Pick<SaleWorker, 'amount'>[] | null,
+): number {
+    if (!workers) {
+        return 0;
+    }
+
+    return workers.reduce((sum, worker) => {
+        return sum + (Number(worker.amount) || 0);
     }, 0);
 }
 

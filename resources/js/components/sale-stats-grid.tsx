@@ -9,7 +9,10 @@ import { Banknote, Diff, Package, Scale } from 'lucide-react';
  * Quatre cartes alignent les compteurs de la vente (caisses, poids, valeur et
  * écart total), puis la carte « Net à Payer » en présente le total : la valeur,
  * majorée de l'écart, de la taxe de 3 % et des frais de caisse, dont la taxe et
- * les frais de caisse sont repris sur la ligne du bas.
+ * les frais de caisse sont repris sur la ligne du bas. La part ouvrière
+ * (SaleWorkers) est rappelée sous la valeur : elle provient de la somme des
+ * `SaleWorkers.amount` de la vente, jamais du `total_wage` du pointage, qui
+ * peut être réparti sur plusieurs ventes.
  */
 export function SaleStatsGrid({ stats }: { stats: SaleStats }) {
     const diffTone = cn(
@@ -77,6 +80,12 @@ export function SaleStatsGrid({ stats }: { stats: SaleStats }) {
                     {stats.totalCharges > 0 ? (
                         <p className="mt-1 text-[10px] font-medium text-slate-500 dark:text-slate-400">
                             {`dont bons : ${stats.formattedTotalCharges} DH`}
+                        </p>
+                    ) : null}
+
+                    {stats.totalWorkers > 0 ? (
+                        <p className="mt-1 text-[10px] font-medium text-slate-500 dark:text-slate-400">
+                            {`dont ouvriers : ${stats.formattedTotalWorkers} DH`}
                         </p>
                     ) : null}
                 </CardContent>

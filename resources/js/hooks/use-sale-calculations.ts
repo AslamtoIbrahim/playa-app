@@ -5,6 +5,7 @@ import {
     computeSaleNetToPay,
     computeSaleTax,
     computeSaleTotalDiff,
+    computeSaleWorkersTotal,
 } from '@/lib/sales';
 import { Sale } from '@/types/sale';
 import { useMemo } from 'react';
@@ -13,10 +14,13 @@ import { useMemo } from 'react';
  * Synthèse financière d'une vente.
  *
  * La valeur totale est celle enregistrée par `Sale::calculateTotals()` :
- * les lignes au prix réel PLUS les bons imputés (SaleCharges). Le net à payer
- * affiché la majore de l'écart des lignes, de la taxe de 3 % et des frais de
- * caisse, comme sur la fiche facture. La part des bons est exposée à part
- * (même source `sale.charges` que le tableau des bons) sans double comptage.
+ * les lignes au prix réel PLUS les bons imputés (SaleCharges) PLUS les parts
+ * ouvriers affectées (SaleWorkers). Le net à payer affiché la majore de
+ * l'écart des lignes, de la taxe de 3 % et des frais de caisse, comme sur la
+ * fiche facture. La part des bons et la part ouvrière sont exposées à part
+ * (mêmes sources `sale.charges` / `sale.workers` que les tableaux) sans
+ * double comptage : la part ouvrière est toujours la somme des
+ * `SaleWorkers.amount` de la vente, jamais `Attendance.total_wage`.
  */
 export const useSaleCalculations = (sale: Sale) => {
     return useMemo(() => {
@@ -27,6 +31,10 @@ export const useSaleCalculations = (sale: Sale) => {
 
             // Part des bons imputés dans la valeur (même source que le tableau).
             const totalCharges = computeSaleChargesTotal(sale.charges);
+
+            // Part ouvrière imputée (même source que le tableau) : somme des
+            // SaleWorkers.amount rattachés à la vente.
+            const totalWorkers = computeSaleWorkersTotal(sale.workers);
 
             // Somme des écarts des lignes, comme la colonne « Diff Total ».
             const totalDiff = computeSaleTotalDiff(sale.items);
@@ -72,12 +80,14 @@ export const useSaleCalculations = (sale: Sale) => {
                 totalWeight,
                 totalDiff,
                 totalCharges,
+                totalWorkers,
                 taxAmount,
                 boxesFee,
                 netToPay,
                 formattedNetToPay: formatCurrency(netToPay),
                 formattedTotalValeur: formatCurrency(totalValeur),
                 formattedTotalCharges: formatCurrency(totalCharges),
+                formattedTotalWorkers: formatCurrency(totalWorkers),
                 formattedTotalDiff: formatSigned(totalDiff),
                 formattedTaxAmount: formatCurrency(taxAmount),
                 formattedTaxAndBoxes: formatSigned(taxAndBoxes),
@@ -87,5 +97,12 @@ export const useSaleCalculations = (sale: Sale) => {
 
             return result;
         }
-    }, [sale.amount, sale.boxes, sale.weight, sale.items, sale.charges]);
+    }, [
+        sale.amount,
+        sale.boxes,
+        sale.weight,
+        sale.items,
+        sale.charges,
+        sale.workers,
+    ]);
 };

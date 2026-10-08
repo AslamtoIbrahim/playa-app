@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\AttendanceItem;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -14,7 +13,7 @@ class Attendance extends Model
 
     protected $fillable = [
         'session_zone_id', // Changed from daily_session_id
-        'total_wage'
+        'total_wage',
     ];
 
     protected $appends = ['date'];
@@ -35,5 +34,29 @@ class Attendance extends Model
     public function items(): HasMany
     {
         return $this->hasMany(AttendanceItem::class);
+    }
+
+    /**
+     * Parts de ce pointage affectées à des ventes (SaleWorkers).
+     */
+    public function saleWorkers(): HasMany
+    {
+        return $this->hasMany(SaleWorker::class);
+    }
+
+    /**
+     * Montant déjà réparti de ce pointage (somme des SaleWorkers).
+     */
+    public function soldAmount(): float
+    {
+        return (float) $this->saleWorkers()->sum('amount');
+    }
+
+    /**
+     * Montant encore répartissable : total_wage moins les parts déjà affectées.
+     */
+    public function remainingAmount(): float
+    {
+        return (float) $this->total_wage - $this->soldAmount();
     }
 }

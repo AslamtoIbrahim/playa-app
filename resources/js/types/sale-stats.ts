@@ -7,6 +7,12 @@ export interface SaleStats {
     /** Part des bons de réception imputés dans la valeur totale. */
     totalCharges: number;
 
+    /**
+     * Part des salaires ouvriers imputés dans la valeur totale
+     * (somme des `SaleWorkers.amount` de la vente).
+     */
+    totalWorkers: number;
+
     /** Somme des écarts des lignes de la vente (« Diff Total »). */
     totalDiff: number;
 
@@ -27,6 +33,7 @@ export interface SaleStats {
     formattedNetToPay: string;
     formattedTotalValeur: string;
     formattedTotalCharges: string;
+    formattedTotalWorkers: string;
     formattedBoxes: string;
     formattedWeight: string;
 
