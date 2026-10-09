@@ -38,7 +38,7 @@ import AddWorkersDialog from '@/components/add-workers-dialog';
 import AttendanceItemRow from '@/components/attendance-item-row';
 import DeleteWorkersDialog from '@/components/delete-workers-dialog';
 import { ExportDropdown } from '@/components/export-dropdown';
-import SaleWorkersDialog from '@/components/sale-workers-dialog';
+import SellWorkersDialog from '@/components/sell-workers-dialog';
 import { Badge } from '@/components/ui/badge';
 import { useAttendanceExport } from '@/hooks/use-attendance-export';
 import { useScreenshot } from '@/hooks/use-screenshot';
@@ -148,7 +148,7 @@ export default function AttendancesShow({
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <SaleWorkersDialog
+                    <SellWorkersDialog
                         attendance={attendance}
                         sales={sales}
                         session={attendance.session_zone?.daily_session ?? null}

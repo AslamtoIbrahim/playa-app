@@ -40,7 +40,7 @@ interface Props {
  * disponible (`remaining + amount`), exactement comme le dialogue de vente
  * de bon (`sell-receipt-dialog`).
  */
-export function SaleWorkersDialog({
+export function SellWorkersDialog({
     attendance,
     sales,
     session,
@@ -188,4 +188,4 @@ export function SaleWorkersDialog({
     );
 }
 
-export default SaleWorkersDialog;
+export default SellWorkersDialog;

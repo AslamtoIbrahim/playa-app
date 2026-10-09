@@ -3,7 +3,7 @@ import { CircleCheck, Hourglass, Lock, Plus, Trash2 } from 'lucide-react';
 
 import AddAttendanceDialog from '@/components/add-attendance-dialog';
 import DeleteAttendanceDialog from '@/components/delete-attendance-dialog';
-import SaleWorkersDialog from '@/components/sale-workers-dialog';
+import SellWorkersDialog from '@/components/sell-workers-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { computeAttendanceRemainingAmount } from '@/lib/sales';
@@ -216,7 +216,7 @@ export function SessionAttendancesTable({
                                     {attendanceContext?.sessionStatus ===
                                     'open' ? (
                                         <div className="flex items-center justify-end gap-1">
-                                            <SaleWorkersDialog
+                                            <SellWorkersDialog
                                                 attendance={attendance}
                                                 sales={sales}
                                                 session={session}

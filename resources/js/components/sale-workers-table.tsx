@@ -1,4 +1,4 @@
-import { SaleWorkersDialog } from '@/components/sale-workers-dialog';
+import { SellWorkersDialog } from '@/components/sell-workers-dialog';
 import { Card, CardContent } from '@/components/ui/card';
 import {
     Table,
@@ -32,7 +32,7 @@ interface SaleWorkersTableProps {
  * Compact table without header: attendance number, zone/session info,
  * attendance total_wage and assigned amount. Half-width ready so it sits
  * side by side with the receipt charges table. Each row reuses
- * `SaleWorkersDialog` (same dialog as the attendance page) to edit or
+ * `SellWorkersDialog` (same dialog as the attendance page) to edit or
  * delete its allocation.
  */
 export function SaleWorkersTable({
@@ -105,7 +105,7 @@ export function SaleWorkersTable({
 
                                     <TableCell className="px-2 text-center print:hidden">
                                         {attendance ? (
-                                            <SaleWorkersDialog
+                                            <SellWorkersDialog
                                                 attendance={attendance}
                                                 sales={sales}
                                                 session={session}
