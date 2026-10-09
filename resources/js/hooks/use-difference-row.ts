@@ -2,8 +2,16 @@ import { destroy, store, update } from '@/routes/differences';
 import { Difference } from '@/types/difference';
 import { navigateToAdjacentCell } from '@/lib/table-navigation';
 import { router } from '@inertiajs/react';
+import type { Page } from '@inertiajs/core';
 import { KeyboardEvent, useState } from 'react';
 import { toast } from 'sonner';
+
+interface FlashMessage {
+    error?: string | null;
+    updated_item?: {
+        differences?: Difference[];
+    };
+}
 
 interface UseDifferenceRowProps {
     diff?: Difference;
@@ -13,6 +21,16 @@ interface UseDifferenceRowProps {
     onSuccess?: (newDiff: Difference) => void;
     onDelete?: (id: number) => void;
     defaultCustomerId?: number;
+    defaultItemId?: number;
+    unitPrice?: number;
+}
+
+function toInputValue(value?: number | null): string {
+    if (value === undefined || value === null || Number.isNaN(Number(value))) {
+        return '';
+    }
+
+    return String(Number(value));
 }
 
 export function useDifferenceRow({
@@ -23,6 +41,8 @@ export function useDifferenceRow({
     onSuccess,
     onDelete,
     defaultCustomerId,
+    defaultItemId,
+    unitPrice,
 }: UseDifferenceRowProps) {
     const [loading, setLoading] = useState<boolean>(false);
 
@@ -30,16 +50,31 @@ export function useDifferenceRow({
 
     const [openItem, setOpenItem] = useState<boolean>(false);
 
-    const [data, setData] = useState({
-        customer_id:
-            diff?.customer_id.toString() || defaultCustomerId?.toString() || '',
-        item_id: diff?.item_id?.toString() || '',
-        unit_count: diff?.unit_count.toString() || '',
-        real_price: diff?.real_price.toString() || '',
-    });
+    const [input, setInput] = useState<Partial<DifferenceRowData>>({});
 
-    const handleDataChange = (updates: Partial<typeof data>): void => {
-        setData((prev) => {
+    const data: DifferenceRowData = {
+        customer_id:
+            input.customer_id ??
+            diff?.customer_id.toString() ??
+            defaultCustomerId?.toString() ??
+            '',
+        item_id:
+            input.item_id ??
+            diff?.item_id?.toString() ??
+            defaultItemId?.toString() ??
+            '',
+        unit_count:
+            input.unit_count ??
+            diff?.unit_count.toString() ??
+            toInputValue(isNew ? maxAvailable : null),
+        real_price:
+            input.real_price ??
+            diff?.real_price.toString() ??
+            toInputValue(isNew ? unitPrice : null),
+    };
+
+    const handleDataChange = (updates: Partial<DifferenceRowData>): void => {
+        setInput((prev) => {
             {
                 return { ...prev, ...updates };
             }
@@ -52,7 +87,7 @@ export function useDifferenceRow({
                 currentData.customer_id !== '' &&
                 currentData.item_id !== '' &&
                 Number(currentData.unit_count) > 0 &&
-                Number(currentData.real_price) > 0
+                currentData.real_price !== ''
             );
         }
     };
@@ -66,9 +101,7 @@ export function useDifferenceRow({
 
         const newCount = parseFloat(currentData.unit_count);
 
-        const limit = isNew
-            ? maxAvailable
-            : maxAvailable + Number(diff?.unit_count);
+        const limit = maxAvailable;
 
         if (newCount > limit) {
             {
@@ -83,36 +116,41 @@ export function useDifferenceRow({
         const options = {
             preserveScroll: true,
 
-            onSuccess: (page: any): void => {
+            onSuccess: (page: Page): void => {
                 {
+                    const flash = page.props.flash as
+                        | FlashMessage
+                        | undefined;
+
+                    if (flash?.error) {
+                        toast.error(flash.error, { duration: 6000 });
+
+                        return;
+                    }
+
                     toast.success(isNew ? 'Ajouté' : 'Mis à jour');
 
                     if (isNew) {
                         {
-                            setData({
-                                // On réapplique le client par défaut (propriétaire
-                                // du bateau) pour rester cohérent avec l'état
-                                // initial de la ligne.
-                                customer_id:
-                                    defaultCustomerId?.toString() || '',
-                                item_id: '',
-                                unit_count: '',
-                                real_price: '',
-                            });
+                            // The updated remaining quantity and invoice price
+                            // become the defaults for the next distribution.
+                            setInput({});
                         }
                     }
 
-                    const updatedItem = page.props.flash?.updated_item;
+                    const updatedItem = flash?.updated_item;
 
-                    const differences =
-                        updatedItem?.differences || page.props.differences;
+                    const differences: Difference[] | undefined =
+                        updatedItem?.differences ??
+                        (page.props.differences as Difference[] | undefined);
 
                     if (onSuccess && differences) {
                         {
                             const res = isNew
                                 ? differences[differences.length - 1]
                                 : differences.find(
-                                      (d: any) => d.id === diff?.id,
+                                      (difference) =>
+                                          difference.id === diff?.id,
                                   );
 
                             if (res) {
@@ -128,6 +166,18 @@ export function useDifferenceRow({
             onFinish: (): void => {
                 {
                     setLoading(false);
+                }
+            },
+
+            onError: (errors: Record<string, string>): void => {
+                {
+                    const firstError = Object.values(errors)[0];
+
+                    toast.error(
+                        (typeof firstError === 'string' ? firstError : null) ??
+                            "La répartition n'a pas pu être enregistrée.",
+                        { duration: 6000 },
+                    );
                 }
             },
         };
@@ -273,4 +323,11 @@ export function useDifferenceRow({
         handleKeyDown,
         submitSave,
     };
+}
+
+interface DifferenceRowData {
+    customer_id: string;
+    item_id: string;
+    unit_count: string;
+    real_price: string;
 }

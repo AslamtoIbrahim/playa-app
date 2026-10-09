@@ -11,6 +11,7 @@ import { Loader2, Plus, Trash2 } from 'lucide-react';
 import MissingCustomerCompanyPopup from './missing-customer-company-popup';
 import MissingItemPopup from './missing-item-popup';
 import { SearchSelect } from './search-select';
+import type { FocusEvent } from 'react';
 
 interface RowProps {
     diff?: Difference;
@@ -20,6 +21,8 @@ interface RowProps {
     maxAvailable: number;
     isNew?: boolean;
     invoiceItemId?: number;
+    defaultItemId?: number;
+    unitPrice?: number;
     onSuccess?: (newDiff: Difference) => void;
     onDelete?: (id: number) => void;
     defaultCustomerId?: number;
@@ -33,6 +36,8 @@ export function DifferenceRow({
     maxAvailable,
     isNew,
     invoiceItemId,
+    defaultItemId,
+    unitPrice,
     onSuccess,
     onDelete,
     defaultCustomerId,
@@ -56,10 +61,18 @@ export function DifferenceRow({
         onSuccess,
         onDelete,
         defaultCustomerId,
+        defaultItemId,
+        unitPrice,
     });
 
     const inputClass =
         "h-10 border-none bg-transparent text-center focus-visible:ring-0 focus-visible:bg-slate-100 dark:focus-visible:bg-neutral-800 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none text-slate-900 dark:text-neutral-100";
+
+    const handleInputFocus = (e: FocusEvent<HTMLInputElement>): void => {
+        if (isNew) {
+            e.target.select();
+        }
+    };
 
     return (
         <TableRow
@@ -158,6 +171,7 @@ export function DifferenceRow({
                 <Input
                     value={data.unit_count}
                     placeholder="0"
+                    onFocus={handleInputFocus}
                     onChange={(e) => {
                         {
                             handleDataChange({ unit_count: e.target.value });
@@ -192,6 +206,7 @@ export function DifferenceRow({
                 <Input
                     value={data.real_price}
                     placeholder="0.00"
+                    onFocus={handleInputFocus}
                     onChange={(e) => {
                         {
                             handleDataChange({ real_price: e.target.value });

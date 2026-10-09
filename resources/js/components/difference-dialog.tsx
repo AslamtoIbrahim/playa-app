@@ -211,6 +211,8 @@ export function DifferenceDialog({
                                     categories={categories}
                                     maxAvailable={remainingCount}
                                     defaultCustomerId={ownerCustomerId}
+                                    defaultItemId={item.item_id}
+                                    unitPrice={Number(item.unit_price)}
                                 />
                             )}
 
