@@ -25,6 +25,7 @@ interface SearchSelectProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onKeyDown?: (e: React.KeyboardEvent<any>) => void;
+    disabled?: boolean;
     className?: string;
     /**
      * Action optionnelle rendue à côté du champ de recherche lorsque la
@@ -43,6 +44,7 @@ export function SearchSelect({
     open,
     onOpenChange,
     onKeyDown,
+    disabled = false,
     className,
     renderNoMatchAction,
 }: SearchSelectProps) {
@@ -72,6 +74,7 @@ export function SearchSelect({
             <PopoverTrigger asChild>
                 <Button
                     variant="ghost"
+                    disabled={disabled}
                     onKeyDown={onKeyDown}
                     className={cn(
                         'h-10 w-full justify-between px-3 text-left text-xs font-normal',

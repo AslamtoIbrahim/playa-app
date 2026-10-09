@@ -9,6 +9,7 @@ import { KeyboardEvent, useEffect, useRef, useState } from 'react';
  * pour qu'aucune saisie ne soit perdue si l'utilisateur oublie « Entrée ».
  */
 const AUTO_SAVE_DELAY = 700;
+const NEW_ITEM_AUTO_SAVE_DELAY = 3000;
 
 /** Délai de reprise quand une requête est déjà en vol. */
 const AUTO_SAVE_RETRY_DELAY = 200;
@@ -87,6 +88,8 @@ export function useInvoiceItem({
     const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const savedSignatureRef = useRef<string>(toSignature(data));
     const pendingSaveRef = useRef(false);
+    const flushSaveRef = useRef<() => void>(() => {});
+    const saveDraftOnLeaveRef = useRef<() => void>(() => {});
 
     useEffect(() => {
         dataRef.current = data;
@@ -105,6 +108,22 @@ export function useInvoiceItem({
             clearSaveTimer();
         };
     }, []);
+
+    useEffect(() => {
+        if (!isNew) {
+            return;
+        }
+
+        const saveDraftOnLeave = () => saveDraftOnLeaveRef.current();
+        const removeBeforeListener = router.on('before', saveDraftOnLeave);
+
+        window.addEventListener('pagehide', saveDraftOnLeave);
+
+        return () => {
+            removeBeforeListener();
+            window.removeEventListener('pagehide', saveDraftOnLeave);
+        };
+    }, [isNew]);
 
     const buildPayload = (currentData: InvoiceItemData) => {
         return {
@@ -165,9 +184,19 @@ export function useInvoiceItem({
         dataRef.current = newData;
         setData(newData);
 
-        // Toute modification est enregistrée, sans attendre la touche Entrée.
+        // Les lignes existantes et les lignes nouvelles sont enregistrées
+        // après une période d'inactivité.
         scheduleSave();
     };
+
+    const hasDataToSave = (currentData = dataRef.current) =>
+        currentData.boat_id !== '' ||
+        currentData.item_id !== '' ||
+        String(currentData.unit_count).trim() !== '' ||
+        String(currentData.unit_price).trim() !== '' ||
+        currentData.unit !== 'caisse' ||
+        String(currentData.box).trim() !== '' ||
+        String(currentData.weight).trim() !== '';
 
     const isReadyToSave = (currentData = dataRef.current) => {
         if (isNew) {
@@ -185,7 +214,7 @@ export function useInvoiceItem({
     };
 
     const submitSave = (currentData = dataRef.current) => {
-        if (!isReadyToSave(currentData)) {
+        if (isNew ? !hasDataToSave(currentData) : !isReadyToSave(currentData)) {
             {
                 return;
             }
@@ -221,6 +250,7 @@ export function useInvoiceItem({
                         const emptyData = createEmptyData();
 
                         dataRef.current = emptyData;
+                        savedSignatureRef.current = toSignature(emptyData);
                         setData(emptyData);
                     }
                 }
@@ -245,17 +275,21 @@ export function useInvoiceItem({
     const flushSave = () => {
         clearSaveTimer();
 
-        /*
-         * La ligne « nouvelle » reste explicite (Entrée ou bouton ✓) : sinon
-         * chaque frappe créerait un svelte vide.
-         */
-        if (isNew || !item?.id) {
+        if (!isNew && !item?.id) {
             {
                 return;
             }
         }
 
         const currentData = dataRef.current;
+
+        if (isNew ? !hasDataToSave(currentData) : !isReadyToSave(currentData)) {
+            {
+                pendingSaveRef.current = false;
+
+                return;
+            }
+        }
 
         if (toSignature(currentData) === savedSignatureRef.current) {
             {
@@ -279,7 +313,9 @@ export function useInvoiceItem({
     };
 
     const scheduleSave = (delay = AUTO_SAVE_DELAY) => {
-        if (isNew) {
+        if (isNew && !hasDataToSave()) {
+            clearSaveTimer();
+
             {
                 return;
             }
@@ -290,12 +326,83 @@ export function useInvoiceItem({
         saveTimerRef.current = setTimeout(() => {
             saveTimerRef.current = null;
             flushSave();
-        }, delay);
+        }, isNew ? NEW_ITEM_AUTO_SAVE_DELAY : delay);
     };
 
-    // Quitter une cellule enregistre tout de suite, sans attendre le debounce.
+    const saveDraftOnLeave = () => {
+        if (!isNew) {
+            flushSaveRef.current();
+
+            return;
+        }
+
+        clearSaveTimer();
+
+        const currentData = dataRef.current;
+
+        if (
+            !hasDataToSave(currentData) ||
+            toSignature(currentData) === savedSignatureRef.current ||
+            loadingRef.current
+        ) {
+            return;
+        }
+
+        const token = document.querySelector<HTMLMetaElement>(
+            'meta[name="csrf-token"]',
+        )?.content;
+
+        if (!token) {
+            return;
+        }
+
+        const formData = new FormData();
+
+        Object.entries(buildPayload(currentData)).forEach(([key, value]) => {
+            formData.append(key, String(value));
+        });
+        formData.append('_token', token);
+
+        if (navigator.sendBeacon?.(store(invoiceId), formData)) {
+            savedSignatureRef.current = toSignature(currentData);
+        } else {
+            void fetch(store(invoiceId), {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin',
+                keepalive: true,
+                headers: {
+                    Accept: 'text/html',
+                    'X-CSRF-TOKEN': token,
+                },
+            })
+                .then((response) => {
+                    if (response.ok) {
+                        savedSignatureRef.current = toSignature(currentData);
+                    } else {
+                        console.error(
+                            'Unable to save the invoice item before leaving.',
+                            response.status,
+                        );
+                    }
+                })
+                .catch((error: unknown) => {
+                    console.error(
+                        'Unable to save the invoice item before leaving.',
+                        error,
+                    );
+                });
+        }
+    };
+
+    flushSaveRef.current = flushSave;
+    saveDraftOnLeaveRef.current = saveDraftOnLeave;
+
+    // Existing rows save on blur; new-row typing is left to the longer debounce.
     const handleBlur = () => {
-        flushSave();
+        if (!isNew) {
+            flushSave();
+        }
     };
 
     const handleKeyDown = (

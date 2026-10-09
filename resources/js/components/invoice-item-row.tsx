@@ -117,6 +117,8 @@ export default function InvoiceItemRow({
     const inputBaseClass =
         'border-none rounded-none h-10 text-xs shadow-none bg-transparent focus-visible:ring-0 w-full font-normal [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none text-slate-900 dark:text-neutral-100';
 
+    const isSavingNewItem = Boolean(isNew && loading);
+
     return (
         <TableRow
             ref={setNodeRef}
@@ -177,6 +179,7 @@ export default function InvoiceItemRow({
                     )}
                     open={openBoat}
                     onOpenChange={setOpenBoat}
+                    disabled={isSavingNewItem}
                     onKeyDown={(e) => {
                         {
                             handleKeyDown(e, 'boat');
@@ -209,6 +212,7 @@ export default function InvoiceItemRow({
                     )}
                     open={openItem}
                     onOpenChange={setOpenItem}
+                    disabled={isSavingNewItem}
                     onKeyDown={(e) => {
                         {
                             handleKeyDown(e, 'item');
@@ -246,6 +250,7 @@ export default function InvoiceItemRow({
             >
                 <Input
                     type="number"
+                    disabled={isSavingNewItem}
                     value={data.unit_count}
                     onChange={(e) => {
                         {
@@ -266,6 +271,7 @@ export default function InvoiceItemRow({
             >
                 <Input
                     type="number"
+                    disabled={isSavingNewItem}
                     value={data.unit_price}
                     onChange={(e) => {
                         {
@@ -293,6 +299,7 @@ export default function InvoiceItemRow({
                     }}
                 >
                     <SelectTrigger
+                        disabled={isSavingNewItem}
                         onKeyDown={handleKeyDown}
                         className="h-10 w-full rounded-none border-none bg-transparent px-3 text-[10px] text-slate-900 uppercase shadow-none focus:ring-0 dark:text-neutral-100"
                     >
@@ -318,6 +325,7 @@ export default function InvoiceItemRow({
             {/* <TableCell className="w-24 border-r bg-slate-50/20 p-0">
                 <Input
                     type="number"
+                    disabled={isSavingNewItem}
                     value={weight}
                     readOnly
                     className={cn(inputBaseClass, 'text-center text-slate-400 italic')}
@@ -333,6 +341,7 @@ export default function InvoiceItemRow({
             >
                 <Input
                     type="number"
+                    disabled={isSavingNewItem}
                     value={weight}
                     onChange={(e) => {
                         {
@@ -361,6 +370,7 @@ export default function InvoiceItemRow({
             >
                 <Input
                     type="number"
+                    disabled={isSavingNewItem}
                     value={displayBox}
                     readOnly={data.unit === 'caisse'}
                     onChange={(e) => {
