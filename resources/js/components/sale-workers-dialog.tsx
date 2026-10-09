@@ -15,7 +15,7 @@ import type { Attendance } from '@/types/attendance';
 import type { Customer } from '@/types/customer';
 import type { DailySession } from '@/types/daily-session';
 import type { Sale } from '@/types/sale';
-import { Users } from 'lucide-react';
+import { ShoppingCart, Users } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import MissingDialogSale from './missing-dialog-sale';
@@ -95,7 +95,7 @@ export function SaleWorkersDialog({
                         size="icon"
                         className="h-8 w-8 text-emerald-500 hover:bg-emerald-50 hover:text-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-500/10 dark:hover:text-emerald-300"
                     >
-                        <Users className="h-4 w-4" />
+                        <ShoppingCart className="h-4 w-4" />
                     </Button>
                 )}
             </DialogTrigger>

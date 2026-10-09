@@ -1,10 +1,13 @@
 import { router } from '@inertiajs/react';
-import { Lock, Plus, Trash2 } from 'lucide-react';
+import { CircleCheck, Hourglass, Lock, Plus, Trash2 } from 'lucide-react';
 
 import AddAttendanceDialog from '@/components/add-attendance-dialog';
 import DeleteAttendanceDialog from '@/components/delete-attendance-dialog';
 import SaleWorkersDialog from '@/components/sale-workers-dialog';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { computeAttendanceRemainingAmount } from '@/lib/sales';
+import { cn } from '@/lib/utils';
 import {
     Table,
     TableBody,
@@ -138,6 +141,8 @@ export function SessionAttendancesTable({
                             Masse salariale
                         </TableHead>
 
+                        <TableHead className="text-right">Reste</TableHead>
+
                         <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
@@ -164,6 +169,42 @@ export function SessionAttendancesTable({
 
                                 <TableCell className="text-right font-mono font-semibold text-slate-900 dark:text-neutral-100">
                                     {formatCurrency(attendance.total_wage || 0)}
+                                </TableCell>
+
+                                <TableCell className="text-right">
+                                    {(() => {
+                                        const rest =
+                                            computeAttendanceRemainingAmount(
+                                                attendance,
+                                            );
+                                        const clampedRest = Math.max(rest, 0);
+                                        const isCompleted =
+                                            clampedRest <= 0.005;
+
+                                        return (
+                                            <Badge
+                                                variant="outline"
+                                                className={cn(
+                                                    'gap-1.5 rounded-full px-2.5 py-0.5 font-mono text-xs font-bold tabular-nums',
+                                                    isCompleted
+                                                        ? 'border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/50 dark:text-green-400'
+                                                        : 'border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-900/50 dark:bg-orange-950/40 dark:text-orange-400',
+                                                )}
+                                            >
+                                                {isCompleted ? (
+                                                    <CircleCheck className="h-3 w-3" />
+                                                ) : (
+                                                    <Hourglass className="h-3 w-3" />
+                                                )}
+
+                                                {isCompleted
+                                                    ? 'Terminée'
+                                                    : formatCurrency(
+                                                          clampedRest,
+                                                      )}
+                                            </Badge>
+                                        );
+                                    })()}
                                 </TableCell>
 
                                 <TableCell
@@ -201,7 +242,7 @@ export function SessionAttendancesTable({
                             </TableRow>
                         ))
                     ) : (
-                        <SessionEmptyRow colSpan={5}>
+                        <SessionEmptyRow colSpan={6}>
                             {emptyMessage}
                         </SessionEmptyRow>
                     )}
