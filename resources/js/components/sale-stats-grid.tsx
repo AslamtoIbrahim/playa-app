@@ -1,16 +1,18 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { SaleStats } from '@/types/sale-stats';
-import { Banknote, Diff, Package, Scale } from 'lucide-react';
+import { Banknote, Diff, Package, Receipt, Scale, Users } from 'lucide-react';
 
 /**
  * Cartes de synthèse d'une vente.
  *
- * Quatre cartes alignent les compteurs de la vente (caisses, poids, valeur et
- * écart total), puis la carte « Net à Payer » en présente le total : la valeur,
- * majorée de l'écart, de la taxe de 3 % et des frais de caisse, dont la taxe et
- * les frais de caisse sont repris sur la ligne du bas. La part ouvrière
- * (SaleWorkers) est rappelée sous la valeur : elle provient de la somme des
+ * Six compteurs occupent une grille de quatre colonnes sur deux lignes
+ * (caisses, poids, valeur, bons, part ouvrière et écart total), et la carte
+ * « Net à Payer » complète la quatrième colonne en s'étendant sur les deux
+ * lignes : elle présente la valeur, majorée de l'écart, de la taxe de 3 % et
+ * des frais de caisse, dont la taxe et les frais de caisse sont repris sur la
+ * ligne du bas. Les bons (SaleCharges) et la part ouvrière (SaleWorkers) ont
+ * désormais leur propre carte : la part ouvrière provient de la somme des
  * `SaleWorkers.amount` de la vente, jamais du `total_wage` du pointage, qui
  * peut être réparti sur plusieurs ventes.
  */
@@ -24,10 +26,10 @@ export function SaleStatsGrid({ stats }: { stats: SaleStats }) {
     );
 
     return (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5 print:hidden">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 print:hidden">
             {/* Total Caisses */}
-            <Card className="flex h-24 flex-col justify-center border-amber-200 bg-white shadow-none dark:border-amber-800 dark:bg-slate-900">
-                <CardContent className="p-4 py-0">
+            <Card className="flex h-20 flex-col justify-center border-amber-200 bg-white py-0 shadow-none lg:col-start-1 lg:row-start-1 dark:border-amber-800 dark:bg-slate-900">
+                <CardContent className="p-4 py-2">
                     <p className="mb-1 text-[9px] font-bold tracking-wider text-slate-400 uppercase dark:text-slate-500">
                         Total Caisses
                     </p>
@@ -42,8 +44,8 @@ export function SaleStatsGrid({ stats }: { stats: SaleStats }) {
             </Card>
 
             {/* Total Poids */}
-            <Card className="flex h-24 flex-col justify-center border-amber-200 bg-white shadow-none dark:border-amber-800 dark:bg-slate-900">
-                <CardContent className="p-4 py-0">
+            <Card className="flex h-20 flex-col justify-center border-amber-200 bg-white py-0 shadow-none lg:col-start-2 lg:row-start-1 dark:border-amber-800 dark:bg-slate-900">
+                <CardContent className="p-4 py-2">
                     <p className="mb-1 text-[9px] font-bold tracking-wider text-slate-400 uppercase dark:text-slate-500">
                         Total Poids
                     </p>
@@ -60,9 +62,9 @@ export function SaleStatsGrid({ stats }: { stats: SaleStats }) {
                 </CardContent>
             </Card>
 
-            {/* Total Valeur (lignes + bons imputés) */}
-            <Card className="flex h-24 flex-col justify-center border-amber-200 bg-white shadow-none dark:border-amber-800 dark:bg-slate-900">
-                <CardContent className="p-4 py-0">
+            {/* Total Valeur */}
+            <Card className="flex h-20 flex-col justify-center border-amber-200 bg-white py-0 shadow-none lg:col-start-3 lg:row-start-1 dark:border-amber-800 dark:bg-slate-900">
+                <CardContent className="p-4 py-2">
                     <p className="mb-1 text-[9px] font-bold tracking-wider text-slate-400 uppercase dark:text-slate-500">
                         Total Valeur
                     </p>
@@ -76,24 +78,50 @@ export function SaleStatsGrid({ stats }: { stats: SaleStats }) {
                         </span>
                         <Banknote className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                     </div>
+                </CardContent>
+            </Card>
 
-                    {stats.totalCharges > 0 ? (
-                        <p className="mt-1 text-[10px] font-medium text-slate-500 dark:text-slate-400">
-                            {`dont bons : ${stats.formattedTotalCharges} DH`}
-                        </p>
-                    ) : null}
+            {/* Dont bons : bons de réception imputés dans la valeur */}
+            <Card className="flex h-20 flex-col justify-center border-amber-200 bg-white py-0 shadow-none lg:col-start-1 lg:row-start-2 dark:border-amber-800 dark:bg-slate-900">
+                <CardContent className="p-4 py-2">
+                    <p className="mb-1 text-[9px] font-bold tracking-wider text-slate-400 uppercase dark:text-slate-500">
+                        Dont Bons
+                    </p>
 
-                    {stats.totalWorkers > 0 ? (
-                        <p className="mt-1 text-[10px] font-medium text-slate-500 dark:text-slate-400">
-                            {`dont ouvriers : ${stats.formattedTotalWorkers} DH`}
+                    <div className="flex items-center gap-2">
+                        <p className="text-xl font-bold tracking-tight text-slate-700 dark:text-slate-100">
+                            {stats.formattedTotalCharges}
                         </p>
-                    ) : null}
+                        <span className="text-xs font-semibold text-slate-600 opacity-50 dark:text-slate-300">
+                            DH
+                        </span>
+                        <Receipt className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Dont ouvriers : parts salaires imputées dans la valeur */}
+            <Card className="flex h-20 flex-col justify-center border-amber-200 bg-white py-0 shadow-none lg:col-start-2 lg:row-start-2 dark:border-amber-800 dark:bg-slate-900">
+                <CardContent className="p-4 py-2">
+                    <p className="mb-1 text-[9px] font-bold tracking-wider text-slate-400 uppercase dark:text-slate-500">
+                        Dont Ouvriers
+                    </p>
+
+                    <div className="flex items-center gap-2">
+                        <p className="text-xl font-bold tracking-tight text-slate-700 dark:text-slate-100">
+                            {stats.formattedTotalWorkers}
+                        </p>
+                        <span className="text-xs font-semibold text-slate-600 opacity-50 dark:text-slate-300">
+                            DH
+                        </span>
+                        <Users className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+                    </div>
                 </CardContent>
             </Card>
 
             {/* Total Diff */}
-            <Card className="flex h-24 flex-col justify-center border-amber-200 bg-white shadow-none dark:border-amber-800 dark:bg-slate-900">
-                <CardContent className="p-4 py-0">
+            <Card className="flex h-20 flex-col justify-center border-amber-200 bg-white py-0 shadow-none lg:col-start-3 lg:row-start-2 dark:border-amber-800 dark:bg-slate-900">
+                <CardContent className="p-4 py-2">
                     <p className="mb-1 text-[9px] font-bold tracking-wider text-slate-400 uppercase dark:text-slate-500">
                         Total Diff
                     </p>
@@ -116,9 +144,9 @@ export function SaleStatsGrid({ stats }: { stats: SaleStats }) {
             </Card>
 
             {/* Net à Payer : Valeur + Diff + Taxe 3% + Caisses */}
-            <Card className="flex h-24 flex-col justify-center border-none bg-stone-900 text-white shadow-none">
-                <CardContent className="p-4 py-0">
-                    <div className="mb-0.5 flex items-center justify-between">
+            <Card className="flex border-none bg-stone-900 py-0 text-white shadow-none lg:col-start-4 lg:row-span-2 lg:row-start-1 lg:h-full">
+                <CardContent className="flex flex-1 flex-col justify-between gap-2 p-4 py-3">
+                    <div className="flex items-center justify-between">
                         <p className="text-[9px] font-bold tracking-wider uppercase opacity-50">
                             Net à Payer
                         </p>
@@ -128,7 +156,7 @@ export function SaleStatsGrid({ stats }: { stats: SaleStats }) {
                     </div>
 
                     <div className="flex items-baseline gap-1">
-                        <p className="text-xl font-black tracking-tight">
+                        <p className="text-xl font-black tracking-tight lg:text-2xl">
                             {stats.formattedNetToPay}
                         </p>
                         <span className="text-[10px] font-light opacity-60">
@@ -136,7 +164,7 @@ export function SaleStatsGrid({ stats }: { stats: SaleStats }) {
                         </span>
                     </div>
 
-                    <div className="mt-1.5 flex items-center justify-between border-t border-white/10 pt-1">
+                    <div className="flex items-center justify-between border-t border-white/10 pt-2">
                         <span className="text-[8px] font-bold uppercase opacity-50">
                             TVA (3%) + Caisses
                         </span>
