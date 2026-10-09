@@ -26,7 +26,6 @@ import { SaleCharge } from '@/types/sale-charge';
 import { SaleItem } from '@/types/sale-item';
 import { SaleWorker } from '@/types/sale-worker';
 import { SessionZone } from '@/types/session-zone';
-import type { Customer } from '@/types/customer';
 
 interface Props {
     /** Vente et ses distributions, alimentées par les factures d'achat. */
@@ -41,10 +40,8 @@ interface Props {
      * une zone).
      */
     sessionZones: SessionZone[];
-    /** Ventes de la journée : cibles possibles du dialogue SaleWorkers. */
+    /** Ventes de la journée. */
     sales?: Sale[];
-    /** Clients disponibles pour créer une vente manquante depuis le dialogue. */
-    customers?: Customer[];
 }
 
 /**
@@ -58,8 +55,6 @@ interface Props {
 export default function SalesShow({
     sale,
     sessionZones,
-    sales = [],
-    customers = [],
 }: Props) {
     const items = sale.items || [];
 
@@ -204,12 +199,7 @@ export default function SalesShow({
                 ) : null}
 
                 {(sale.workers?.length ?? 0) > 0 ? (
-                    <SaleWorkersTable
-                        workers={sale.workers ?? []}
-                        sales={sales}
-                        session={sale.session ?? null}
-                        customers={customers}
-                    />
+                    <SaleWorkersTable workers={sale.workers ?? []} />
                 ) : null}
             </div>
 
