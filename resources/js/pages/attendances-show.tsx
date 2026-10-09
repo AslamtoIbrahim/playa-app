@@ -93,7 +93,7 @@ export default function AttendancesShow({
     };
 
     return (
-        <div className="mx-auto w-[90%] space-y-6 p-4 lg:w-[50%]">
+        <div className="mx-auto min-h-screen max-w-screen-2xl space-y-6 bg-white p-6 font-sans text-slate-900 dark:bg-neutral-950 dark:text-neutral-100">
             <Head title={`Pointage #${attendance.id}`} />
 
             <Button
