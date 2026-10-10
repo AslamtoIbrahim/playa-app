@@ -40,6 +40,8 @@ interface Props {
      * une zone).
      */
     sessionZones: SessionZone[];
+    /** URL de retour explicite fournie par le backend (journée liée ou liste). */
+    backUrl: string;
     /** Ventes de la journée. */
     sales?: Sale[];
 }
@@ -55,6 +57,7 @@ interface Props {
 export default function SalesShow({
     sale,
     sessionZones,
+    backUrl,
 }: Props) {
     const items = sale.items || [];
 
@@ -98,7 +101,7 @@ export default function SalesShow({
 
             <button
                 type="button"
-                onClick={() => router.visit('/sales')}
+                onClick={() => router.get(backUrl, {}, { fresh: true })}
                 className="inline-flex w-fit cursor-pointer items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground print:hidden"
             >
                 <ArrowLeft className="h-4 w-4" /> Retour

@@ -86,7 +86,7 @@ class SaleController extends Controller
      * distribution n'imposant que la journée commune, une vente peut théoriquement
      * réunir plusieurs zones : la liste renvoyée est donc dédupliquée.
      */
-    public function show(Sale $sale)
+    public function show(Request $request, Sale $sale)
     {
         $sale->load([
             'customer',
@@ -123,11 +123,22 @@ class SaleController extends Controller
 
         $customers = Customer::select('id', 'name')->get();
 
+        // Return to the originating daily session when the sale was opened
+        // from its sales table; otherwise return to the sales list.
+        $session = $sale->session;
+        $openedFromSession = $session !== null
+            && $request->integer('from_session') === $session->id;
+
+        $backUrl = $openedFromSession
+            ? route('sessions.show', [$session->id])
+            : route('sales');
+
         return Inertia::render('sales-show', [
             'sale' => $sale,
             'sessionZones' => $sessionZones,
             'sales' => $daySales,
             'customers' => $customers,
+            'backUrl' => $backUrl,
         ]);
     }
 

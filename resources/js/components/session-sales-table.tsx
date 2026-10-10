@@ -61,7 +61,14 @@ export function SessionSalesTable({
 
     // Open the sale sheet: this is where the items are assigned.
     const handleRowClick = (saleId: number): void => {
-        router.visit(showSale.url(saleId));
+        router.visit(
+            showSale.url(
+                saleId,
+                saleContext
+                    ? { query: { from_session: saleContext.sessionId } }
+                    : undefined,
+            ),
+        );
     };
 
     return (
