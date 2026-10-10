@@ -56,6 +56,10 @@ export function SessionPurchasesTab({
         (sum, receipt) => sum + Number(receipt.total_amount ?? 0),
         0,
     );
+    const differencesTotal = purchaseData.differences.reduce(
+        (sum, difference) => sum + Number(difference.total_diff ?? 0),
+        0,
+    );
     const attendancesTotal = attendances.reduce(
         (sum, attendance) => sum + Number(attendance.total_wage ?? 0),
         0,
@@ -118,15 +122,21 @@ export function SessionPurchasesTab({
                         </TabsTrigger>
                     </SessionTabTotalHint>
 
-                    <TabsTrigger
-                        value="differences"
-                        className={purchaseSubTabClass}
+                    <SessionTabTotalHint
+                        total={differencesTotal}
+                        formatCurrency={formatCurrency}
+                        tone="blue"
                     >
+                        <TabsTrigger
+                            value="differences"
+                            className={purchaseSubTabClass}
+                        >
                         Différences
                         <span className="ml-2 text-xs opacity-70">
                             {purchaseData.differences.length}
                         </span>
-                    </TabsTrigger>
+                        </TabsTrigger>
+                    </SessionTabTotalHint>
 
                     <SessionTabTotalHint
                         total={attendancesTotal}
@@ -161,6 +171,7 @@ export function SessionPurchasesTab({
                 />
             </TabsContent>
 
+            {/* Différences content */}
             <TabsContent value="differences" className="mt-0">
                 <SessionDifferencesTable
                     differences={purchaseData.differences}

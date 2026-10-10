@@ -118,6 +118,15 @@ test('a sale is recorded from an invoice line and its difference is computed', f
 
     // The sale is recalculated: 4 * 25 = 100
     expect((float) $context['sale']->fresh()->amount)->toBe(100.0);
+
+    $this->actingAs($context['user'])
+        ->get(route('sessions.show', $context['session']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('sessions-show')
+            ->where('totals.sell', 100)
+            ->where('saleData.total', 100)
+        );
 });
 
 test('a sale must belong to the same session as the invoice', function () {

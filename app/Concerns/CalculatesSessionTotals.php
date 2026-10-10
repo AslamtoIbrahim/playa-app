@@ -6,6 +6,9 @@ use App\Models\Attendance;
 use App\Models\Difference;
 use App\Models\Invoice;
 use App\Models\Receipt;
+use App\Models\SaleCharge;
+use App\Models\SaleItem;
+use App\Models\SaleWorker;
 
 /**
  * Totaux financiers d'un ensemble de zones de journée (session_zones).
@@ -60,6 +63,22 @@ trait CalculatesSessionTotals
             ->where('type', 'sale')
             ->sum('amount');
 
+        // Les ventes directes restent rattachées à la journée via sales.session_id.
+        // Leurs lignes et imputations permettent toutefois un calcul précis par zone.
+        $directSaleItems = (float) SaleItem::whereHas('invoiceItem.invoice', function ($q) use ($sessionZoneIds) {
+            $q->whereIn('session_zone_id', $sessionZoneIds)->where('type', 'purchase');
+        })->selectRaw('COALESCE(SUM(unit_count * real_price), 0) as aggregate')->value('aggregate');
+
+        $directSaleCharges = (float) SaleCharge::whereHas('receipt', function ($q) use ($sessionZoneIds) {
+            $q->whereIn('session_zone_id', $sessionZoneIds);
+        })->sum('amount');
+
+        $directSaleWorkers = (float) SaleWorker::whereHas('attendance', function ($q) use ($sessionZoneIds) {
+            $q->whereIn('session_zone_id', $sessionZoneIds);
+        })->sum('amount');
+
+        $directSales = $directSaleItems + $directSaleCharges + $directSaleWorkers;
+
         $saleDifferences = (float) Difference::whereHas('invoiceItem.invoice', function ($q) use ($sessionZoneIds) {
             $q->whereIn('session_zone_id', $sessionZoneIds)->where('type', 'sale');
         })->sum('total_diff');
@@ -74,7 +93,7 @@ trait CalculatesSessionTotals
         $attendanceWages = (float) Attendance::whereIn('session_zone_id', $sessionZoneIds)->sum('total_wage');
 
         $purchase = $purchaseInvoices + $purchaseDifferences + $purchaseReceipts;
-        $sale = $saleInvoices + $saleDifferences + $saleReceipts;
+        $sale = $directSales + $saleInvoices + $saleDifferences + $saleReceipts;
         $buy = $purchase + $attendanceWages;
 
         return [
