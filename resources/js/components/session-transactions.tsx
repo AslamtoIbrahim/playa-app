@@ -111,6 +111,7 @@ export function SessionTransactions({
                     className="mt-0 w-full rounded-2xl border border-blue-200 bg-white p-4 sm:p-6 dark:border-blue-500/30 dark:bg-neutral-900"
                 >
                     <SessionPurchasesTab
+                        sessionId={sessionId}
                         activeTab={activePurchaseTab}
                         onTabChange={setPurchaseTab}
                         purchaseData={purchaseData}

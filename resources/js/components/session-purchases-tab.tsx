@@ -13,6 +13,7 @@ import { SessionInvoicesTable } from './session-invoices-table';
 import type { SessionInvoiceAddContextInput } from './session-invoices-table';
 import { SessionReceiptsTable } from './session-receipts-table';
 import type { SessionReceiptAddContextInput } from './session-receipts-table';
+import { SessionDifferencesTable } from './session-differences-table';
 import { SessionTabTotalHint } from './session-tab-total-hint';
 
 export interface SessionPurchasesTabProps {
@@ -31,6 +32,7 @@ export interface SessionPurchasesTabProps {
     sales?: Sale[];
     /** Session courante pour créer la vente manquante. */
     session?: DailySession | null;
+    sessionId: number;
 }
 
 export function SessionPurchasesTab({
@@ -44,6 +46,7 @@ export function SessionPurchasesTab({
     attendanceContext = null,
     sales = [],
     session = null,
+    sessionId,
 }: SessionPurchasesTabProps) {
     const invoicesTotal = purchaseData.invoices.reduce(
         (sum, invoice) => sum + Number(invoice.amount ?? 0),
@@ -115,6 +118,16 @@ export function SessionPurchasesTab({
                         </TabsTrigger>
                     </SessionTabTotalHint>
 
+                    <TabsTrigger
+                        value="differences"
+                        className={purchaseSubTabClass}
+                    >
+                        Différences
+                        <span className="ml-2 text-xs opacity-70">
+                            {purchaseData.differences.length}
+                        </span>
+                    </TabsTrigger>
+
                     <SessionTabTotalHint
                         total={attendancesTotal}
                         formatCurrency={formatCurrency}
@@ -145,6 +158,15 @@ export function SessionPurchasesTab({
                             ? { ...invoiceContext, type: 'purchase' }
                             : null
                     }
+                />
+            </TabsContent>
+
+            <TabsContent value="differences" className="mt-0">
+                <SessionDifferencesTable
+                    differences={purchaseData.differences}
+                    formatCurrency={formatCurrency}
+                    emptyMessage="Aucune différence trouvée pour cette session."
+                    sessionId={sessionId}
                 />
             </TabsContent>
 
