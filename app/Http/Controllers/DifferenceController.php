@@ -228,13 +228,15 @@ class DifferenceController extends Controller
             ->unique()
             ->values();
 
-        $backUrl = $sessionIds->count() === 1
-            ? route('sessions.show', [$sessionIds->first()])
-            : route('differences', [
-                'customer_id' => $customerId,
-                'date' => $date,
-                'boat_id' => $boatId,
-            ]);
+        // The entry point determines the return destination, as on other
+        // show pages. Only honor a session explicitly passed by its report link.
+        $requestedSessionId = $request->integer('from_session');
+        $openedFromSession = $requestedSessionId > 0
+            && $sessionIds->contains($requestedSessionId);
+
+        $backUrl = $openedFromSession
+            ? route('sessions.show', [$requestedSessionId])
+            : route('differences');
 
         return Inertia::render('differences-show', [
             'details' => $sortedDetails,

@@ -386,7 +386,7 @@ export default function InvoiceShow({
 
             <button
                 type="button"
-                onClick={() => router.visit(backUrl)}
+                onClick={() => router.visit(backUrl, { fresh: true })}
                 className="inline-flex w-fit cursor-pointer items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"
             >
                 <ArrowLeft className="h-4 w-4" /> Retour

@@ -135,7 +135,7 @@ export default function DifferenceShow({
                     variant="ghost"
                     size="sm"
                     className="gap-2 text-muted-foreground hover:text-foreground dark:text-neutral-300 dark:hover:text-neutral-50"
-                    onClick={() => router.visit(backUrl)}
+                    onClick={() => router.get(backUrl, {}, { fresh: true })}
                 >
                     <ArrowLeft className="h-4 w-4" /> Retour
                 </Button>

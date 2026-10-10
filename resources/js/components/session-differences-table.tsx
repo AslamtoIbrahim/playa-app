@@ -25,12 +25,14 @@ export interface SessionDifferencesTableProps {
     differences: Difference[];
     formatCurrency: (amount: number) => string;
     emptyMessage: string;
+    sessionId: number;
 }
 
 export function SessionDifferencesTable({
     differences,
     formatCurrency,
     emptyMessage,
+    sessionId,
 }: SessionDifferencesTableProps) {
     const reports = groupDifferencesByReport(differences);
 
@@ -45,6 +47,7 @@ export function SessionDifferencesTable({
                     customer_id: item.customerId,
                     date: item.invoiceDate,
                     boat_id: item.boatId,
+                    from_session: sessionId,
                 },
             }),
         );

@@ -195,7 +195,7 @@ export default function ReceiptShow({ receipt, items, backUrl }: Props) {
                     variant="ghost"
                     size="sm"
                     className="h-auto p-0 text-slate-400 hover:text-slate-800 dark:hover:text-neutral-200"
-                    onClick={() => router.get(backUrl)}
+                    onClick={() => router.get(backUrl, {}, { fresh: true })}
                 >
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Retour

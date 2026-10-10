@@ -100,7 +100,7 @@ export default function AttendancesShow({
                 variant="ghost"
                 size="sm"
                 className="h-auto w-fit p-0 text-sm font-medium text-muted-foreground hover:text-foreground print:hidden"
-                onClick={() => router.get(backUrl)}
+                onClick={() => router.get(backUrl, {}, { fresh: true })}
             >
                 <ArrowLeft className="mr-2 h-4 w-4" /> Retour
             </Button>
