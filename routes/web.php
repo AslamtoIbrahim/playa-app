@@ -8,6 +8,7 @@ use App\Http\Controllers\CautionController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DailySessionController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DifferenceController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\InvoiceItemController;
@@ -31,7 +32,7 @@ Route::inertia('/', 'welcome', [
 
 Route::middleware(['auth', 'verified'])->group(function () {
 
-    Route::inertia('dashboard', 'dashboard')->name('dashboard');
+    Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // --- Customers Routes
     Route::prefix('customers')->group(function () {
