@@ -80,10 +80,21 @@ trait CalculatesSessionTotals
 
         $directSales = $directSaleItems + $directSaleCharges + $directSaleWorkers;
 
+        // Les lignes directes sont saisies au prix réel : `unit_count *
+        // real_price` contient donc déjà l'écart (`total_diff`). On l'isole pour
+        // que la taxe porte sur la valeur seule, l'écart étant compté à part
+        // dans le total de vente.
+        $directSalesDiff = (float) SaleItem::whereHas('invoiceItem.invoice', function ($q) use ($sessionZoneIds) {
+            $q->whereIn('session_zone_id', $sessionZoneIds)->where('type', 'purchase');
+        })->sum('total_diff');
+
+        $directSalesValue = $directSales - $directSalesDiff;
+
         // Les ventes directes sont enregistrées HT. Le total de session doit
-        // afficher leur net à payer, comme la table des ventes : HT + taxe de
-        // 3 % + 1 DH par caisse. Les factures de vente incluent déjà ces frais.
-        $directSalesTax = $directSales * 0.03;
+        // afficher leur net à payer, comme la table des ventes et la fiche de
+        // vente : valeur + écart + taxe de 3 % sur la valeur seule + 1 DH par
+        // caisse. Les factures de vente incluent déjà ces frais.
+        $directSalesTax = $directSalesValue * 0.03;
         $directSalesBoxesFee = (float) Sale::whereHas('session.sessionZones', function ($q) use ($sessionZoneIds) {
             $q->whereIn('session_zones.id', $sessionZoneIds);
         })->sum('boxes');

@@ -46,9 +46,8 @@ export const useSaleCalculations = (sale: Sale) => {
             // sa propre carte. On le retire pour ne pas le compter deux fois.
             const totalValeur = saleAmount - totalDiff;
 
-            // Taxe de 3 % sur le montant de la vente (écart inclus), comme
-            // `CalculatesSessionTotals` côté serveur.
-            const taxAmount = computeSaleTax(saleAmount);
+            // Taxe de 3 % sur la valeur seule (hors écart).
+            const taxAmount = computeSaleTax(totalValeur);
 
             // Frais de caisse : 1 DH par caisse.
             const boxesFee = computeSaleBoxesFee(totalBoxes);
