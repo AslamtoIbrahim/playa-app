@@ -42,6 +42,12 @@ export default function AddWorkersDialog({
     );
 
     const [defaultWage, setDefaultWage] = useState<string>("0");
+    const allWorkersSelected = availableWorkers.length > 0
+        && availableWorkers.every((worker) => selectedWorkerIds.includes(worker.id));
+
+    const toggleAllWorkers = () => {
+        setSelectedWorkerIds(allWorkersSelected ? [] : availableWorkers.map((worker) => worker.id));
+    };
 
     const toggleWorker = (workerId: number) => {
         if (selectedWorkerIds.includes(workerId)) {
@@ -128,9 +134,21 @@ export default function AddWorkersDialog({
 
                             <div className="space-y-4">
                                 <div className="flex items-center justify-between">
-                                    <Label className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400">
-                                        Sélection ({selectedWorkerIds.length} / {availableWorkers.length})
-                                    </Label>
+                                    <div className="flex items-center gap-2">
+                                        <Checkbox
+                                            id="select-all-workers"
+                                            checked={allWorkersSelected}
+                                            disabled={availableWorkers.length === 0}
+                                            onCheckedChange={toggleAllWorkers}
+                                            aria-label={allWorkersSelected ? 'Tout désélectionner' : 'Tout sélectionner'}
+                                        />
+                                        <Label
+                                            htmlFor="select-all-workers"
+                                            className="cursor-pointer text-xs font-bold uppercase text-slate-500 dark:text-slate-400"
+                                        >
+                                            Sélection ({selectedWorkerIds.length} / {availableWorkers.length})
+                                        </Label>
+                                    </div>
                                     <MissingWorkerPopup />
                                 </div>
 
