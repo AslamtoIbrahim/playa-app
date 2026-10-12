@@ -3,173 +3,132 @@ import { cn } from '@/lib/utils';
 import { SaleStats } from '@/types/sale-stats';
 import { Banknote, Diff, Package, Receipt, Scale, Users } from 'lucide-react';
 
-/**
- * Cartes de synthèse d'une vente.
- *
- * Six compteurs occupent une grille de quatre colonnes sur deux lignes
- * (caisses, poids, valeur, bons, part ouvrière et écart total), et la carte
- * « Net à Payer » complète la quatrième colonne en s'étendant sur les deux
- * lignes : elle présente le total de toutes ces cartes — la valeur, majorée des
- * bons, de la part ouvrière, de l'écart, de la taxe de 3 % et des frais de
- * caisse, dont la taxe et les frais de caisse sont repris sur la ligne du bas.
- * La carte « Total Valeur » n'inclut donc ni les bons ni la part ouvrière, qui
- * ont leur propre carte. La part ouvrière provient de la somme des
- * `SaleWorkers.amount` de la vente, jamais du `total_wage` du pointage, qui
- * peut être réparti sur plusieurs ventes.
- */
+/** Cartes de synthèse d'une vente. */
 export function SaleStatsGrid({ stats }: { stats: SaleStats }) {
-    const diffTone = cn(
+    const diffTone =
         stats.totalDiff < 0
             ? 'text-red-600 dark:text-red-400'
             : stats.totalDiff > 0
               ? 'text-green-600 dark:text-green-400'
-              : 'text-slate-700 dark:text-slate-100',
-    );
+              : 'text-slate-800 dark:text-neutral-100';
+
+    const cardClass =
+        'group overflow-hidden border-slate-200/80 bg-linear-to-br from-white to-orange-50/70 py-2 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-neutral-800 dark:from-neutral-900 dark:to-orange-950/20';
+    const iconClass =
+        'rounded-xl bg-orange-100 p-1.5 text-orange-700 transition-transform group-hover:scale-110 dark:bg-orange-400/10 dark:text-orange-300';
 
     return (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 print:hidden">
-            {/* Total Caisses */}
-            <Card className="flex h-20 flex-col justify-center border-amber-200 bg-white py-0 shadow-none lg:col-start-1 lg:row-start-1 dark:border-amber-800 dark:bg-slate-900">
-                <CardContent className="p-4 py-2">
-                    <p className="mb-1 text-[9px] font-bold tracking-wider text-slate-400 uppercase dark:text-slate-500">
-                        Total Caisses
-                    </p>
-
-                    <div className="flex items-center gap-2">
-                        <p className="text-xl font-bold text-slate-700 dark:text-slate-100">
+            <Card className={cn(cardClass, 'lg:col-start-1 lg:row-start-1')}>
+                <CardContent className="flex min-h-20 items-center justify-between p-3">
+                    <div>
+                        <p className="text-xs font-semibold tracking-wide text-slate-500 dark:text-neutral-400">
+                            Total Caisses
+                        </p>
+                        <p className="mt-2 text-xl font-bold tracking-tight text-slate-800 dark:text-neutral-100">
                             {stats.totalBoxes}
                         </p>
-                        <Package className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                     </div>
+                    <div className={iconClass}><Package className="h-5 w-5" /></div>
                 </CardContent>
             </Card>
 
-            {/* Total Poids */}
-            <Card className="flex h-20 flex-col justify-center border-amber-200 bg-white py-0 shadow-none lg:col-start-2 lg:row-start-1 dark:border-amber-800 dark:bg-slate-900">
-                <CardContent className="p-4 py-2">
-                    <p className="mb-1 text-[9px] font-bold tracking-wider text-slate-400 uppercase dark:text-slate-500">
-                        Total Poids
-                    </p>
-
-                    <div className="flex items-center gap-2">
-                        <p className="text-xl font-bold text-slate-700 dark:text-slate-100">
+            <Card className={cn(cardClass, 'lg:col-start-2 lg:row-start-1')}>
+                <CardContent className="flex min-h-20 items-center justify-between p-3">
+                    <div>
+                        <p className="text-xs font-semibold tracking-wide text-slate-500 dark:text-neutral-400">
+                            Total Poids
+                        </p>
+                        <p className="mt-2 text-xl font-bold tracking-tight text-slate-800 dark:text-neutral-100">
                             {stats.formattedWeight}
+                            <span className="ml-1.5 text-xs font-medium text-slate-400">KG</span>
                         </p>
-                        <span className="text-xs font-semibold text-slate-600 opacity-50 dark:text-slate-300">
-                            Kg
-                        </span>
-                        <Scale className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                     </div>
+                    <div className={iconClass}><Scale className="h-5 w-5" /></div>
                 </CardContent>
             </Card>
 
-            {/* Total Valeur */}
-            <Card className="flex h-20 flex-col justify-center border-amber-200 bg-white py-0 shadow-none lg:col-start-3 lg:row-start-1 dark:border-amber-800 dark:bg-slate-900">
-                <CardContent className="p-4 py-2">
-                    <p className="mb-1 text-[9px] font-bold tracking-wider text-slate-400 uppercase dark:text-slate-500">
-                        Total Valeur
-                    </p>
-
-                    <div className="flex items-center gap-2">
-                        <p className="text-xl font-bold tracking-tight text-slate-700 dark:text-slate-100">
+            <Card className={cn(cardClass, 'lg:col-start-3 lg:row-start-1')}>
+                <CardContent className="flex min-h-20 items-center justify-between p-3">
+                    <div>
+                        <p className="text-xs font-semibold tracking-wide text-slate-500 dark:text-neutral-400">
+                            Total Valeur
+                        </p>
+                        <p className="mt-2 text-xl font-bold tracking-tight text-orange-700 dark:text-orange-300">
                             {stats.formattedTotalValeur}
+                            <span className="ml-1.5 text-xs font-medium text-slate-400">DH</span>
                         </p>
-                        <span className="text-xs font-semibold text-slate-600 opacity-50 dark:text-slate-300">
-                            DH
-                        </span>
-                        <Banknote className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                     </div>
+                    <div className={iconClass}><Banknote className="h-5 w-5" /></div>
                 </CardContent>
             </Card>
 
-            {/* Total bons : bons de réception imputés, hors valeur totale */}
-            <Card className="flex h-20 flex-col justify-center border-amber-200 bg-white py-0 shadow-none lg:col-start-1 lg:row-start-2 dark:border-amber-800 dark:bg-slate-900">
-                <CardContent className="p-4 py-2">
-                    <p className="mb-1 text-[9px] font-bold tracking-wider text-slate-400 uppercase dark:text-slate-500">
-                        Total Bons
-                    </p>
-
-                    <div className="flex items-center gap-2">
-                        <p className="text-xl font-bold tracking-tight text-slate-700 dark:text-slate-100">
+            <Card className={cn(cardClass, 'lg:col-start-1 lg:row-start-2')}>
+                <CardContent className="flex min-h-20 items-center justify-between p-3">
+                    <div>
+                        <p className="text-xs font-semibold tracking-wide text-slate-500 dark:text-neutral-400">
+                            Total Bons
+                        </p>
+                        <p className="mt-2 text-xl font-bold tracking-tight text-slate-800 dark:text-neutral-100">
                             {stats.formattedTotalCharges}
+                            <span className="ml-1.5 text-xs font-medium text-slate-400">DH</span>
                         </p>
-                        <span className="text-xs font-semibold text-slate-600 opacity-50 dark:text-slate-300">
-                            DH
-                        </span>
-                        <Receipt className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                     </div>
+                    <div className={iconClass}><Receipt className="h-5 w-5" /></div>
                 </CardContent>
             </Card>
 
-            {/* Total ouvriers : parts salaires imputées, hors valeur totale */}
-            <Card className="flex h-20 flex-col justify-center border-amber-200 bg-white py-0 shadow-none lg:col-start-2 lg:row-start-2 dark:border-amber-800 dark:bg-slate-900">
-                <CardContent className="p-4 py-2">
-                    <p className="mb-1 text-[9px] font-bold tracking-wider text-slate-400 uppercase dark:text-slate-500">
-                        Total Ouvriers
-                    </p>
-
-                    <div className="flex items-center gap-2">
-                        <p className="text-xl font-bold tracking-tight text-slate-700 dark:text-slate-100">
+            <Card className={cn(cardClass, 'lg:col-start-2 lg:row-start-2')}>
+                <CardContent className="flex min-h-20 items-center justify-between p-3">
+                    <div>
+                        <p className="text-xs font-semibold tracking-wide text-slate-500 dark:text-neutral-400">
+                            Total Ouvriers
+                        </p>
+                        <p className="mt-2 text-xl font-bold tracking-tight text-slate-800 dark:text-neutral-100">
                             {stats.formattedTotalWorkers}
+                            <span className="ml-1.5 text-xs font-medium text-slate-400">DH</span>
                         </p>
-                        <span className="text-xs font-semibold text-slate-600 opacity-50 dark:text-slate-300">
-                            DH
-                        </span>
-                        <Users className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                     </div>
+                    <div className={iconClass}><Users className="h-5 w-5" /></div>
                 </CardContent>
             </Card>
 
-            {/* Total Diff */}
-            <Card className="flex h-20 flex-col justify-center border-amber-200 bg-white py-0 shadow-none lg:col-start-3 lg:row-start-2 dark:border-amber-800 dark:bg-slate-900">
-                <CardContent className="p-4 py-2">
-                    <p className="mb-1 text-[9px] font-bold tracking-wider text-slate-400 uppercase dark:text-slate-500">
-                        Total Diff
-                    </p>
-
-                    <div className="flex items-center gap-2">
-                        <p
-                            className={cn(
-                                'text-xl font-bold tracking-tight',
-                                diffTone,
-                            )}
-                        >
+            <Card className={cn(cardClass, 'lg:col-start-3 lg:row-start-2')}>
+                <CardContent className="flex min-h-20 items-center justify-between p-3">
+                    <div>
+                        <p className="text-xs font-semibold tracking-wide text-slate-500 dark:text-neutral-400">
+                            Total Diff
+                        </p>
+                        <p className={cn('mt-2 text-xl font-bold tracking-tight', diffTone)}>
                             {stats.formattedTotalDiff}
+                            <span className="ml-1.5 text-xs font-medium text-slate-400">DH</span>
                         </p>
-                        <span className="text-xs font-semibold text-slate-600 opacity-50 dark:text-slate-300">
-                            DH
-                        </span>
-                        <Diff className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                     </div>
+                    <div className={iconClass}><Diff className="h-5 w-5" /></div>
                 </CardContent>
             </Card>
 
-            {/* Net à Payer : Valeur + Bons + Ouvriers + Diff + Taxe 3% + Caisses */}
-            <Card className="flex border-none bg-stone-900 py-0 text-white shadow-none lg:col-start-4 lg:row-span-2 lg:row-start-1 lg:h-full">
-                <CardContent className="flex flex-1 flex-col justify-between gap-2 p-4 py-3">
-                    <div className="flex items-center justify-between">
-                        <p className="text-[9px] font-bold tracking-wider uppercase opacity-50">
-                            Net à Payer
-                        </p>
-                        <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-[8px] font-bold text-lime-200 uppercase">
-                            Total
-                        </span>
+            <Card className="overflow-hidden border-0 bg-linear-to-br from-orange-600 via-orange-700 to-amber-800 py-2 text-white shadow-lg shadow-orange-900/15 transition-all hover:-translate-y-0.5 hover:shadow-xl lg:col-start-4 lg:row-span-2 lg:row-start-1 dark:from-orange-700 dark:via-orange-800 dark:to-amber-950">
+                <CardContent className="flex min-h-full flex-col justify-between gap-3 p-3">
+                    <div className="flex items-start justify-between">
+                        <div>
+                            <p className="text-xs font-semibold tracking-wide text-orange-100/80">
+                                Net à Payer
+                            </p>
+                            <p className="mt-2 text-xl font-black tracking-tight sm:text-2xl">
+                                {stats.formattedNetToPay}
+                                <span className="ml-1.5 text-xs font-medium text-orange-100/70">DH</span>
+                            </p>
+                        </div>
+                        <div className="rounded-xl bg-white/15 p-1.5 text-white">
+                            <Banknote className="h-5 w-5" />
+                        </div>
                     </div>
-
-                    <div className="flex items-baseline gap-1">
-                        <p className="text-xl font-black tracking-tight lg:text-2xl">
-                            {stats.formattedNetToPay}
-                        </p>
-                        <span className="text-[10px] font-light opacity-60">
-                            DH
-                        </span>
-                    </div>
-
-                    <div className="flex items-center justify-between border-t border-white/10 pt-2">
-                        <span className="text-[8px] font-bold uppercase opacity-50">
+                    <div className="flex items-center justify-between border-t border-white/20 pt-2">
+                        <span className="text-[10px] font-semibold tracking-wide text-orange-100/80">
                             TVA (3%) + Caisses
                         </span>
-                        <span className="text-[12px] font-medium text-slate-400 dark:text-neutral-400">
+                        <span className="text-xs font-medium text-white">
                             {stats.formattedTaxAndBoxes}
                         </span>
                     </div>
