@@ -3,6 +3,12 @@ import { cn } from '@/lib/utils';
 import { SaleStats } from '@/types/sale-stats';
 import { Banknote, Diff, Package, Receipt, Scale, Users } from 'lucide-react';
 
+const formatStatNumber = (value: number) =>
+    value.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    }).replace(/,/g, ' ');
+
 /** Cartes de synthèse d'une vente. */
 export function SaleStatsGrid({ stats }: { stats: SaleStats }) {
     const diffTone =
@@ -26,7 +32,7 @@ export function SaleStatsGrid({ stats }: { stats: SaleStats }) {
                             Total Caisses
                         </p>
                         <p className="mt-2 text-xl font-bold tracking-tight text-slate-800 dark:text-neutral-100">
-                            {stats.totalBoxes}
+                            {formatStatNumber(stats.totalBoxes)}
                         </p>
                     </div>
                     <div className={iconClass}><Package className="h-5 w-5" /></div>
@@ -40,7 +46,7 @@ export function SaleStatsGrid({ stats }: { stats: SaleStats }) {
                             Total Poids
                         </p>
                         <p className="mt-2 text-xl font-bold tracking-tight text-slate-800 dark:text-neutral-100">
-                            {stats.formattedWeight}
+                            {formatStatNumber(stats.totalWeight)}
                             <span className="ml-1.5 text-xs font-medium text-slate-400">KG</span>
                         </p>
                     </div>
@@ -55,7 +61,7 @@ export function SaleStatsGrid({ stats }: { stats: SaleStats }) {
                             Total Valeur
                         </p>
                         <p className="mt-2 text-xl font-bold tracking-tight text-orange-700 dark:text-orange-300">
-                            {stats.formattedTotalValeur}
+                            {formatStatNumber(stats.totalValeur)}
                             <span className="ml-1.5 text-xs font-medium text-slate-400">DH</span>
                         </p>
                     </div>
@@ -70,7 +76,7 @@ export function SaleStatsGrid({ stats }: { stats: SaleStats }) {
                             Total Bons
                         </p>
                         <p className="mt-2 text-xl font-bold tracking-tight text-slate-800 dark:text-neutral-100">
-                            {stats.formattedTotalCharges}
+                            {formatStatNumber(stats.totalCharges)}
                             <span className="ml-1.5 text-xs font-medium text-slate-400">DH</span>
                         </p>
                     </div>
@@ -85,7 +91,7 @@ export function SaleStatsGrid({ stats }: { stats: SaleStats }) {
                             Total Ouvriers
                         </p>
                         <p className="mt-2 text-xl font-bold tracking-tight text-slate-800 dark:text-neutral-100">
-                            {stats.formattedTotalWorkers}
+                            {formatStatNumber(stats.totalWorkers)}
                             <span className="ml-1.5 text-xs font-medium text-slate-400">DH</span>
                         </p>
                     </div>
@@ -100,7 +106,7 @@ export function SaleStatsGrid({ stats }: { stats: SaleStats }) {
                             Total Diff
                         </p>
                         <p className={cn('mt-2 text-xl font-bold tracking-tight', diffTone)}>
-                            {stats.formattedTotalDiff}
+                            {stats.totalDiff > 0 ? '+' : ''}{formatStatNumber(stats.totalDiff)}
                             <span className="ml-1.5 text-xs font-medium text-slate-400">DH</span>
                         </p>
                     </div>
@@ -115,8 +121,8 @@ export function SaleStatsGrid({ stats }: { stats: SaleStats }) {
                             <p className="text-xs font-semibold tracking-wide text-orange-100/80">
                                 Net à Payer
                             </p>
-                            <p className="mt-2 text-xl font-black tracking-tight sm:text-2xl">
-                                {stats.formattedNetToPay}
+                            <p className="mt-4 text-xl font-black leading-tight tracking-tight tabular-nums sm:text-2xl">
+                                {formatStatNumber(stats.netToPay)}
                                 <span className="ml-1.5 text-xs font-medium text-orange-100/70">DH</span>
                             </p>
                         </div>
@@ -129,7 +135,7 @@ export function SaleStatsGrid({ stats }: { stats: SaleStats }) {
                             TVA (3%) + Caisses
                         </span>
                         <span className="text-xs font-medium text-white">
-                            {stats.formattedTaxAndBoxes}
+                            {formatStatNumber(stats.taxAmount + stats.boxesFee)}
                         </span>
                     </div>
                 </CardContent>

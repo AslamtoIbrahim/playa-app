@@ -1,4 +1,4 @@
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     Table,
     TableBody,
@@ -29,10 +29,16 @@ export function SaleWorkersTable({ workers, className }: SaleWorkersTableProps) 
     return (
         <Card
             className={cn(
-                'w-full overflow-hidden border-slate-100 shadow-sm dark:border-neutral-800 dark:bg-neutral-900',
+                'w-full gap-0 overflow-hidden border-slate-200/80 bg-white py-0 shadow-sm dark:border-neutral-800 dark:bg-neutral-900',
                 className,
             )}
         >
+            <CardHeader className="border-b border-slate-100 bg-linear-to-r from-orange-50/70 to-white px-4 py-3 dark:border-neutral-800 dark:from-orange-950/20 dark:to-neutral-900">
+                <CardTitle className="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-neutral-100">
+                    <span className="h-2 w-2 rounded-full bg-orange-500" />
+                    Pointages imputés
+                </CardTitle>
+            </CardHeader>
             <CardContent className="p-0">
                 <Table>
                     <TableHeader className="border-b border-slate-100 bg-slate-50/50 dark:border-neutral-800 dark:bg-neutral-900/50">
@@ -54,17 +60,17 @@ export function SaleWorkersTable({ workers, className }: SaleWorkersTableProps) 
                     <TableBody>
                         {workers.map((worker) => {
                             return (
-                                <TableRow key={worker.id} className="h-11">
+                                <TableRow key={worker.id} className="h-11 transition-colors hover:bg-orange-50/40 dark:hover:bg-orange-950/10">
                                     <TableCell className="px-4 text-sm font-semibold text-slate-900 dark:text-neutral-100">
                                         {`#${worker.attendance_id}`}
                                     </TableCell>
 
-                                    <TableCell className="px-4 text-right text-sm text-slate-600 dark:text-neutral-300">
-                                        {`${Number(worker.attendance?.total_wage ?? 0).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DH`}
+                                    <TableCell className="px-4 text-right text-sm tabular-nums text-slate-600 dark:text-neutral-300">
+                                        {`${Number(worker.attendance?.total_wage ?? 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DH`}
                                     </TableCell>
 
-                                    <TableCell className="px-4 text-right text-sm font-bold text-slate-900 dark:text-neutral-100">
-                                        {`${Number(worker.amount).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DH`}
+                                    <TableCell className="px-4 text-right text-sm font-bold tabular-nums text-slate-900 dark:text-neutral-100">
+                                        {`${Number(worker.amount).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DH`}
                                     </TableCell>
                                 </TableRow>
                             );
