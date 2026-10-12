@@ -1,9 +1,4 @@
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-} from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { cn, currency } from '@/lib/utils';
 import {
     CalendarDays,
@@ -30,17 +25,14 @@ export interface SessionTotalsCardProps {
     className?: string;
 }
 
-// const currency = (value: number) =>
-//     new Intl.NumberFormat('fr-MA', { style: 'currency', currency: 'MAD' }).format(value);
-
 type Stat = {
     label: string;
     value: string;
     icon: LucideIcon;
+    cardClass: string;
     iconClass: string;
-    valueClass?: string;
-    /** Précision affichée sous la valeur (ex. part ouvriers du total d'achat). */
-    hint?: string;
+    valueClass: string;
+    featured?: boolean;
     mono?: boolean;
 };
 
@@ -48,36 +40,51 @@ function StatCard({
     label,
     value,
     icon: Icon,
+    cardClass,
     iconClass,
     valueClass,
-    hint,
+    featured = false,
     mono = true,
 }: Stat) {
     return (
-        <Card className="border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardDescription className="text-xs font-bold tracking-wider text-neutral-500 uppercase dark:text-neutral-400">
-                    {label}
-                </CardDescription>
-                <Icon className={cn('h-4 w-4', iconClass)} />
-            </CardHeader>
-            <CardContent>
+        <Card
+            className={cn(
+                'overflow-hidden py-2 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md',
+                cardClass,
+            )}
+        >
+            <CardContent className="flex min-h-20 items-center justify-between p-3">
+                <div className="min-w-0">
+                    <p
+                        className={cn(
+                            'text-xs font-semibold tracking-wide',
+                            featured
+                                ? 'text-slate-300'
+                                : 'text-slate-500 dark:text-neutral-400',
+                        )}
+                    >
+                        {label}
+                    </p>
+                    <p
+                        className={cn(
+                            'mt-2 truncate tracking-tight',
+                            mono
+                                ? 'font-mono text-lg font-bold sm:text-xl'
+                                : 'text-lg font-bold sm:text-xl',
+                            valueClass,
+                        )}
+                    >
+                        {value}
+                    </p>
+                </div>
                 <div
                     className={cn(
-                        mono
-                            ? 'min-w-0 overflow-hidden font-mono text-base font-black text-ellipsis whitespace-nowrap sm:text-lg'
-                            : 'text-lg font-bold',
-                        valueClass ?? 'text-neutral-900 dark:text-neutral-100',
+                        'ml-3 shrink-0 rounded-xl p-1.5 transition-transform group-hover:scale-110',
+                        iconClass,
                     )}
                 >
-                    {value}
+                    <Icon className="h-5 w-5" />
                 </div>
-
-                {hint ? (
-                    <p className="mt-1 text-xs font-semibold text-neutral-500 dark:text-neutral-400">
-                        {hint}
-                    </p>
-                ) : null}
             </CardContent>
         </Card>
     );
@@ -89,39 +96,50 @@ export function SessionTotalsCard({
     formatCurrency = currency,
     className,
 }: SessionTotalsCardProps) {
-    const up = totals.margin >= 0;
-    // const attendance = totals.attendance ?? 0;
+    const profitable = totals.margin >= 0;
+    const isOpen = status === 'open';
 
     const stats: Stat[] = [
         {
             label: 'Total Achats',
             value: formatCurrency(totals.buy),
             icon: ShoppingCart,
-            iconClass: 'text-blue-500',
-            valueClass: 'text-blue-600 dark:text-blue-400',
-                  },
+            cardClass:
+                'group border-slate-200/80 bg-linear-to-br from-white to-blue-50/70 dark:border-neutral-800 dark:from-neutral-900 dark:to-blue-950/20',
+            iconClass:
+                'bg-blue-100 text-blue-700 dark:bg-blue-400/10 dark:text-blue-300',
+            valueClass: 'text-blue-700 dark:text-blue-300',
+        },
         {
             label: 'Total Ventes',
             value: formatCurrency(totals.sell),
             icon: ShoppingBag,
-            iconClass: 'text-orange-500',
-            valueClass: 'text-orange-600 dark:text-orange-400',
+            cardClass:
+                'group border-slate-200/80 bg-linear-to-br from-white to-orange-50/70 dark:border-neutral-800 dark:from-neutral-900 dark:to-orange-950/20',
+            iconClass:
+                'bg-orange-100 text-orange-700 dark:bg-orange-400/10 dark:text-orange-300',
+            valueClass: 'text-orange-700 dark:text-orange-300',
         },
         {
             label: 'Marge Brute',
             value: formatCurrency(totals.margin),
-            icon: up ? TrendingUp : TrendingDown,
-            iconClass: up ? 'text-green-500' : 'text-red-500',
-            valueClass: up
-                ? 'text-green-600 dark:text-green-400'
-                : 'text-red-600 dark:text-red-400',
+            icon: profitable ? TrendingUp : TrendingDown,
+            cardClass:
+                'group border-0 bg-linear-to-br from-slate-900 via-slate-800 to-indigo-950 text-white shadow-lg shadow-slate-900/10 dark:from-slate-800 dark:via-neutral-900 dark:to-indigo-950',
+            iconClass: 'bg-white/10 text-emerald-300',
+            valueClass: profitable ? 'text-emerald-300' : 'text-rose-300',
+            featured: true,
         },
         {
             label: 'Statut Session',
-            value: status === 'open' ? 'En cours' : 'Clôturée',
+            value: isOpen ? 'En cours' : 'Clôturée',
             icon: CalendarDays,
-            iconClass: 'text-neutral-500',
-            valueClass: 'text-neutral-800 dark:text-neutral-200',
+            cardClass:
+                'group border-slate-200/80 bg-linear-to-br from-white to-slate-50 dark:border-neutral-800 dark:from-neutral-900 dark:to-neutral-950',
+            iconClass: isOpen
+                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300'
+                : 'bg-slate-100 text-slate-600 dark:bg-neutral-800 dark:text-neutral-300',
+            valueClass: 'text-slate-800 dark:text-neutral-100',
             mono: false,
         },
     ];
