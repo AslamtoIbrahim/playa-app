@@ -1,6 +1,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { SessionPurchaseTab } from '../hooks/use-session-tabs';
 import { cn } from '@/lib/utils';
+import { ArrowLeftRight, FileText, PackageCheck, Users } from 'lucide-react';
 import type { Attendance } from '@/types/attendance';
 import type { SessionGroupData } from '@/types/daily-session';
 
@@ -66,19 +67,12 @@ export function SessionPurchasesTab({
     );
 
     const purchaseSubTabClass = cn(
-        'h-10 cursor-pointer rounded-lg border border-transparent px-4 text-sm font-medium',
-        'bg-transparent text-neutral-500 shadow-none transition-colors',
-        'hover:bg-blue-50 hover:text-blue-700',
-        'aria-selected:border-blue-500',
-        'aria-selected:bg-blue-50',
-        'aria-selected:text-blue-700',
-        'aria-selected:shadow-none',
-        'dark:text-neutral-400',
-        'dark:hover:bg-blue-500/10',
-        'dark:hover:text-blue-400',
-        'dark:aria-selected:border-blue-500',
-        'dark:aria-selected:bg-blue-500/10',
-        'dark:aria-selected:text-blue-400',
+        'h-auto min-h-11 cursor-pointer justify-start gap-2 rounded-xl border border-transparent px-3 py-2 text-xs font-semibold',
+        'bg-transparent text-slate-600 shadow-none transition-all hover:bg-white hover:text-blue-700 hover:shadow-sm',
+        'aria-selected:border-blue-200 aria-selected:bg-white aria-selected:text-blue-700 aria-selected:shadow-sm',
+        'dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-blue-300',
+        'dark:aria-selected:border-blue-500/30 dark:aria-selected:bg-neutral-900 dark:aria-selected:text-blue-300',
+        'sm:text-sm',
     );
 
     return (
@@ -88,8 +82,8 @@ export function SessionPurchasesTab({
             className="flex w-full flex-col gap-6"
         >
             {/* Achats sub-tabs */}
-            <div className="mb-5 overflow-x-auto">
-                <TabsList className="flex h-auto w-full min-w-max justify-between gap-2 bg-transparent p-0">
+            <div className="mb-5 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-2 dark:border-neutral-800 dark:bg-neutral-950/60">
+                <TabsList className="grid h-auto w-full grid-cols-2 gap-1.5 bg-transparent p-0 sm:grid-cols-4">
                     <SessionTabTotalHint
                         total={invoicesTotal}
                         formatCurrency={formatCurrency}
@@ -99,8 +93,11 @@ export function SessionPurchasesTab({
                             value="factures"
                             className={purchaseSubTabClass}
                         >
-                            Factures
-                            <span className="ml-2 text-xs opacity-70">
+                            <FileText className="h-4 w-4 shrink-0" />
+                            <span className="min-w-0 flex-1 text-left">
+                                Factures
+                            </span>
+                            <span className="rounded-full bg-slate-200/70 px-2 py-0.5 text-[11px] text-slate-600 tabular-nums dark:bg-neutral-800 dark:text-neutral-300">
                                 {purchaseData.invoices.length}
                             </span>
                         </TabsTrigger>
@@ -115,8 +112,11 @@ export function SessionPurchasesTab({
                             value="receipts"
                             className={purchaseSubTabClass}
                         >
-                            Réceptions
-                            <span className="ml-2 text-xs opacity-70">
+                            <PackageCheck className="h-4 w-4 shrink-0" />
+                            <span className="min-w-0 flex-1 text-left">
+                                Réceptions
+                            </span>
+                            <span className="rounded-full bg-slate-200/70 px-2 py-0.5 text-[11px] text-slate-600 tabular-nums dark:bg-neutral-800 dark:text-neutral-300">
                                 {purchaseData.receipts.length}
                             </span>
                         </TabsTrigger>
@@ -131,10 +131,13 @@ export function SessionPurchasesTab({
                             value="differences"
                             className={purchaseSubTabClass}
                         >
-                        Différences
-                        <span className="ml-2 text-xs opacity-70">
-                            {purchaseData.differences.length}
-                        </span>
+                            <ArrowLeftRight className="h-4 w-4 shrink-0" />
+                            <span className="min-w-0 flex-1 text-left">
+                                Différences
+                            </span>
+                            <span className="rounded-full bg-slate-200/70 px-2 py-0.5 text-[11px] text-slate-600 tabular-nums dark:bg-neutral-800 dark:text-neutral-300">
+                                {purchaseData.differences.length}
+                            </span>
                         </TabsTrigger>
                     </SessionTabTotalHint>
 
@@ -147,8 +150,11 @@ export function SessionPurchasesTab({
                             value="ouvriers"
                             className={purchaseSubTabClass}
                         >
-                            Ouvriers
-                            <span className="ml-2 text-xs opacity-70">
+                            <Users className="h-4 w-4 shrink-0" />
+                            <span className="min-w-0 flex-1 text-left">
+                                Ouvriers
+                            </span>
+                            <span className="rounded-full bg-slate-200/70 px-2 py-0.5 text-[11px] text-slate-600 tabular-nums dark:bg-neutral-800 dark:text-neutral-300">
                                 {attendances.length}
                             </span>
                         </TabsTrigger>
