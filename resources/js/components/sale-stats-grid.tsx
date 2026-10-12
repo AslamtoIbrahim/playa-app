@@ -9,10 +9,11 @@ import { Banknote, Diff, Package, Receipt, Scale, Users } from 'lucide-react';
  * Six compteurs occupent une grille de quatre colonnes sur deux lignes
  * (caisses, poids, valeur, bons, part ouvrière et écart total), et la carte
  * « Net à Payer » complète la quatrième colonne en s'étendant sur les deux
- * lignes : elle présente la valeur, majorée de l'écart, de la taxe de 3 % et
- * des frais de caisse, dont la taxe et les frais de caisse sont repris sur la
- * ligne du bas. Les bons (SaleCharges) et la part ouvrière (SaleWorkers) ont
- * désormais leur propre carte : la part ouvrière provient de la somme des
+ * lignes : elle présente le total de toutes ces cartes — la valeur, majorée des
+ * bons, de la part ouvrière, de l'écart, de la taxe de 3 % et des frais de
+ * caisse, dont la taxe et les frais de caisse sont repris sur la ligne du bas.
+ * La carte « Total Valeur » n'inclut donc ni les bons ni la part ouvrière, qui
+ * ont leur propre carte. La part ouvrière provient de la somme des
  * `SaleWorkers.amount` de la vente, jamais du `total_wage` du pointage, qui
  * peut être réparti sur plusieurs ventes.
  */
@@ -81,11 +82,11 @@ export function SaleStatsGrid({ stats }: { stats: SaleStats }) {
                 </CardContent>
             </Card>
 
-            {/* Dont bons : bons de réception imputés dans la valeur */}
+            {/* Total bons : bons de réception imputés, hors valeur totale */}
             <Card className="flex h-20 flex-col justify-center border-amber-200 bg-white py-0 shadow-none lg:col-start-1 lg:row-start-2 dark:border-amber-800 dark:bg-slate-900">
                 <CardContent className="p-4 py-2">
                     <p className="mb-1 text-[9px] font-bold tracking-wider text-slate-400 uppercase dark:text-slate-500">
-                        Dont Bons
+                        Total Bons
                     </p>
 
                     <div className="flex items-center gap-2">
@@ -100,11 +101,11 @@ export function SaleStatsGrid({ stats }: { stats: SaleStats }) {
                 </CardContent>
             </Card>
 
-            {/* Dont ouvriers : parts salaires imputées dans la valeur */}
+            {/* Total ouvriers : parts salaires imputées, hors valeur totale */}
             <Card className="flex h-20 flex-col justify-center border-amber-200 bg-white py-0 shadow-none lg:col-start-2 lg:row-start-2 dark:border-amber-800 dark:bg-slate-900">
                 <CardContent className="p-4 py-2">
                     <p className="mb-1 text-[9px] font-bold tracking-wider text-slate-400 uppercase dark:text-slate-500">
-                        Dont Ouvriers
+                        Total Ouvriers
                     </p>
 
                     <div className="flex items-center gap-2">
@@ -143,7 +144,7 @@ export function SaleStatsGrid({ stats }: { stats: SaleStats }) {
                 </CardContent>
             </Card>
 
-            {/* Net à Payer : Valeur + Diff + Taxe 3% + Caisses */}
+            {/* Net à Payer : Valeur + Bons + Ouvriers + Diff + Taxe 3% + Caisses */}
             <Card className="flex border-none bg-stone-900 py-0 text-white shadow-none lg:col-start-4 lg:row-span-2 lg:row-start-1 lg:h-full">
                 <CardContent className="flex flex-1 flex-col justify-between gap-2 p-4 py-3">
                     <div className="flex items-center justify-between">

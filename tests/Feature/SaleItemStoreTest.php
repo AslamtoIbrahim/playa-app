@@ -119,13 +119,17 @@ test('a sale is recorded from an invoice line and its difference is computed', f
     // The sale is recalculated: 4 * 25 = 100
     expect((float) $context['sale']->fresh()->amount)->toBe(100.0);
 
+    // Le total de vente est la somme du « Montant » des ventes directes : leur
+    // net à payer. Ici 4 × 25 = 100, écart (4 × 5 = 20), taxe de 3 % sur la valeur
+    // hors écart (80 × 0,03 = 2,40) et frais de caisse (4 caisses × 1 DH), soit
+    // 100 + 20 + 2,40 + 4 = 106,40. L'écart des lignes s'ajoute donc au montant.
     $this->actingAs($context['user'])
         ->get(route('sessions.show', $context['session']))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('sessions-show')
-            ->where('totals.sell', 100)
-            ->where('saleData.total', 100)
+            ->where('totals.sell', 106.4)
+            ->where('saleData.total', 106.4)
         );
 });
 

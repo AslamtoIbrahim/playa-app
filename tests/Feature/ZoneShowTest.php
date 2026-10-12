@@ -84,7 +84,10 @@ test('la fiche zone calcule les totaux depuis les opérations du SessionZone', f
             ->where('dailySessions.0.status', 'open')
             // Achat = facture d'achat + masse salariale des ouvriers.
             ->where('dailySessions.0.total_buy', fn ($total) => (float) $total === 1600.0)
-            ->where('dailySessions.0.total_sell', fn ($total) => (float) $total === 1500.0)
+            // Total vente = somme du « Montant » des ventes directes (leur net à
+            // payer) : une facture de vente n'est pas une ligne de la table des
+            // ventes, elle n'entre donc pas dans ce total.
+            ->where('dailySessions.0.total_sell', fn ($total) => (float) $total === 0.0)
             ->has('existingSessionDates', 1)
         );
 });
@@ -148,7 +151,9 @@ test('la fiche zone ne mélange pas deux zones de la même journée', function (
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('zones-show')
             ->has('dailySessions', 2)
-            ->where('dailySessions.0.total_sell', fn ($total) => (float) $total === 700.0)
-            ->where('dailySessions.1.total_sell', fn ($total) => (float) $total === 50.0)
+            // Les factures de vente ne sont pas des lignes de la table des ventes :
+            // elles n'entrent pas dans le total de vente des journées.
+            ->where('dailySessions.0.total_sell', fn ($total) => (float) $total === 0.0)
+            ->where('dailySessions.1.total_sell', fn ($total) => (float) $total === 0.0)
         );
 });

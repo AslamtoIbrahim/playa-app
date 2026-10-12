@@ -99,8 +99,7 @@ export function SessionTotalsCard({
             icon: ShoppingCart,
             iconClass: 'text-blue-500',
             valueClass: 'text-blue-600 dark:text-blue-400',
-          
-        },
+                  },
         {
             label: 'Total Ventes',
             value: formatCurrency(totals.sell),

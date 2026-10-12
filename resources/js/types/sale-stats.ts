@@ -1,14 +1,17 @@
 export interface SaleStats {
-    /** Valeur totale des lignes de la vente (le HT enregistré côté serveur). */
+    /**
+     * Valeur totale des lignes de la vente, hors bons et hors part ouvrière :
+     * ces deux parts ont leurs propres cartes et sont reprises par le net à payer.
+     */
     totalValeur: number;
     totalBoxes: number;
     totalWeight: number;
 
-    /** Part des bons de réception imputés dans la valeur totale. */
+    /** Part des bons de réception imputés dans la vente (hors valeur totale). */
     totalCharges: number;
 
     /**
-     * Part des salaires ouvriers imputés dans la valeur totale
+     * Part des salaires ouvriers imputés dans la vente, hors valeur totale
      * (somme des `SaleWorkers.amount` de la vente).
      */
     totalWorkers: number;
@@ -23,10 +26,8 @@ export interface SaleStats {
     boxesFee: number;
 
     /**
-     * Net à payer affiché : valeur + écart + taxe + frais de caisse.
-     *
-     * Attention, il diffère de `sale.amount`, qui reste la valeur HT
-     * enregistrée par `Sale::calculateTotals()`.
+     * Net à payer affiché : valeur + écart + taxe + frais de caisse + bons +
+     * part ouvrière, soit le total de toutes les cartes de synthèse.
      */
     netToPay: number;
 

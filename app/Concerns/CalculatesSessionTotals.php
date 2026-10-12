@@ -7,9 +7,7 @@ use App\Models\Difference;
 use App\Models\Invoice;
 use App\Models\Receipt;
 use App\Models\Sale;
-use App\Models\SaleCharge;
 use App\Models\SaleItem;
-use App\Models\SaleWorker;
 
 /**
  * Totaux financiers d'un ensemble de zones de journée (session_zones).
@@ -30,8 +28,9 @@ trait CalculatesSessionTotals
      *
      * Le total d'achat cumule les factures d'achat, leurs différences et les
      * bons de réception, puis y ajoute la masse salariale des pointages : les
-     * ouvriers sont une charge de la journée. Le total de vente suit la même
-     * logique côté vente, sans charge.
+     * ouvriers sont une charge de la journée. Le total de vente est la somme du
+     * « Montant » des ventes directes (leur net à payer), exactement la colonne
+     * Montant de la table des ventes.
      *
      * @param  array<int, int>  $sessionZoneIds
      * @return array{purchase: float, sale: float, attendance: float, buy: float, sell: float, margin: float}
@@ -60,60 +59,41 @@ trait CalculatesSessionTotals
                 });
             })->sum('total_amount');
 
-        $saleInvoices = (float) Invoice::whereIn('session_zone_id', $sessionZoneIds)
-            ->where('type', 'sale')
-            ->sum('amount');
-
         // Les ventes directes restent rattachées à la journée via sales.session_id.
-        // Leurs lignes et imputations permettent toutefois un calcul précis par zone.
         $directSaleItems = (float) SaleItem::whereHas('invoiceItem.invoice', function ($q) use ($sessionZoneIds) {
             $q->whereIn('session_zone_id', $sessionZoneIds)->where('type', 'purchase');
         })->selectRaw('COALESCE(SUM(unit_count * real_price), 0) as aggregate')->value('aggregate');
 
-        $directSaleCharges = (float) SaleCharge::whereHas('receipt', function ($q) use ($sessionZoneIds) {
-            $q->whereIn('session_zone_id', $sessionZoneIds);
-        })->sum('amount');
-
-        $directSaleWorkers = (float) SaleWorker::whereHas('attendance', function ($q) use ($sessionZoneIds) {
-            $q->whereIn('session_zone_id', $sessionZoneIds);
-        })->sum('amount');
-
-        $directSales = $directSaleItems + $directSaleCharges + $directSaleWorkers;
-
-        // Les lignes directes sont saisies au prix réel : `unit_count *
-        // real_price` contient donc déjà l'écart (`total_diff`). On l'isole pour
-        // que la taxe porte sur la valeur seule, l'écart étant compté à part
-        // dans le total de vente.
+        // Écart des lignes directes : `unit_count * real_price` contient déjà cet
+        // écart, on l'isole pour que la taxe porte sur la valeur seule.
         $directSalesDiff = (float) SaleItem::whereHas('invoiceItem.invoice', function ($q) use ($sessionZoneIds) {
             $q->whereIn('session_zone_id', $sessionZoneIds)->where('type', 'purchase');
         })->sum('total_diff');
 
-        $directSalesValue = $directSales - $directSalesDiff;
+        // Taxe de 3 % sur la valeur seule (lignes hors écart).
+        $directSalesTax = ($directSaleItems - $directSalesDiff) * 0.03;
 
-        // Les ventes directes sont enregistrées HT. Le total de session doit
-        // afficher leur net à payer, comme la table des ventes et la fiche de
-        // vente : valeur + écart + taxe de 3 % sur la valeur seule + 1 DH par
-        // caisse. Les factures de vente incluent déjà ces frais.
-        $directSalesTax = $directSalesValue * 0.03;
+        // Frais de caisse : 1 DH par caisse.
         $directSalesBoxesFee = (float) Sale::whereHas('session.sessionZones', function ($q) use ($sessionZoneIds) {
             $q->whereIn('session_zones.id', $sessionZoneIds);
         })->sum('boxes');
-
-        $saleDifferences = (float) Difference::whereHas('invoiceItem.invoice', function ($q) use ($sessionZoneIds) {
-            $q->whereIn('session_zone_id', $sessionZoneIds)->where('type', 'sale');
-        })->sum('total_diff');
-
-        $saleReceipts = (float) Receipt::whereIn('session_zone_id', $sessionZoneIds)
-            ->whereHas('items.invoiceItem.invoice', function ($q) {
-                $q->where('type', 'sale');
-            })->sum('total_amount');
 
         // Masse salariale des feuilles de pointage (les pointages supprimés,
         // donc soft-deleted, sont automatiquement exclus).
         $attendanceWages = (float) Attendance::whereIn('session_zone_id', $sessionZoneIds)->sum('total_wage');
 
         $purchase = $purchaseInvoices + $purchaseDifferences + $purchaseReceipts;
-        $sale = $directSales + $directSalesTax + $directSalesBoxesFee + $saleInvoices + $saleDifferences + $saleReceipts;
+        // Total de vente = somme du « Montant » des ventes directes, c'est-à-dire
+        // leur net à payer : la carte « Total Ventes » doit afficher exactement la
+        // même valeur que la colonne Montant de la table des ventes.
+        //
+        // Net à payer d'une vente = valeur isolée + écart + bons + part ouvrière
+        // + taxe (3 % sur la valeur seule) + frais de caisse ; la valeur étant
+        // `lignes − écart − bons − parts`, l'écart, les bons et les parts
+        // s'annulent : il reste `lignes + taxe + frais de caisse`. Les lignes
+        // contiennent donc déjà l'écart (saisi au prix réel), tandis que les bons
+        // et la part ouvrière sont déjà dans leurs propres totaux de session.
+        $sale = $directSaleItems + $directSalesTax + $directSalesBoxesFee;
         $buy = $purchase + $attendanceWages;
 
         return [

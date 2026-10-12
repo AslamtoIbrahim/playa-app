@@ -2,6 +2,7 @@ import type { Attendance } from '@/types/attendance';
 import type { Invoice } from '@/types/invoice';
 import type { InvoiceItem } from '@/types/invoice-item';
 import type { Receipt } from '@/types/receipt';
+import type { Sale } from '@/types/sale';
 import type { SaleCharge } from '@/types/sale-charge';
 import type { SaleItem } from '@/types/sale-item';
 import type { SaleWorker } from '@/types/sale-worker';
@@ -116,6 +117,40 @@ export function computeSaleTotalDiff(
 }
 
 /**
+ * Net à payer d'une vente, calculé exactement comme la carte « Net à Payer »
+ * (`useSaleCalculations`) : c'est le total de toutes les cartes de synthèse.
+ *
+ * La valeur est isolée de l'écart, des bons et de la part ouvrière (chacun a sa
+ * propre carte), la taxe de 3 % porte sur cette valeur seule, puis l'écart, les
+ * bons, la part ouvrière et les frais de caisse sont repris une seule fois.
+ *
+ * C'est le « Montant » affiché dans la colonne Montant de la table des ventes.
+ */
+export function computeSaleNetToPayFromSale(
+    sale: Pick<
+        Sale,
+        'amount' | 'boxes' | 'items' | 'charges' | 'workers'
+    >,
+): number {
+    const totalDiff = computeSaleTotalDiff(sale.items);
+    const totalCharges = computeSaleChargesTotal(sale.charges);
+    const totalWorkers = computeSaleWorkersTotal(sale.workers);
+
+    // Valeur hors écart, hors bons et hors part ouvrière : chaque part a sa
+    // propre carte et est reprise une seule fois dans le net à payer.
+    const totalValeur =
+        (Number(sale.amount) || 0) - totalDiff - totalCharges - totalWorkers;
+
+    return computeSaleNetToPay(
+        totalValeur,
+        totalDiff,
+        computeSaleTax(totalValeur),
+        computeSaleBoxesFee(sale.boxes),
+        totalCharges + totalWorkers,
+    );
+}
+
+/**
  * Taxe (3%) appliquée au montant HT d'une vente.
  *
  * La vente est enregistrée hors taxe côté serveur (`Sale::calculateTotals()`) :
@@ -142,20 +177,26 @@ export function computeSaleBoxesFee(
 }
 
 /**
- * Net à payer d'une vente : la valeur totale, majorée de l'écart des lignes,
- * de la taxe de 3 % et des frais de caisse.
+ * Net à payer d'une vente : la valeur totale, majorée de l'écart des lignes, de
+ * la taxe de 3 %, des frais de caisse et des parts complémentaires (bons
+ * imputés et part ouvrière).
+ *
+ * La valeur passée ici est isolée de ces parts : le net à payer reflète donc le
+ * total de toutes les cartes de synthèse, sans double comptage.
  */
 export function computeSaleNetToPay(
     totalValeur: number,
     totalDiff: number,
     taxAmount: number,
     boxesFee: number,
+    extraParts: number = 0,
 ): number {
     return (
         (Number(totalValeur) || 0) +
         (Number(totalDiff) || 0) +
         (Number(taxAmount) || 0) +
-        (Number(boxesFee) || 0)
+        (Number(boxesFee) || 0) +
+        (Number(extraParts) || 0)
     );
 }
 

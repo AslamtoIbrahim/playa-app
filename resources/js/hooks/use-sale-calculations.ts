@@ -17,8 +17,11 @@ import { useMemo } from 'react';
  * prix réel PLUS les bons imputés (SaleCharges) PLUS les parts ouvriers
  * affectées (SaleWorkers). Les lignes au prix réel contenant déjà l'écart, la
  * valeur totale affichée est ce montant diminué de l'écart (qui a sa propre
- * carte). Le net à payer reprend la valeur, l'écart, la taxe de 3 % et les
- * frais de caisse, chacun une seule fois. La part des bons et la part ouvrière sont exposées à part
+ * carte), des bons et de la part ouvrière : d'une part ces deux parts ont leur
+ * propre carte (« Total Bons », « Total Ouvriers ») et d'autre part le net à
+ * payer, qui est une carte à part, les reprend déjà. Le net à payer reprend la
+ * valeur, l'écart, la taxe de 3 % et les frais de caisse, chacun une seule fois,
+ * plus les bons et la part ouvrière. La part des bons et la part ouvrière sont exposées à part
  * (mêmes sources `sale.charges` / `sale.workers` que les tableaux) sans
  * double comptage : la part ouvrière est toujours la somme des
  * `SaleWorkers.amount` de la vente, jamais `Attendance.total_wage`.
@@ -42,9 +45,12 @@ export const useSaleCalculations = (sale: Sale) => {
             // Somme des écarts des lignes, comme la colonne « Diff Total ».
             const totalDiff = computeSaleTotalDiff(sale.items);
 
-            // Valeur hors écart : `qté × prix réel` contient déjà l'écart, qui a
-            // sa propre carte. On le retire pour ne pas le compter deux fois.
-            const totalValeur = saleAmount - totalDiff;
+            // Valeur hors écart, hors bons et hors part ouvrière : `qté × prix
+            // réel` contient déjà l'écart, qui a sa propre carte. Les bons et la
+            // part ouvrière ont aussi leurs propres cartes et sont déjà repris
+            // dans le net à payer : on les retire de la valeur pour ne pas les
+            // compter deux fois.
+            const totalValeur = saleAmount - totalDiff - totalCharges - totalWorkers;
 
             // Taxe de 3 % sur la valeur seule (hors écart).
             const taxAmount = computeSaleTax(totalValeur);
@@ -52,12 +58,15 @@ export const useSaleCalculations = (sale: Sale) => {
             // Frais de caisse : 1 DH par caisse.
             const boxesFee = computeSaleBoxesFee(totalBoxes);
 
-            // Le net à payer inclut le diff, la taxe et les frais de caisse.
+            // Le net à payer inclut les bons, la part ouvrière, le diff, la taxe
+            // et les frais de caisse : c'est le total de toutes les cartes, la
+            // valeur étant isolée de leurs parts.
             const netToPay = computeSaleNetToPay(
                 totalValeur,
                 totalDiff,
                 taxAmount,
                 boxesFee,
+                totalCharges + totalWorkers,
             );
 
             // Complément détaillé sous le net à payer : la taxe et les frais de
