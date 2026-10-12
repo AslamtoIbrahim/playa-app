@@ -1,5 +1,5 @@
 import { Card, CardContent } from '@/components/ui/card';
-import { cn, currency } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import {
     CalendarDays,
     ShoppingBag,
@@ -21,7 +21,6 @@ export type SessionStatus = 'open' | 'closed';
 export interface SessionTotalsCardProps {
     totals: SessionTotals;
     status: SessionStatus;
-    formatCurrency?: (value: number) => string;
     className?: string;
 }
 
@@ -53,7 +52,7 @@ function StatCard({
                 cardClass,
             )}
         >
-            <CardContent className="flex min-h-20 items-center justify-between p-3">
+            <CardContent className="flex min-h-24 items-center justify-between p-4">
                 <div className="min-w-0">
                     <p
                         className={cn(
@@ -93,16 +92,21 @@ function StatCard({
 export function SessionTotalsCard({
     totals,
     status,
-    formatCurrency = currency,
     className,
 }: SessionTotalsCardProps) {
     const profitable = totals.margin >= 0;
     const isOpen = status === 'open';
+    const formatTotal = (value: number) => {
+        return `${value.toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        }).replace(/,/g, ' ')} DH`;
+    };
 
     const stats: Stat[] = [
         {
             label: 'Total Achats',
-            value: formatCurrency(totals.buy),
+            value: formatTotal(totals.buy),
             icon: ShoppingCart,
             cardClass:
                 'group border-slate-200/80 bg-linear-to-br from-white to-blue-50/70 dark:border-neutral-800 dark:from-neutral-900 dark:to-blue-950/20',
@@ -112,7 +116,7 @@ export function SessionTotalsCard({
         },
         {
             label: 'Total Ventes',
-            value: formatCurrency(totals.sell),
+            value: formatTotal(totals.sell),
             icon: ShoppingBag,
             cardClass:
                 'group border-slate-200/80 bg-linear-to-br from-white to-orange-50/70 dark:border-neutral-800 dark:from-neutral-900 dark:to-orange-950/20',
@@ -122,7 +126,7 @@ export function SessionTotalsCard({
         },
         {
             label: 'Marge Brute',
-            value: formatCurrency(totals.margin),
+            value: formatTotal(totals.margin),
             icon: profitable ? TrendingUp : TrendingDown,
             cardClass:
                 'group border-0 bg-linear-to-br from-slate-900 via-slate-800 to-indigo-950 text-white shadow-lg shadow-slate-900/10 dark:from-slate-800 dark:via-neutral-900 dark:to-indigo-950',

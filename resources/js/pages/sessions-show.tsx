@@ -140,7 +140,6 @@ function SessionShow({
                     margin: totalSalesNetToPay - totals.buy,
                 }}
                 status={session.status}
-                formatCurrency={formatCurrency}
             />
 
             <Head
