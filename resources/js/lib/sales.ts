@@ -80,6 +80,23 @@ export function computeSaleItemDiff(
 }
 
 /**
+ * Valeur d'une ligne de vente, hors écart.
+ *
+ * `unit_count × real_price` contient déjà l'écart (`total_diff`), puisque
+ * `real_price × qté = prix facturé × qté + écart`. La valeur affichée est donc
+ * ce montant diminué de l'écart, c'est-à-dire la quantité au prix facturé :
+ * l'écart reste exposé à part (colonne « Diff Total ») sans double comptage.
+ */
+export function computeSaleItemValue(
+    item: Pick<SaleItem, 'unit_count' | 'real_price' | 'total_diff'>,
+): number {
+    return (
+        (Number(item.unit_count) || 0) * (Number(item.real_price) || 0) -
+        (Number(item.total_diff) || 0)
+    );
+}
+
+/**
  * Écart total d'une vente : la somme des écarts de ses lignes.
  *
  * C'est exactement la somme de la colonne « Diff Total » de la fiche de vente,

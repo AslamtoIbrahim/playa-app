@@ -13,11 +13,12 @@ import { useMemo } from 'react';
 /**
  * Synthèse financière d'une vente.
  *
- * La valeur totale est celle enregistrée par `Sale::calculateTotals()` :
- * les lignes au prix réel PLUS les bons imputés (SaleCharges) PLUS les parts
- * ouvriers affectées (SaleWorkers). Le net à payer affiché la majore de
- * l'écart des lignes, de la taxe de 3 % et des frais de caisse, comme sur la
- * fiche facture. La part des bons et la part ouvrière sont exposées à part
+ * `sale.amount` (enregistré par `Sale::calculateTotals()`) vaut les lignes au
+ * prix réel PLUS les bons imputés (SaleCharges) PLUS les parts ouvriers
+ * affectées (SaleWorkers). Les lignes au prix réel contenant déjà l'écart, la
+ * valeur totale affichée est ce montant diminué de l'écart (qui a sa propre
+ * carte). Le net à payer reprend la valeur, l'écart, la taxe de 3 % et les
+ * frais de caisse, chacun une seule fois. La part des bons et la part ouvrière sont exposées à part
  * (mêmes sources `sale.charges` / `sale.workers` que les tableaux) sans
  * double comptage : la part ouvrière est toujours la somme des
  * `SaleWorkers.amount` de la vente, jamais `Attendance.total_wage`.
@@ -25,7 +26,9 @@ import { useMemo } from 'react';
 export const useSaleCalculations = (sale: Sale) => {
     return useMemo(() => {
         {
-            const totalValeur = Number(sale.amount || 0);
+            // Montant enregistré par `Sale::calculateTotals()` : lignes au prix
+            // réel (donc écart inclus) + bons + parts ouvrières.
+            const saleAmount = Number(sale.amount || 0);
             const totalBoxes = Number(sale.boxes || 0);
             const totalWeight = Number(sale.weight || 0);
 
@@ -39,8 +42,13 @@ export const useSaleCalculations = (sale: Sale) => {
             // Somme des écarts des lignes, comme la colonne « Diff Total ».
             const totalDiff = computeSaleTotalDiff(sale.items);
 
-            // Taxe de 3 % sur la valeur, alignée sur la TVA des factures.
-            const taxAmount = computeSaleTax(totalValeur);
+            // Valeur hors écart : `qté × prix réel` contient déjà l'écart, qui a
+            // sa propre carte. On le retire pour ne pas le compter deux fois.
+            const totalValeur = saleAmount - totalDiff;
+
+            // Taxe de 3 % sur le montant de la vente (écart inclus), comme
+            // `CalculatesSessionTotals` côté serveur.
+            const taxAmount = computeSaleTax(saleAmount);
 
             // Frais de caisse : 1 DH par caisse.
             const boxesFee = computeSaleBoxesFee(totalBoxes);
