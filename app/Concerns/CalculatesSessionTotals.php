@@ -6,6 +6,7 @@ use App\Models\Attendance;
 use App\Models\Difference;
 use App\Models\Invoice;
 use App\Models\Receipt;
+use App\Models\Sale;
 use App\Models\SaleCharge;
 use App\Models\SaleItem;
 use App\Models\SaleWorker;
@@ -79,6 +80,14 @@ trait CalculatesSessionTotals
 
         $directSales = $directSaleItems + $directSaleCharges + $directSaleWorkers;
 
+        // Les ventes directes sont enregistrées HT. Le total de session doit
+        // afficher leur net à payer, comme la table des ventes : HT + taxe de
+        // 3 % + 1 DH par caisse. Les factures de vente incluent déjà ces frais.
+        $directSalesTax = $directSales * 0.03;
+        $directSalesBoxesFee = (float) Sale::whereHas('session.sessionZones', function ($q) use ($sessionZoneIds) {
+            $q->whereIn('session_zones.id', $sessionZoneIds);
+        })->sum('boxes');
+
         $saleDifferences = (float) Difference::whereHas('invoiceItem.invoice', function ($q) use ($sessionZoneIds) {
             $q->whereIn('session_zone_id', $sessionZoneIds)->where('type', 'sale');
         })->sum('total_diff');
@@ -93,7 +102,7 @@ trait CalculatesSessionTotals
         $attendanceWages = (float) Attendance::whereIn('session_zone_id', $sessionZoneIds)->sum('total_wage');
 
         $purchase = $purchaseInvoices + $purchaseDifferences + $purchaseReceipts;
-        $sale = $directSales + $saleInvoices + $saleDifferences + $saleReceipts;
+        $sale = $directSales + $directSalesTax + $directSalesBoxesFee + $saleInvoices + $saleDifferences + $saleReceipts;
         $buy = $purchase + $attendanceWages;
 
         return [

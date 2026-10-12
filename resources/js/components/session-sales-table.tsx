@@ -14,6 +14,12 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { show as showSale } from '@/routes/sales';
+import {
+    computeSaleBoxesFee,
+    computeSaleNetToPay,
+    computeSaleTax,
+    computeSaleTotalDiff,
+} from '@/lib/sales';
 import type { Customer } from '@/types/customer';
 import type { SessionStatus } from '@/types/daily-session';
 import type { Sale } from '@/types/sale';
@@ -138,7 +144,14 @@ export function SessionSalesTable({
                                 </TableCell>
 
                                 <TableCell className="text-right font-mono font-semibold">
-                                    {formatCurrency(sale.amount)}
+                                    {formatCurrency(
+                                        computeSaleNetToPay(
+                                            sale.amount,
+                                            computeSaleTotalDiff(sale.items),
+                                            computeSaleTax(sale.amount),
+                                            computeSaleBoxesFee(sale.boxes),
+                                        ),
+                                    )}
                                 </TableCell>
 
                                 <TableCell
