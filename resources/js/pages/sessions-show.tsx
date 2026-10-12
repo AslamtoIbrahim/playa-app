@@ -12,6 +12,7 @@ import type { SessionReceiptAddContextInput } from '@/components/session-receipt
 import type { SessionSaleAddContextInput } from '@/components/session-sales-table';
 import { SessionHeader } from '@/components/sessison-header';
 import { formatDateDisplay } from '@/lib/date';
+import { computeSaleNetToPayFromSale } from '@/lib/sales';
 import type { Attendance } from '@/types/attendance';
 import type { Boat } from '@/types/boat';
 import type { Caution } from '@/types/caution';
@@ -57,6 +58,11 @@ function SessionShow({
             currency: 'MAD',
         }).format(amount || 0);
     };
+
+    const totalSalesNetToPay = (saleData.sales ?? []).reduce(
+        (total, sale) => total + computeSaleNetToPayFromSale(sale),
+        0,
+    );
 
     // La session, la zone et la date sont déjà connues : le dialogue de création
     // se limite donc au compte et au bureau. Le même contexte alimente les
@@ -128,7 +134,11 @@ function SessionShow({
             <SessionHeader session={session} />
 
             <SessionTotalsCard
-                totals={totals}
+                totals={{
+                    ...totals,
+                    sell: totalSalesNetToPay,
+                    margin: totalSalesNetToPay - totals.buy,
+                }}
                 status={session.status}
                 formatCurrency={formatCurrency}
             />

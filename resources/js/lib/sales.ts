@@ -2,8 +2,8 @@ import type { Attendance } from '@/types/attendance';
 import type { Invoice } from '@/types/invoice';
 import type { InvoiceItem } from '@/types/invoice-item';
 import type { Receipt } from '@/types/receipt';
-import type { Sale } from '@/types/sale';
 import type { SaleCharge } from '@/types/sale-charge';
+import type { Sale } from '@/types/sale';
 import type { SaleItem } from '@/types/sale-item';
 import type { SaleWorker } from '@/types/sale-worker';
 
