@@ -152,6 +152,9 @@ export default function SalesShow({
                             <TableHead className="w-24 border-r border-slate-100 text-center text-[10px] font-black tracking-tight text-slate-500 uppercase dark:border-neutral-800 dark:text-neutral-400">
                                 Unité
                             </TableHead>
+                            <TableHead className="w-24 border-r border-slate-100 px-4 text-right text-[10px] font-black tracking-tight text-slate-500 uppercase dark:border-neutral-800 dark:text-neutral-400">
+                                Poids Kg
+                            </TableHead>
                             <TableHead className="w-32 border-r border-slate-100 px-4 text-right text-[10px] font-black tracking-tight text-slate-500 uppercase dark:border-neutral-800 dark:text-neutral-400">
                                 Prix Réel
                             </TableHead>
@@ -175,7 +178,7 @@ export default function SalesShow({
                         ) : (
                             <TableRow>
                                 <TableCell
-                                    colSpan={8}
+                                    colSpan={9}
                                     className="py-24 text-center font-medium text-muted-foreground italic"
                                 >
                                     Aucune ligne de vente enregistrée pour le

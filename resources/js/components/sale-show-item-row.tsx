@@ -44,6 +44,19 @@ export function SaleShowItemRow({ item }: Props) {
                 {invoiceItem?.unit || '—'}
             </TableCell>
 
+            <TableCell className="w-24 border-r border-slate-100 px-4 text-right text-sm font-medium text-slate-700 dark:border-neutral-800 dark:text-neutral-200">
+                {invoiceItem && Number(invoiceItem.unit_count) > 0
+                    ? (
+                          Number(invoiceItem.weight) *
+                          (Number(item.unit_count) /
+                              Number(invoiceItem.unit_count))
+                      ).toLocaleString('fr-FR', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                      })
+                    : '—'}
+            </TableCell>
+
             <TableCell className="w-32 border-r border-slate-100 px-4 text-right text-sm font-medium text-slate-700 dark:border-neutral-800 dark:text-neutral-200">
                 {Number(item.real_price).toLocaleString('fr-FR', {
                     minimumFractionDigits: 2,
