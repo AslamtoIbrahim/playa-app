@@ -126,10 +126,10 @@ test('the whole invoice is sold to one customer at the invoiced price', function
     // Both lines are fully distributed at the invoiced price: no difference.
     expect((float) $saleItems[0]->unit_count)->toBe(10.0)
         ->and((float) $saleItems[0]->real_price)->toBe(20.0)
-        ->and((float) $saleItems[0]->total_diff)->toBe(0.0)
+        ->and($saleItems[0]->difference_id)->toBeNull()
         ->and((float) $saleItems[1]->unit_count)->toBe(5.0)
         ->and((float) $saleItems[1]->real_price)->toBe(40.0)
-        ->and((float) $saleItems[1]->total_diff)->toBe(0.0);
+        ->and($saleItems[1]->difference_id)->toBeNull();
 
     // Sale totals: 200 + 200, weight 315, 15 boxes.
     $sale = $context['sale']->fresh();

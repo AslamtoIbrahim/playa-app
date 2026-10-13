@@ -83,7 +83,7 @@ class InvoiceItem extends Model
             $item->amount = $item->unit_count * $item->unit_price;
         });
 
-        // 2. تحديث جميع الفروقات (Differences) و SALE ITEMS فور تغيير الثمن الرئيسي
+        // 2. تحديث جميع الفروقات فور تغيير الثمن الرئيسي
         static::updated(function ($item) {
             // نتحقق أولاً هل تغير الثمن فعلاً لتجنب الحلقات اللانهائية
             if ($item->wasChanged('unit_price')) {
@@ -94,12 +94,6 @@ class InvoiceItem extends Model
                     $diff->save();
                 }
 
-                foreach ($item->saleItems as $saleItem) {
-                    // نفس المنطق بالنسبة لبيع الجزء من هذه الخط: الفرق الحقيقي
-                    // = (الثمن الحقيقي - الثمن الجديد في الفاتورة) * الكمية المبيعة
-                    $saleItem->total_diff = ($saleItem->real_price - $item->unit_price) * $saleItem->unit_count;
-                    $saleItem->save();
-                }
             }
         });
 

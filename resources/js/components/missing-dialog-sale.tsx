@@ -37,6 +37,8 @@ type MissingDialogSaleProps = {
     sessionDate: string;
     /** Customers offered to start the sale from. */
     customers: Customer[];
+    /** Customer whose difference row is waiting for its sale. */
+    initialCustomerId?: number;
     /**
      * Optional search text typed in the caller (e.g. a client name with no
      * match): pre-fills the customer search when the dialog opens.
@@ -62,6 +64,7 @@ export default function MissingDialogSale({
     sessionDate,
     customers,
     initialCustomerName = '',
+    initialCustomerId,
 }: MissingDialogSaleProps) {
     const [open, setOpen] = useState(false);
     const [customerId, setCustomerId] = useState('');
@@ -91,7 +94,7 @@ export default function MissingDialogSale({
                 setOpen(nextOpen);
 
                 if (nextOpen) {
-                    setCustomerId('');
+                    setCustomerId(initialCustomerId?.toString() ?? '');
                     setClientSearch(initialCustomerName);
                     setClientOpen(false);
                 }

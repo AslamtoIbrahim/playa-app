@@ -109,27 +109,6 @@ export function InvoiceStatsGrid({ stats }: { stats: Stats }) {
                     </CardContent>
                 </Card>
             )}
-
-            {stats.formattedTotalSalesDifference !== undefined && (
-                <Card className="group overflow-hidden border-slate-200/80 bg-linear-to-br from-white to-orange-50/70 py-2 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md lg:order-6 dark:border-neutral-800 dark:from-neutral-900 dark:to-orange-950/20">
-                    <CardContent className="flex min-h-16 items-center justify-between p-3">
-                        <div>
-                            <p className="text-xs font-semibold tracking-wide text-slate-500 dark:text-neutral-400">
-                                Différences Ventes
-                            </p>
-                            <p className="mt-2 text-xl font-bold tracking-tight text-orange-700 dark:text-orange-300">
-                                {stats.formattedTotalSalesDifference}
-                                <span className="ml-1.5 text-xs font-medium text-slate-400">
-                                    DH
-                                </span>
-                            </p>
-                        </div>
-                        <div className="rounded-xl bg-orange-100 p-1.5 text-orange-700 transition-transform group-hover:scale-110 dark:bg-orange-400/10 dark:text-orange-300">
-                            <Diff className="h-5 w-5" />
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
         </div>
     );
 }

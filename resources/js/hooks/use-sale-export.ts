@@ -31,7 +31,7 @@ export function useSaleExport() {
                         realPrice: Number(row.real_price),
                         unitPrice: Number(invoiceItem?.unit_price ?? 0),
                         unit: invoiceItem?.unit || '',
-                        diff: Number(row.total_diff),
+                        diff: Number(row.difference?.total_diff ?? 0),
                         value: computeSaleItemValue(row),
                     };
                 }

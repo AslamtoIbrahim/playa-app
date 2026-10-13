@@ -7,6 +7,4 @@ export interface Stats {
     formattedWeight: string;
     totalDifference?: number;
     formattedTotalDifference?: string;
-    totalSalesDifference?: number;
-    formattedTotalSalesDifference?: string;
 }

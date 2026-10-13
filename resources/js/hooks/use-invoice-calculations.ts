@@ -11,7 +11,6 @@ export const useInvoiceCalculations = (invoice: Invoice) => {
         const differences = invoiceItems.flatMap(
             (item) => item.differences ?? [],
         );
-        const saleItems = invoiceItems.flatMap((item) => item.sale_items ?? []);
         const totalDifference =
             differences.length > 0
                 ? differences.reduce(
@@ -20,14 +19,6 @@ export const useInvoiceCalculations = (invoice: Invoice) => {
                       0,
                   )
                 : undefined;
-        const totalSalesDifference =
-            saleItems.length > 0
-                ? saleItems.reduce(
-                      (sum, saleItem) => sum + Number(saleItem.total_diff || 0),
-                      0,
-                  )
-                : undefined;
-
         // الحساب ديال HT
         const totalHT = netToPay - tvaAmount - totalBoxes;
 
@@ -54,11 +45,6 @@ export const useInvoiceCalculations = (invoice: Invoice) => {
                 totalDifference === undefined
                     ? undefined
                     : formatCurrency(totalDifference),
-            totalSalesDifference,
-            formattedTotalSalesDifference:
-                totalSalesDifference === undefined
-                    ? undefined
-                    : formatCurrency(totalSalesDifference),
         };
     }, [
         invoice.amount,

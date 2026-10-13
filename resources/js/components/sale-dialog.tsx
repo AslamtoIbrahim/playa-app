@@ -12,14 +12,13 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { computeInvoiceItemRemainingCount } from '@/lib/sales';
 import { cn } from '@/lib/utils';
 import { InvoiceItem } from '@/types/invoice-item';
+import type { Difference } from '@/types/difference';
 import { Sale } from '@/types/sale';
 import { AlertCircle, Ship, ShoppingCart } from 'lucide-react';
-import { Fragment, useMemo, useRef } from 'react';
-import { toast } from 'sonner';
-import { SaleRow } from './sale-row';
+import { Fragment, useMemo } from 'react';
+import { DifferenceSaleRow } from './difference-sale-row';
 import { Badge } from './ui/badge';
 import MissingDialogSale from './missing-dialog-sale';
 import type { DailySession } from '@/types/daily-session';
@@ -42,9 +41,8 @@ interface Props {
  * Dialogue de vente : répartit une ou plusieurs lignes de facture d'achat
  * vers des ventes de la même journée.
  *
- * Une même ligne peut être vendue en plusieurs fois, à des ventes différentes
- * (donc des clients différents) jusqu'à épuisement. Le total de l'écart réel
- * s'affiche en direct, ligne par ligne.
+ * Chaque ligne de répartition est vendue au client et avec les valeurs déjà
+ * définis dans la boîte de dialogue des différences.
  */
 export function SaleDialog({
     open,
@@ -54,31 +52,7 @@ export function SaleDialog({
     session,
     customers,
 }: Props) {
-    // Les enregistrements discrets (passage d'une cellule à l'autre) sont
-    // comptés ici pour n'afficher qu'un seul toast récapitulatif à la
-    // fermeture, au lieu d'une notification à chaque flèche. Une ref évite un
-    // rendu supplémentaire du dialogue à chaque changement de cellule.
-    const silentSaveCount = useRef<number>(0);
-
-    const handleSilentSave = (): void => {
-        silentSaveCount.current += 1;
-    };
-
     const handleOpenChange = (nextOpen: boolean): void => {
-        // Le dialogue est démonté par le parent dès la fermeture : le résumé
-        // doit donc être déclenché ici, avant de lui déléguer la fermeture.
-        if (!nextOpen && silentSaveCount.current > 0) {
-            const count = silentSaveCount.current;
-
-            silentSaveCount.current = 0;
-
-            toast.success(
-                count > 1
-                    ? `${count} ventes mises à jour`
-                    : 'Vente mise à jour',
-            );
-        }
-
         onOpenChange(nextOpen);
     };
 
@@ -86,7 +60,17 @@ export function SaleDialog({
         {
             return items.reduce((sum, item) => {
                 {
-                    return sum + computeInvoiceItemRemainingCount(item);
+                    return (
+                        sum +
+                        (item.differences ?? []).reduce(
+                            (remaining, difference) =>
+                                remaining +
+                                (difference.sale_items?.length
+                                    ? 0
+                                    : Number(difference.unit_count)),
+                            0,
+                        )
+                    );
                 }
             }, 0);
         }
@@ -143,7 +127,6 @@ export function SaleDialog({
                                         <AlertCircle className="h-3.5 w-3.5" />
                                     )}
                                 </div>
-
                             </div>
                         </div>
 
@@ -186,10 +169,18 @@ export function SaleDialog({
                         <TableBody key={items.map((item) => item.id).join('-')}>
                             {items.map((item) => {
                                 {
-                                    const remaining =
-                                        computeInvoiceItemRemainingCount(item);
-
-                                    const distributions = item.sale_items || [];
+                                    const differences: Difference[] =
+                                        item.differences || [];
+                                    const remaining = differences.reduce(
+                                        (sum, difference) =>
+                                            sum +
+                                            (difference.sale_items?.length
+                                                ? 0
+                                                : Number(
+                                                      difference.unit_count,
+                                                  )),
+                                        0,
+                                    );
 
                                     return (
                                         <Fragment key={item.id}>
@@ -248,49 +239,31 @@ export function SaleDialog({
                                                 </TableCell>
                                             </TableRow>
 
-                                            {remaining > 0 && (
-                                                <SaleRow
-                                                    isNew
-                                                    invoiceItem={item}
+                                            {differences.map((difference) => (
+                                                <DifferenceSaleRow
+                                                    key={difference.id}
+                                                    difference={difference}
                                                     sales={sales}
-                                                    maxAvailable={remaining}
-                                                    onSilentSave={
-                                                        handleSilentSave
-                                                    }
-                                                    session={session}
-                                                    customers={customers}
                                                 />
-                                            )}
-
-                                            {distributions.map((dist) => {
-                                                {
-                                                    return (
-                                                        <SaleRow
-                                                            key={dist.id}
-                                                            saleItem={dist}
-                                                            invoiceItem={item}
-                                                            sales={sales}
-                                                            maxAvailable={
-                                                                remaining +
-                                                                Number(
-                                                                    dist.unit_count,
-                                                                )
-                                                            }
-                                                            onSilentSave={
-                                                                handleSilentSave
-                                                            }
-                                                            session={session}
-                                                            customers={
-                                                                customers
-                                                            }
-                                                        />
-                                                    );
-                                                }
-                                            })}
+                                            ))}
                                         </Fragment>
                                     );
                                 }
                             })}
+                            {items.every(
+                                (item) => !item.differences?.length,
+                            ) && (
+                                <TableRow>
+                                    <TableCell
+                                        colSpan={5}
+                                        className="py-6 text-center text-sm text-slate-500 dark:text-neutral-400"
+                                    >
+                                        Aucune répartition. Ajoutez des lignes
+                                        dans le dialogue des différences avant
+                                        de vendre.
+                                    </TableCell>
+                                </TableRow>
+                            )}
                         </TableBody>
                     </Table>
                 </div>

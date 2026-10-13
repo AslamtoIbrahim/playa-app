@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\InvoiceItem;
+use App\Models\Difference;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use Illuminate\Http\Request;
@@ -11,32 +11,33 @@ use Illuminate\Support\Facades\DB;
 /**
  * Distribution des lignes de facture d'achat vers les ventes.
  *
- * Une ligne de facture peut être vendue en plusieurs fois, à des ventes
- * différentes (donc à des clients différents), jusqu'à épuisement de sa
- * quantité. Le prix réel de chaque vente génère son propre écart
- * (`total_diff`), indépendamment des différences de prix déjà réparties.
+ * La quantité, le prix et l'écart viennent de la ligne `Difference`, tandis
+ * que le client est celui de la vente choisie. Aucun écart de vente n'est recalculé.
  */
 class SaleItemController extends Controller
 {
     /**
-     * 1. Enregistrer la vente d'une (partie de) ligne de facture d'achat.
+     * 1. Associer une ligne de répartition à une vente de la même journée.
      */
     public function store(Request $request)
     {
         $validated = $request->validate([
             'sale_id' => 'required|exists:sales,id',
-            'invoice_item_id' => 'required|exists:invoice_items,id',
-            'unit_count' => 'required|numeric|min:0.01',
-            'real_price' => 'required|numeric|min:0',
+            'difference_id' => 'required|exists:differences,id',
         ]);
 
         return DB::transaction(function () use ($validated) {
             $sale = Sale::findOrFail($validated['sale_id']);
 
-            // Row lock: concurrent submissions cannot exceed the remaining quantity.
-            $invoiceItem = InvoiceItem::with('invoice.sessionZone')
+            // Lock the source row so simultaneous requests cannot sell it twice.
+            $difference = Difference::with('invoiceItem.invoice.sessionZone')
                 ->lockForUpdate()
-                ->findOrFail($validated['invoice_item_id']);
+                ->findOrFail($validated['difference_id']);
+            $invoiceItem = $difference->invoiceItem;
+
+            if (! $invoiceItem) {
+                return back()->with('error', 'Cette répartition ne dépend pas d’une ligne de facture.');
+            }
 
             // La vente doit appartenir à la même journée que la facture d'achat.
             $invoiceSessionId = $invoiceItem->invoice?->sessionZone?->daily_session_id;
@@ -45,20 +46,13 @@ class SaleItemController extends Controller
                 return back()->with('error', 'La vente doit appartenir à la même journée que la facture.');
             }
 
-            // La quantité vendable restante ne dépend que des ventes déjà faites :
-            // les différences de prix restent une notion indépendante.
-            $distributed = (float) $invoiceItem->saleItems()->sum('unit_count');
-
-            $remaining = (float) $invoiceItem->unit_count - $distributed;
-
-            if ((float) $validated['unit_count'] > $remaining) {
-                return back()->with('error', "Quantité insuffisante ! Max: $remaining");
+            if ($difference->saleItems()->exists()) {
+                return back()->with('error', 'Cette répartition est déjà vendue.');
             }
 
             $invoiceItem->saleItems()->create([
                 'sale_id' => $sale->id,
-                'unit_count' => $validated['unit_count'],
-                'real_price' => $validated['real_price'],
+                'difference_id' => $difference->id,
             ]);
 
             return back()->with([
@@ -69,43 +63,22 @@ class SaleItemController extends Controller
     }
 
     /**
-     * 2. Update a distribution (quantity, real price and/or target sale).
+     * 2. Move a sold difference row between sales in the same session.
      *
-     * The client IS the target sale: changing it must follow the same rule as
-     * creation — the target sale has to belong to the session of the source
-     * invoice line. Totals of BOTH sales are recalculated when the line moves.
+     * The sale's customer is chosen independently; quantities and prices come
+     * from the linked difference.
      */
     public function update(Request $request, SaleItem $saleItem)
     {
         $validated = $request->validate([
             'sale_id' => 'sometimes|integer|exists:sales,id',
-            'unit_count' => 'nullable|numeric|min:0.01',
-            'real_price' => 'nullable|numeric|min:0',
         ], [
             'sale_id.integer' => "L'identifiant de vente est invalide.",
             'sale_id.exists' => "Cette vente n'existe pas.",
-            'unit_count.numeric' => 'La quantité doit être un nombre.',
-            'unit_count.min' => 'La quantité doit être au moins 0.01.',
-            'real_price.numeric' => 'Le prix réel doit être un nombre.',
-            'real_price.min' => 'Le prix réel ne peut pas être négatif.',
         ]);
 
         return DB::transaction(function () use ($validated, $saleItem) {
             $invoiceItem = $saleItem->invoiceItem;
-
-            $newCount = $validated['unit_count'] ?? $saleItem->unit_count;
-
-            if ($invoiceItem) {
-                $otherDistributed = (float) $invoiceItem->saleItems()
-                    ->where('id', '!=', $saleItem->id)
-                    ->sum('unit_count');
-
-                $remaining = (float) $invoiceItem->unit_count - $otherDistributed;
-
-                if ((float) $newCount > $remaining) {
-                    return back()->with('error', "Quantité insuffisante ! Max: $remaining");
-                }
-            }
 
             $previousSaleId = (int) $saleItem->sale_id;
             $targetSaleId = isset($validated['sale_id']) ? (int) $validated['sale_id'] : null;
@@ -127,8 +100,6 @@ class SaleItemController extends Controller
 
             $saleItem->update([
                 'sale_id' => $targetSaleId ?? $saleItem->sale_id,
-                'unit_count' => $newCount,
-                'real_price' => $validated['real_price'] ?? $saleItem->real_price,
             ]);
 
             // The `saved` hook recomputed the target sale: when the line moved,
@@ -142,7 +113,7 @@ class SaleItemController extends Controller
     }
 
     /**
-     * 3. Supprimer une distribution (la quantité redevient vendable).
+     * 3. Remove the sale assignment so this difference can be sold again.
      */
     public function destroy(SaleItem $saleItem)
     {

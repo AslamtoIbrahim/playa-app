@@ -137,6 +137,7 @@ class InvoiceController extends Controller
             'items.item',
             'items.boat',
             'items.differences.customer',
+            'items.differences.saleItems.sale.customer',
             'items.saleItems.sale.customer',
             'sessionZone.dailySession', // Changed 'session' to 'sessionZone'
             'sessionZone.zone',

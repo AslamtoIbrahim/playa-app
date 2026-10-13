@@ -119,6 +119,7 @@ export function SearchSelect({
                                     value={opt.name}
                                     onSelect={() => {
                                         onSelect(opt.id);
+                                        handleOpenChange(false);
                                     }}
                                     className={commandItemClass}
                                 >

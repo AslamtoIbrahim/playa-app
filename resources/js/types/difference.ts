@@ -1,6 +1,7 @@
-import { Customer } from "./customer";
-import { InvoiceItem } from "./invoice-item";
-import { Item } from "./item"; // Matnsach t-importi Item ila kan 3ndek f file akhor
+import { Customer } from './customer';
+import { InvoiceItem } from './invoice-item';
+import { Item } from './item'; // Matnsach t-importi Item ila kan 3ndek f file akhor
+import type { SaleItem } from './sale-item';
 
 export interface Difference {
     id: number;
@@ -29,6 +30,7 @@ export interface Difference {
     customer?: Customer;
     invoice_item?: InvoiceItem;
     item?: Item; // Relation m3a l-item bach t-affichi smiya f l-dashboard
+    sale_items?: SaleItem[];
 
     created_at: string;
     updated_at: string;

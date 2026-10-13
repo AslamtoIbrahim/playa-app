@@ -2,11 +2,9 @@
 
 namespace App\Models;
 
-use App\Models\Customer;
-use App\Models\InvoiceItem;
-use App\Models\Item;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Difference extends Model
 {
@@ -19,7 +17,7 @@ class Difference extends Model
         'total_diff',
         'position',
         'amount',
-        'boxes' // الحقل الجديد
+        'boxes', // الحقل الجديد
     ];
 
     public function item(): BelongsTo
@@ -35,5 +33,28 @@ class Difference extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function saleItems(): HasMany
+    {
+        return $this->hasMany(SaleItem::class);
+    }
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saved(function (Difference $difference) {
+            foreach ($difference->saleItems()->get() as $saleItem) {
+                $saleItem->update([
+                    'unit_count' => $difference->unit_count,
+                    'real_price' => $difference->real_price,
+                ]);
+            }
+        });
+
+        static::deleting(function (Difference $difference) {
+            $difference->saleItems()->get()->each->delete();
+        });
     }
 }

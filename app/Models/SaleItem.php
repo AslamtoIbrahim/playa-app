@@ -11,8 +11,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  *
  * Une même ligne de facture (invoice_item) peut être vendue en plusieurs
  * fois, à des ventes différentes (donc des clients différents), jusqu'à
- * épuisement de sa quantité. Les différences de prix restent une notion
- * indépendante : elles n'affectent pas la quantité vendable.
+ * épuisement de sa quantité. Les quantités, prix et écarts viennent de la
+ * différence associée et ne sont pas recalculés à partir de la facture.
  */
 class SaleItem extends Model
 {
@@ -23,15 +23,14 @@ class SaleItem extends Model
     protected $fillable = [
         'sale_id',
         'invoice_item_id',
+        'difference_id',
         'unit_count',
         'real_price',
-        'total_diff',
     ];
 
     protected $casts = [
         'unit_count' => 'decimal:2',
         'real_price' => 'decimal:2',
-        'total_diff' => 'decimal:2',
     ];
 
     /**
@@ -50,6 +49,11 @@ class SaleItem extends Model
         return $this->belongsTo(InvoiceItem::class, 'invoice_item_id');
     }
 
+    public function difference(): BelongsTo
+    {
+        return $this->belongsTo(Difference::class);
+    }
+
     /**
      * Calcul de l'écart réel et rafraîchissement des totaux de la vente.
      */
@@ -57,11 +61,12 @@ class SaleItem extends Model
     {
         parent::boot();
 
-        // 1. Écart réel = (prix réel - prix unitaire facturé) * quantité
         static::saving(function ($item) {
-            $unitPrice = (float) ($item->invoiceItem?->unit_price ?? 0);
-
-            $item->total_diff = ((float) $item->real_price - $unitPrice) * (float) $item->unit_count;
+            if ($item->difference_id) {
+                $difference = $item->difference()->firstOrFail();
+                $item->unit_count = $difference->unit_count;
+                $item->real_price = $difference->real_price;
+            }
         });
 
         // 2. Totaux de la vente recalculés après chaque changement (Save, Update, Delete)

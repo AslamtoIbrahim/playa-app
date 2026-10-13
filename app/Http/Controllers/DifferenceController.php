@@ -452,7 +452,13 @@ class DifferenceController extends Controller
     public function destroyMany(Request $request)
     {
         $validated = $request->validate(['ids' => 'required|array', 'ids.*' => 'exists:differences,id']);
-        Difference::whereIn('id', $validated['ids'])->delete();
+
+        DB::transaction(function () use ($validated) {
+            Difference::whereIn('id', $validated['ids'])
+                ->get()
+                ->each
+                ->delete();
+        });
 
         return back()->with('success', 'Suppressions réussies ! ✅');
     }

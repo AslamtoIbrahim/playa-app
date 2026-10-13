@@ -96,6 +96,7 @@ class SaleController extends Controller
             'items.invoiceItem.invoice',
             'items.invoiceItem.invoice.sessionZone.zone',
             'items.invoiceItem.invoice.sessionZone.dailySession',
+            'items.difference',
             'charges.receipt.boat',
             'charges.receipt.customer',
             'charges.receipt.sessionZone.zone',
@@ -152,6 +153,15 @@ class SaleController extends Controller
             'customer_id' => 'required|exists:customers,id',
             'type' => 'required|in:normal,usine',
         ]);
+
+        if (
+            (int) $validated['customer_id'] !== (int) $sale->customer_id
+            && $sale->items()->whereNotNull('difference_id')->exists()
+        ) {
+            return back()->withErrors([
+                'customer_id' => 'Le client ne peut pas être modifié tant que la vente contient des répartitions.',
+            ]);
+        }
 
         $sale->update($validated);
 

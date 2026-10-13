@@ -11,6 +11,7 @@ export interface SaleItem {
     id: number;
     sale_id: number;
     invoice_item_id: number;
+    difference_id?: number | null;
 
     // Quantité vendue sur cette ligne
     unit_count: number;
@@ -18,12 +19,10 @@ export interface SaleItem {
     // Prix réel pratiqué
     real_price: number;
 
-    // Écart réel = (real_price - invoice_item.unit_price) * unit_count
-    total_diff: number;
-
     // Relationships loaded from backend
     sale?: Sale;
     invoice_item?: InvoiceItem;
+    difference?: import('./difference').Difference;
 
     created_at?: string;
     updated_at?: string;
@@ -31,11 +30,9 @@ export interface SaleItem {
 }
 
 /**
- * Charge utile envoyée au backend lors de la vente d'une ligne de facture.
+ * Payload used to associate a difference row with its sale.
  */
 export interface SaleItemRequest {
     sale_id: number;
-    invoice_item_id: number;
-    unit_count: number;
-    real_price: number;
+    difference_id: number;
 }

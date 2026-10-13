@@ -24,7 +24,7 @@ export function SaleShowItemRow({ item }: Props) {
     // Valeur hors écart : l'écart a sa propre colonne.
     const value = computeSaleItemValue(item);
 
-    const diff = Number(item.total_diff);
+    const diff = Number(item.difference?.total_diff ?? 0);
 
     return (
         <TableRow className="h-12 border-b border-slate-100 transition-colors hover:bg-slate-50/50 dark:border-neutral-800 dark:hover:bg-neutral-900/40">

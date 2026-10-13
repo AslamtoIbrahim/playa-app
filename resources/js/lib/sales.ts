@@ -63,56 +63,35 @@ export function computeInvoiceItemRemainingCount(
 }
 
 /**
- * Écart réel d'une vente : (prix réel - prix unitaire facturé) × quantité.
+ * Valeur d'une ligne de vente, hors écart fourni par sa répartition liée.
  *
- * Même formule que celle appliquée côté serveur par `SaleItem::boot()`, ce qui
- * permet d'afficher le total en direct avant l'enregistrement.
- */
-export function computeSaleItemDiff(
-    unitCount: number | string,
-    realPrice: number | string,
-    unitPrice: number | string,
-): number {
-    const count = Number(unitCount) || 0;
-    const real = Number(realPrice) || 0;
-    const base = Number(unitPrice) || 0;
-
-    return (real - base) * count;
-}
-
-/**
- * Valeur d'une ligne de vente, hors écart.
- *
- * `unit_count × real_price` contient déjà l'écart (`total_diff`), puisque
- * `real_price × qté = prix facturé × qté + écart`. La valeur affichée est donc
- * ce montant diminué de l'écart, c'est-à-dire la quantité au prix facturé :
- * l'écart reste exposé à part (colonne « Diff Total ») sans double comptage.
+ * `total_diff` est lu depuis le Difference associé à la vente, il n'est pas
+ * recalculé par la vente.
  */
 export function computeSaleItemValue(
-    item: Pick<SaleItem, 'unit_count' | 'real_price' | 'total_diff'>,
+    item: Pick<SaleItem, 'unit_count' | 'real_price' | 'difference'>,
 ): number {
     return (
         (Number(item.unit_count) || 0) * (Number(item.real_price) || 0) -
-        (Number(item.total_diff) || 0)
+        (Number(item.difference?.total_diff) || 0)
     );
 }
 
 /**
  * Écart total d'une vente : la somme des écarts de ses lignes.
  *
- * C'est exactement la somme de la colonne « Diff Total » de la fiche de vente,
- * chaque ligne portant l'écart entre le prix réel pratiqué et le prix unitaire
- * de la facture d'achat d'origine.
+ * C'est exactement la somme des écarts enregistrés dans les répartitions
+ * associées aux lignes de vente.
  */
 export function computeSaleTotalDiff(
-    items?: Pick<SaleItem, 'total_diff'>[] | null,
+    items?: Pick<SaleItem, 'difference'>[] | null,
 ): number {
     if (!items) {
         return 0;
     }
 
     return items.reduce((sum, item) => {
-        return sum + (Number(item.total_diff) || 0);
+        return sum + (Number(item.difference?.total_diff) || 0);
     }, 0);
 }
 
@@ -127,10 +106,7 @@ export function computeSaleTotalDiff(
  * C'est le « Montant » affiché dans la colonne Montant de la table des ventes.
  */
 export function computeSaleNetToPayFromSale(
-    sale: Pick<
-        Sale,
-        'amount' | 'boxes' | 'items' | 'charges' | 'workers'
-    >,
+    sale: Pick<Sale, 'amount' | 'boxes' | 'items' | 'charges' | 'workers'>,
 ): number {
     const totalDiff = computeSaleTotalDiff(sale.items);
     const totalCharges = computeSaleChargesTotal(sale.charges);

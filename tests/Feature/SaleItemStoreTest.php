@@ -18,15 +18,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    // Inertia pages render app.blade.php: avoid the Vite manifest dependency.
     $this->withoutVite();
 });
 
-/**
- * Full distribution context: a daily session, a purchase invoice with one
- * line, and a sale that belongs to the same session. The invoice line carries
- * 10 units at a unit price of 20.
- */
 function createSaleItemContext(string $date = '2026-06-01'): array
 {
     $user = User::factory()->create();
@@ -84,26 +78,32 @@ function createSaleItemContext(string $date = '2026-06-01'): array
         'created_by' => $user->id,
     ]);
 
-    return [
-        'user' => $user,
-        'client' => $client,
-        'item' => $item,
-        'session' => $session,
-        'invoice' => $invoice,
-        'invoiceItem' => $invoiceItem,
-        'sale' => $sale,
-    ];
+    return compact('user', 'client', 'item', 'session', 'invoice', 'invoiceItem', 'sale');
 }
 
-test('a sale is recorded from an invoice line and its difference is computed', function () {
+function createSaleDifference(array $context, float $count = 4, float $price = 25): Difference
+{
+    return Difference::create([
+        'invoice_item_id' => $context['invoiceItem']->id,
+        'customer_id' => $context['client']->id,
+        'item_id' => $context['item']->id,
+        'unit_count' => $count,
+        'real_price' => $price,
+        'amount' => $count * $price,
+        'total_diff' => ($price - $context['invoiceItem']->unit_price) * $count,
+        'boxes' => 0,
+        'position' => 0,
+    ]);
+}
+
+test('a sale uses the customer and values from its invoice difference row', function () {
     $context = createSaleItemContext();
+    $difference = createSaleDifference($context);
 
     $this->actingAs($context['user'])
         ->post(route('sale-items.store'), [
             'sale_id' => $context['sale']->id,
-            'invoice_item_id' => $context['invoiceItem']->id,
-            'unit_count' => 4,
-            'real_price' => 25,
+            'difference_id' => $difference->id,
         ])
         ->assertSessionHasNoErrors();
 
@@ -111,18 +111,12 @@ test('a sale is recorded from an invoice line and its difference is computed', f
 
     expect($saleItem->sale_id)->toBe($context['sale']->id)
         ->and($saleItem->invoice_item_id)->toBe($context['invoiceItem']->id)
+        ->and($saleItem->difference_id)->toBe($difference->id)
         ->and((float) $saleItem->unit_count)->toBe(4.0)
         ->and((float) $saleItem->real_price)->toBe(25.0)
-        // (25 - 20) * 4 = 20
-        ->and((float) $saleItem->total_diff)->toBe(20.0);
+        ->and((float) $saleItem->difference->total_diff)->toBe(20.0)
+        ->and((float) $context['sale']->fresh()->amount)->toBe(100.0);
 
-    // The sale is recalculated: 4 * 25 = 100
-    expect((float) $context['sale']->fresh()->amount)->toBe(100.0);
-
-    // Le total de vente est la somme du « Montant » des ventes directes : leur
-    // net à payer. Ici 4 × 25 = 100, écart (4 × 5 = 20), taxe de 3 % sur la valeur
-    // hors écart (80 × 0,03 = 2,40) et frais de caisse (4 caisses × 1 DH), soit
-    // 100 + 20 + 2,40 + 4 = 106,40. L'écart des lignes s'ajoute donc au montant.
     $this->actingAs($context['user'])
         ->get(route('sessions.show', $context['session']))
         ->assertOk()
@@ -135,7 +129,7 @@ test('a sale is recorded from an invoice line and its difference is computed', f
 
 test('a sale must belong to the same session as the invoice', function () {
     $context = createSaleItemContext();
-
+    $difference = createSaleDifference($context);
     $otherSession = DailySession::create([
         'session_date' => '2026-06-02',
         'status' => 'open',
@@ -152,40 +146,46 @@ test('a sale must belong to the same session as the invoice', function () {
     $this->actingAs($context['user'])
         ->post(route('sale-items.store'), [
             'sale_id' => $otherSale->id,
-            'invoice_item_id' => $context['invoiceItem']->id,
-            'unit_count' => 1,
-            'real_price' => 20,
+            'difference_id' => $difference->id,
         ])
         ->assertSessionHas('error');
 
     expect(SaleItem::count())->toBe(0);
 });
 
-test('selling more than the remaining quantity is refused', function () {
+test('a difference can be assigned to a sale belonging to another customer', function () {
     $context = createSaleItemContext();
+    $difference = createSaleDifference($context);
+    $otherClient = Customer::create(['name' => 'Other '.uniqid()]);
+    $otherSale = Sale::create([
+        'date' => '2026-06-01',
+        'customer_id' => $otherClient->id,
+        'session_id' => $context['session']->id,
+        'created_by' => $context['user']->id,
+    ]);
 
     $this->actingAs($context['user'])
         ->post(route('sale-items.store'), [
-            'sale_id' => $context['sale']->id,
-            'invoice_item_id' => $context['invoiceItem']->id,
-            'unit_count' => 11,
-            'real_price' => 20,
+            'sale_id' => $otherSale->id,
+            'difference_id' => $difference->id,
         ])
-        ->assertSessionHas('error');
+        ->assertSessionHasNoErrors();
 
-    expect(SaleItem::count())->toBe(0);
+    expect(SaleItem::count())->toBe(1)
+        ->and((int) SaleItem::firstOrFail()->sale_id)->toBe($otherSale->id);
+
+    $this->actingAs($context['user'])
+        ->patch(route('sale-items.update', SaleItem::firstOrFail()), [
+            'sale_id' => $context['sale']->id,
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect((int) SaleItem::firstOrFail()->sale_id)->toBe($context['sale']->id);
 });
 
-test('an invoice line can be split across sales until it is exhausted', function () {
+test('separate difference rows can be sold to their respective customers', function () {
     $context = createSaleItemContext();
-
-    $this->actingAs($context['user'])->post(route('sale-items.store'), [
-        'sale_id' => $context['sale']->id,
-        'invoice_item_id' => $context['invoiceItem']->id,
-        'unit_count' => 6,
-        'real_price' => 20,
-    ]);
-
+    $firstDifference = createSaleDifference($context, 6, 20);
     $secondClient = Customer::create(['name' => 'Second '.uniqid()]);
     $secondSale = Sale::create([
         'date' => '2026-06-01',
@@ -193,101 +193,131 @@ test('an invoice line can be split across sales until it is exhausted', function
         'session_id' => $context['session']->id,
         'created_by' => $context['user']->id,
     ]);
+    $secondDifference = Difference::create([
+        'invoice_item_id' => $context['invoiceItem']->id,
+        'customer_id' => $secondClient->id,
+        'item_id' => $context['item']->id,
+        'unit_count' => 4,
+        'real_price' => 22,
+        'amount' => 88,
+        'total_diff' => 8,
+        'boxes' => 0,
+        'position' => 1,
+    ]);
+
+    $this->actingAs($context['user'])->post(route('sale-items.store'), [
+        'sale_id' => $context['sale']->id,
+        'difference_id' => $firstDifference->id,
+    ])->assertSessionHasNoErrors();
 
     $this->actingAs($context['user'])->post(route('sale-items.store'), [
         'sale_id' => $secondSale->id,
-        'invoice_item_id' => $context['invoiceItem']->id,
-        'unit_count' => 4,
-        'real_price' => 22,
-    ])
-        ->assertSessionHasNoErrors();
+        'difference_id' => $secondDifference->id,
+    ])->assertSessionHasNoErrors();
 
     expect(SaleItem::count())->toBe(2)
-        ->and((float) $context['sale']->fresh()->amount)->toBe(120.0) // 6 * 20
-        ->and((float) $secondSale->fresh()->amount)->toBe(88.0); // 4 * 22
+        ->and((float) $context['sale']->fresh()->amount)->toBe(120.0)
+        ->and((float) $secondSale->fresh()->amount)->toBe(88.0);
 
-    // The line is now exhausted: one more unit is refused.
     $this->actingAs($context['user'])->post(route('sale-items.store'), [
         'sale_id' => $context['sale']->id,
-        'invoice_item_id' => $context['invoiceItem']->id,
-        'unit_count' => 1,
-        'real_price' => 20,
-    ])
-        ->assertSessionHas('error');
+        'difference_id' => $firstDifference->id,
+    ])->assertSessionHas('error');
 });
 
-test('updating a distribution recomputes the difference and the sale total', function () {
+test('editing a difference updates its linked sale values directly', function () {
     $context = createSaleItemContext();
+    $difference = createSaleDifference($context);
 
     $this->actingAs($context['user'])->post(route('sale-items.store'), [
         'sale_id' => $context['sale']->id,
-        'invoice_item_id' => $context['invoiceItem']->id,
-        'unit_count' => 4,
-        'real_price' => 25,
+        'difference_id' => $difference->id,
     ]);
 
-    $saleItem = SaleItem::firstOrFail();
+    $difference->update([
+        'unit_count' => 8,
+        'real_price' => 22,
+        'amount' => 176,
+        'total_diff' => 16,
+    ]);
 
-    $this->actingAs($context['user'])
-        ->patch(route('sale-items.update', $saleItem->id), [
-            'unit_count' => 8,
-            'real_price' => 22,
-        ])
-        ->assertSessionHasNoErrors();
+    $updated = SaleItem::firstOrFail();
 
-    $updated = $saleItem->fresh();
-
-    // (22 - 20) * 8 = 16
-    expect((float) $updated->total_diff)->toBe(16.0)
-        ->and((float) $context['sale']->fresh()->amount)->toBe(176.0); // 8 * 22
+    expect((float) $updated->unit_count)->toBe(8.0)
+        ->and((float) $updated->real_price)->toBe(22.0)
+        ->and((float) $updated->difference->total_diff)->toBe(16.0)
+        ->and((float) $context['sale']->fresh()->amount)->toBe(176.0);
 });
 
-test('differences do not reduce the sellable quantity of a line', function () {
+test('a sold difference customer can change without changing the sale customer', function () {
     $context = createSaleItemContext();
+    $difference = createSaleDifference($context);
+    $otherClient = Customer::create(['name' => 'Other '.uniqid()]);
 
-    // A difference covering the whole line does not block the sale.
-    Difference::create([
-        'invoice_item_id' => $context['invoiceItem']->id,
-        'customer_id' => $context['client']->id,
-        'item_id' => $context['item']->id,
-        'unit_count' => 10,
-        'real_price' => 30,
-        'amount' => 300,
-        'total_diff' => (30 - 20) * 10,
-        'boxes' => 0,
-        'position' => 0,
+    $this->actingAs($context['user'])->post(route('sale-items.store'), [
+        'sale_id' => $context['sale']->id,
+        'difference_id' => $difference->id,
     ]);
 
     $this->actingAs($context['user'])
-        ->post(route('sale-items.store'), [
-            'sale_id' => $context['sale']->id,
-            'invoice_item_id' => $context['invoiceItem']->id,
-            'unit_count' => 10,
-            'real_price' => 20,
+        ->patch(route('differences.update', $difference->id), [
+            'customer_id' => $otherClient->id,
         ])
         ->assertSessionHasNoErrors();
 
-    expect(SaleItem::count())->toBe(1);
+    $this->actingAs($context['user'])
+        ->patch(route('sales.update', $context['sale']->id), [
+            'date' => '2026-06-01',
+            'customer_id' => $otherClient->id,
+            'type' => 'normal',
+        ])
+        ->assertSessionHasErrors('customer_id');
+
+    expect((int) $difference->fresh()->customer_id)->toBe($otherClient->id)
+        ->and((int) $context['sale']->fresh()->customer_id)->toBe($context['client']->id);
 });
 
-test('deleting a distribution frees the quantity and recalculates the sale', function () {
+test('deleting a sale assignment makes the difference available to sell again', function () {
     $context = createSaleItemContext();
+    $difference = createSaleDifference($context);
 
     $this->actingAs($context['user'])->post(route('sale-items.store'), [
         'sale_id' => $context['sale']->id,
-        'invoice_item_id' => $context['invoiceItem']->id,
-        'unit_count' => 4,
-        'real_price' => 25,
+        'difference_id' => $difference->id,
     ]);
 
     $saleItem = SaleItem::firstOrFail();
-
-    expect((float) $context['sale']->fresh()->amount)->toBe(100.0);
 
     $this->actingAs($context['user'])
         ->delete(route('sale-items.destroy', $saleItem->id))
         ->assertSessionHasNoErrors();
 
     expect(SaleItem::count())->toBe(0)
+        ->and((float) $context['sale']->fresh()->amount)->toBe(0.0);
+
+    $this->actingAs($context['user'])->post(route('sale-items.store'), [
+        'sale_id' => $context['sale']->id,
+        'difference_id' => $difference->id,
+    ])->assertSessionHasNoErrors();
+
+    expect(SaleItem::count())->toBe(1);
+});
+
+test('bulk deleting a difference removes its linked sale assignment', function () {
+    $context = createSaleItemContext();
+    $difference = createSaleDifference($context);
+
+    $this->actingAs($context['user'])->post(route('sale-items.store'), [
+        'sale_id' => $context['sale']->id,
+        'difference_id' => $difference->id,
+    ]);
+
+    $this->actingAs($context['user'])
+        ->delete(route('differences.destroyMany'), ['ids' => [$difference->id]])
+        ->assertSessionHasNoErrors()
+        ->assertSessionHas('success');
+
+    expect(Difference::find($difference->id))->toBeNull()
+        ->and(SaleItem::count())->toBe(0)
         ->and((float) $context['sale']->fresh()->amount)->toBe(0.0);
 });
