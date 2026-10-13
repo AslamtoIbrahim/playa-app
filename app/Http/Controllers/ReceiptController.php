@@ -114,24 +114,36 @@ class ReceiptController extends Controller
     }
 
     /**
-     * Supprimer un bon (Soft Delete)
+     * Supprimer un bon (Soft Delete).
+     *
+     * Un bon vide (sans articles et sans montant) peut être supprimé même s'il
+     * possède encore des SaleCharges : celles-ci seront supprimées au préalable,
+     * ce qui déclenche automatiquement le recalcul des ventes associées via
+     * l'événement `deleted` du modèle SaleCharge.
      */
     public function destroy(Receipt $receipt)
     {
-        if ($receipt->items()->count() > 0 || $receipt->total_amount > 0 || $receipt->saleCharges()->exists()) {
-            return back()->with('error', 'Suppression impossible : Ce bon contient des données.');
+        // Bloquer la suppression si le bon contient encore des articles ou un montant.
+        if ($receipt->items()->count() > 0 || $receipt->total_amount > 0) {
+            return back()->with('error', 'Suppression impossible : Ce bon contient encore des articles ou un montant non nul.');
         }
 
         try {
             DB::beginTransaction();
 
+            // Supprimer les SaleCharges liées (recalcul de la vente via l'événement deleted).
+            foreach ($receipt->saleCharges as $charge) {
+                $charge->delete();
+            }
+
+            // Supprimer les articles résiduels (cas défensif).
             $receipt->items()->delete();
 
             $receipt->delete();
 
             DB::commit();
 
-            return back()->with('success', 'Le bon a été archivé avec succès.');
+            return back()->with('success', 'Le bon a été supprimé avec succès.');
         } catch (\Exception $e) {
             DB::rollBack();
 

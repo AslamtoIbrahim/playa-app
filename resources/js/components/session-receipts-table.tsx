@@ -248,6 +248,7 @@ export function SessionReceiptsTable({
                                             <DeleteReceiptDialog
                                                 receiptId={receipt.id}
                                                 amount={receipt.total_amount}
+                                                saleCharges={receipt.sale_charges ?? []}
                                             />
                                         </div>
                                     ) : null}

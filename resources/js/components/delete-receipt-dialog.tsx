@@ -16,24 +16,25 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { destroy } from "@/routes/receipts";
-
-// تأكد من مسار الـ Route عندك، غالباً غاتكون بحال هكا:
-// import { destroy } from "@/routes/receipts"; 
+import type { SaleCharge } from "@/types/sale-charge";
 
 interface Props {
     receiptId: number;
-    amount: number; 
+    amount: number;
+    saleCharges?: SaleCharge[];
     trigger?: React.ReactNode;
 }
 
-export default function DeleteReceiptDialog({ receiptId, amount, trigger }: Props) {
+export default function DeleteReceiptDialog({ receiptId, amount, saleCharges = [], trigger }: Props) {
     const [isDeleting, setIsDeleting] = useState(false);
     const [open, setOpen] = useState(false);
+
+    const hasAmount = amount > 0;
+    const hasLinkedSales = saleCharges.length > 0;
 
     const handleDelete = () => {
         setIsDeleting(true);
 
-        // غانستعملو المسار ديال الـ delete الخاص بالـ receipts
         router.delete(destroy(receiptId).url, {
             onSuccess: (page) => {
                 const flash = page.props.flash as any;
@@ -46,7 +47,7 @@ export default function DeleteReceiptDialog({ receiptId, amount, trigger }: Prop
                 if (flash?.error) {
                     toast.error(flash.error, {
                         duration: 6000,
-                        icon: <AlertCircle className="h-5 w-5 text-red-500" />
+                        icon: <AlertCircle className="h-5 w-5 text-red-500" />,
                     });
                 }
             },
@@ -76,21 +77,39 @@ export default function DeleteReceiptDialog({ receiptId, amount, trigger }: Prop
                     </AlertDialogTitle>
                     <AlertDialogDescription className="space-y-3 text-left">
                         <p>
-                            Voulez-vous vraiment supprimer le reçu **{receiptId}** ?
+                            Voulez-vous vraiment supprimer le bon{' '}
+                            <strong>#{receiptId}</strong> ?
                         </p>
 
-                        {/* Logic ديال الحماية: إذا كان الواصل فيه مبلغ */}
-                        {amount > 0 && (
+                        {/* Receipt still has amount — block with a warning */}
+                        {hasAmount && (
                             <div className="rounded-md bg-red-50 p-3 border border-red-100 text-xs text-red-800 leading-relaxed">
-                                <p className="font-bold mb-1">Attention :</p>
-                                Ce reçu contient un montant de <strong>{amount} DH</strong>. 
-                                Il est recommandé de vider le montant avant la suppression pour garder une comptabilité précise.
+                                <p className="font-bold mb-1">Suppression impossible :</p>
+                                Ce bon contient encore un montant de{' '}
+                                <strong>{amount.toLocaleString('fr-FR')} DH</strong>.
+                                Videz d'abord tous les articles avant de le supprimer.
                             </div>
                         )}
-                        
-                        {amount <= 0 && (
+
+                        {/* Empty receipt but linked to one or more sales */}
+                        {!hasAmount && hasLinkedSales && (
+                            <div className="rounded-md bg-orange-50 p-3 border border-orange-100 text-xs text-orange-800 leading-relaxed">
+                                <p className="font-bold mb-1">Attention :</p>
+                                Ce bon est lié à{' '}
+                                <strong>
+                                    {saleCharges.length} vente
+                                    {saleCharges.length > 1 ? 's' : ''}
+                                </strong>
+                                . La suppression effacera également ces imputations
+                                et recalculera automatiquement les totaux des ventes
+                                concernées.
+                            </div>
+                        )}
+
+                        {/* Completely empty receipt, no linked sales */}
+                        {!hasAmount && !hasLinkedSales && (
                             <p className="text-sm text-slate-500 italic">
-                                Ce reçu est vide, il sera supprimé définitivement.
+                                Ce bon est vide, il sera supprimé définitivement.
                             </p>
                         )}
                     </AlertDialogDescription>
@@ -99,11 +118,11 @@ export default function DeleteReceiptDialog({ receiptId, amount, trigger }: Prop
                     <AlertDialogCancel disabled={isDeleting}>Annuler</AlertDialogCancel>
                     <AlertDialogAction
                         onClick={(e) => {
-                            e.preventDefault(); 
+                            e.preventDefault();
                             handleDelete();
                         }}
                         className="bg-red-600 hover:bg-red-700 text-white"
-                        disabled={isDeleting}
+                        disabled={isDeleting || hasAmount}
                     >
                         {isDeleting ? (
                             <>
