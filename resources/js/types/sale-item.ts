@@ -18,6 +18,7 @@ export interface SaleItem {
 
     // Prix réel pratiqué
     real_price: number;
+    total_diff?: number;
 
     // Relationships loaded from backend
     sale?: Sale;
@@ -35,4 +36,5 @@ export interface SaleItem {
 export interface SaleItemRequest {
     sale_id: number;
     difference_id: number;
+    unit_count: number;
 }

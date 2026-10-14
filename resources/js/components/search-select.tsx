@@ -49,6 +49,17 @@ export function SearchSelect({
     renderNoMatchAction,
 }: SearchSelectProps) {
     const [search, setSearch] = React.useState('');
+    const popoverRef = React.useRef<HTMLDivElement>(null);
+
+    React.useEffect(() => {
+        if (open) {
+            requestAnimationFrame(() => {
+                popoverRef.current
+                    ?.querySelector<HTMLInputElement>('[cmdk-input]')
+                    ?.focus();
+            });
+        }
+    }, [open]);
     const selectedOption = options.find(
         (opt) => String(opt.id) === String(value),
     );
@@ -75,7 +86,21 @@ export function SearchSelect({
                 <Button
                     variant="ghost"
                     disabled={disabled}
-                    onKeyDown={onKeyDown}
+                    onKeyDown={(event) => {
+                        onKeyDown?.(event);
+
+                        if (
+                            !event.defaultPrevented &&
+                            event.key.length === 1 &&
+                            !event.altKey &&
+                            !event.ctrlKey &&
+                            !event.metaKey
+                        ) {
+                            event.preventDefault();
+                            setSearch(event.key);
+                            onOpenChange(true);
+                        }
+                    }}
                     className={cn(
                         'h-10 w-full justify-between px-3 text-left text-xs font-normal',
                         className,
@@ -92,7 +117,7 @@ export function SearchSelect({
                     <ChevronsUpDown className="h-3 w-3 opacity-20 print:hidden" />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-64 p-0" align="start">
+            <PopoverContent ref={popoverRef} className="w-64 p-0" align="start">
                 <Command>
                     <div className="flex items-center gap-2 p-1">
                         <div className="min-w-0 flex-1">

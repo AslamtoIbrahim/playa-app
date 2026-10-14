@@ -65,9 +65,16 @@ export function SaleDialog({
                         (item.differences ?? []).reduce(
                             (remaining, difference) =>
                                 remaining +
-                                (difference.sale_items?.length
-                                    ? 0
-                                    : Number(difference.unit_count)),
+                                Math.max(
+                                    0,
+                                    Number(difference.unit_count) -
+                                        (difference.sale_items ?? []).reduce(
+                                            (count, saleItem) =>
+                                                count +
+                                                Number(saleItem.unit_count),
+                                            0,
+                                        ),
+                                ),
                             0,
                         )
                     );
@@ -174,11 +181,21 @@ export function SaleDialog({
                                     const remaining = differences.reduce(
                                         (sum, difference) =>
                                             sum +
-                                            (difference.sale_items?.length
-                                                ? 0
-                                                : Number(
-                                                      difference.unit_count,
-                                                  )),
+                                            Math.max(
+                                                0,
+                                                Number(difference.unit_count) -
+                                                    (
+                                                        difference.sale_items ??
+                                                        []
+                                                    ).reduce(
+                                                        (count, saleItem) =>
+                                                            count +
+                                                            Number(
+                                                                saleItem.unit_count,
+                                                            ),
+                                                        0,
+                                                    ),
+                                            ),
                                         0,
                                     );
 
@@ -239,13 +256,64 @@ export function SaleDialog({
                                                 </TableCell>
                                             </TableRow>
 
-                                            {differences.map((difference) => (
-                                                <DifferenceSaleRow
-                                                    key={difference.id}
-                                                    difference={difference}
-                                                    sales={sales}
-                                                />
-                                            ))}
+                                            {differences.map((difference) => {
+                                                const assigned =
+                                                    difference.sale_items ?? [];
+                                                const unallocated = Math.max(
+                                                    0,
+                                                    Number(
+                                                        difference.unit_count,
+                                                    ) -
+                                                        assigned.reduce(
+                                                            (sum, row) =>
+                                                                sum +
+                                                                Number(
+                                                                    row.unit_count,
+                                                                ),
+                                                            0,
+                                                        ),
+                                                );
+
+                                                return (
+                                                    <Fragment
+                                                        key={difference.id}
+                                                    >
+                                                        {assigned.map(
+                                                            (saleItem) => (
+                                                                <DifferenceSaleRow
+                                                                    key={
+                                                                        saleItem.id
+                                                                    }
+                                                                    difference={
+                                                                        difference
+                                                                    }
+                                                                    sales={
+                                                                        sales
+                                                                    }
+                                                                    saleItem={
+                                                                        saleItem
+                                                                    }
+                                                                    remaining={
+                                                                        unallocated
+                                                                    }
+                                                                />
+                                                            ),
+                                                        )}
+                                                        {unallocated > 0 && (
+                                                            <DifferenceSaleRow
+                                                                key={`${difference.id}-new-${unallocated}`}
+                                                                difference={
+                                                                    difference
+                                                                }
+                                                                sales={sales}
+                                                                remaining={
+                                                                    unallocated
+                                                                }
+                                                            />
+                                                        )}
+                                                    </Fragment>
+                                                );
+                                            })}
                                         </Fragment>
                                     );
                                 }

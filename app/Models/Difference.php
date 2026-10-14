@@ -46,10 +46,7 @@ class Difference extends Model
 
         static::saved(function (Difference $difference) {
             foreach ($difference->saleItems()->get() as $saleItem) {
-                $saleItem->update([
-                    'unit_count' => $difference->unit_count,
-                    'real_price' => $difference->real_price,
-                ]);
+                $saleItem->save();
             }
         });
 

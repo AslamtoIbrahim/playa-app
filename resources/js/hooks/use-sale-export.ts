@@ -4,7 +4,7 @@ import autoTable from 'jspdf-autotable';
 import { SaleItem } from '@/types/sale-item';
 import { Sale } from '@/types/sale';
 import { SaleStats } from '@/types/sale-stats';
-import { computeSaleItemValue } from '@/lib/sales';
+import { computeSaleItemDifference, computeSaleItemValue } from '@/lib/sales';
 
 /**
  * Export d'une vente : la vente est alimentée par les lignes de facture
@@ -31,7 +31,7 @@ export function useSaleExport() {
                         realPrice: Number(row.real_price),
                         unitPrice: Number(invoiceItem?.unit_price ?? 0),
                         unit: invoiceItem?.unit || '',
-                        diff: Number(row.difference?.total_diff ?? 0),
+                        diff: computeSaleItemDifference(row),
                         value: computeSaleItemValue(row),
                     };
                 }

@@ -26,11 +26,13 @@ class SaleItem extends Model
         'difference_id',
         'unit_count',
         'real_price',
+        'total_diff',
     ];
 
     protected $casts = [
         'unit_count' => 'decimal:2',
         'real_price' => 'decimal:2',
+        'total_diff' => 'decimal:2',
     ];
 
     /**
@@ -64,8 +66,9 @@ class SaleItem extends Model
         static::saving(function ($item) {
             if ($item->difference_id) {
                 $difference = $item->difference()->firstOrFail();
-                $item->unit_count = $difference->unit_count;
                 $item->real_price = $difference->real_price;
+                $invoicePrice = (float) ($difference->invoiceItem?->unit_price ?? 0);
+                $item->total_diff = ((float) $difference->real_price - $invoicePrice) * (float) $item->unit_count;
             }
         });
 

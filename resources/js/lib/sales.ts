@@ -69,12 +69,35 @@ export function computeInvoiceItemRemainingCount(
  * recalculé par la vente.
  */
 export function computeSaleItemValue(
-    item: Pick<SaleItem, 'unit_count' | 'real_price' | 'difference'>,
+    item: Pick<
+        SaleItem,
+        'unit_count' | 'real_price' | 'total_diff' | 'difference'
+    >,
 ): number {
     return (
         (Number(item.unit_count) || 0) * (Number(item.real_price) || 0) -
-        (Number(item.difference?.total_diff) || 0)
+        computeSaleItemDifference(item)
     );
+}
+
+/** Difference contributed by this sale allocation, not the full source row. */
+export function computeSaleItemDifference(
+    item: Pick<SaleItem, 'unit_count' | 'total_diff' | 'difference'>,
+): number {
+    const storedDifference = Number(item.total_diff);
+    const sourceDifference = Number(item.difference?.total_diff) || 0;
+
+    // Newly written allocations carry their own total. For older rows where
+    // that value is still the database default (zero), prorate the source.
+    if (storedDifference !== 0 || sourceDifference === 0) {
+        return storedDifference || 0;
+    }
+
+    const sourceCount = Number(item.difference?.unit_count) || 0;
+
+    return sourceCount > 0
+        ? (sourceDifference * (Number(item.unit_count) || 0)) / sourceCount
+        : 0;
 }
 
 /**
@@ -84,14 +107,14 @@ export function computeSaleItemValue(
  * associées aux lignes de vente.
  */
 export function computeSaleTotalDiff(
-    items?: Pick<SaleItem, 'difference'>[] | null,
+    items?: Pick<SaleItem, 'unit_count' | 'total_diff' | 'difference'>[] | null,
 ): number {
     if (!items) {
         return 0;
     }
 
     return items.reduce((sum, item) => {
-        return sum + (Number(item.difference?.total_diff) || 0);
+        return sum + computeSaleItemDifference(item);
     }, 0);
 }
 

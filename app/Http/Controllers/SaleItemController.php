@@ -24,6 +24,7 @@ class SaleItemController extends Controller
         $validated = $request->validate([
             'sale_id' => 'required|exists:sales,id',
             'difference_id' => 'required|exists:differences,id',
+            'unit_count' => 'required|numeric|gt:0',
         ]);
 
         return DB::transaction(function () use ($validated) {
@@ -46,13 +47,16 @@ class SaleItemController extends Controller
                 return back()->with('error', 'La vente doit appartenir à la même journée que la facture.');
             }
 
-            if ($difference->saleItems()->exists()) {
-                return back()->with('error', 'Cette répartition est déjà vendue.');
+            $allocated = (float) $difference->saleItems()->sum('unit_count');
+            $quantity = (float) $validated['unit_count'];
+            if ($quantity > (float) $difference->unit_count - $allocated + 0.00001) {
+                return back()->with('error', 'La quantité dépasse le reste disponible.');
             }
 
             $invoiceItem->saleItems()->create([
                 'sale_id' => $sale->id,
                 'difference_id' => $difference->id,
+                'unit_count' => $quantity,
             ]);
 
             return back()->with([
@@ -72,6 +76,7 @@ class SaleItemController extends Controller
     {
         $validated = $request->validate([
             'sale_id' => 'sometimes|integer|exists:sales,id',
+            'unit_count' => 'sometimes|numeric|gt:0',
         ], [
             'sale_id.integer' => "L'identifiant de vente est invalide.",
             'sale_id.exists' => "Cette vente n'existe pas.",
@@ -95,11 +100,20 @@ class SaleItemController extends Controller
                 }
             }
 
+            if (isset($validated['unit_count']) && $saleItem->difference_id) {
+                $difference = Difference::lockForUpdate()->findOrFail($saleItem->difference_id);
+                $allocatedOthers = (float) $difference->saleItems()->where('id', '!=', $saleItem->id)->sum('unit_count');
+                if ((float) $validated['unit_count'] > (float) $difference->unit_count - $allocatedOthers + 0.00001) {
+                    return back()->with('error', 'La quantité dépasse le reste disponible.');
+                }
+            }
+
             // Reset the relation so the `saved` hook targets the new sale.
             $saleItem->unsetRelation('sale');
 
             $saleItem->update([
                 'sale_id' => $targetSaleId ?? $saleItem->sale_id,
+                'unit_count' => $validated['unit_count'] ?? $saleItem->unit_count,
             ]);
 
             // The `saved` hook recomputed the target sale: when the line moved,

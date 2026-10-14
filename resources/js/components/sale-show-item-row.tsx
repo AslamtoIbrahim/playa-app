@@ -1,6 +1,6 @@
 import { TableCell, TableRow } from '@/components/ui/table';
 import { formatDifferenceAmount } from '@/lib/differences';
-import { computeSaleItemValue } from '@/lib/sales';
+import { computeSaleItemDifference, computeSaleItemValue } from '@/lib/sales';
 import { cn } from '@/lib/utils';
 import { SaleItem } from '@/types/sale-item';
 
@@ -24,7 +24,7 @@ export function SaleShowItemRow({ item }: Props) {
     // Valeur hors écart : l'écart a sa propre colonne.
     const value = computeSaleItemValue(item);
 
-    const diff = Number(item.difference?.total_diff ?? 0);
+    const diff = computeSaleItemDifference(item);
 
     return (
         <TableRow className="h-12 border-b border-slate-100 transition-colors hover:bg-slate-50/50 dark:border-neutral-800 dark:hover:bg-neutral-900/40">
