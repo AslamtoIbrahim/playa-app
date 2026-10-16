@@ -166,7 +166,7 @@ export function DifferenceDialog({
                             </div>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-x-5 gap-y-1 rounded-xl border border-white/80 bg-white/60 px-3 py-2 text-xs shadow-sm dark:border-neutral-800 dark:bg-neutral-900/60">
+                        <div className="flex flex-wrap items-center justify-around gap-x-5 gap-y-1 rounded-xl border border-white/80 bg-white/60 px-3 py-2 text-xs shadow-sm dark:border-neutral-800 dark:bg-neutral-900/60">
                             <span className="text-slate-500 dark:text-neutral-400">
                                 Qté facture{' '}
                                 <strong className="ml-1 text-slate-900 dark:text-neutral-100">
