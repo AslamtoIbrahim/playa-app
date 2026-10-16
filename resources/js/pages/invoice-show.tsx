@@ -50,6 +50,7 @@ import { useInvoiceCalculations } from '@/hooks/use-invoice-calculations';
 
 // Types & Routes
 import { DifferenceDialog } from '@/components/difference-dialog';
+import { GlobalSaleDialog } from '@/components/global-sale-dialog';
 import { SaleDialog } from '@/components/sale-dialog';
 import { ExportDropdown } from '@/components/export-dropdown';
 import { ImportItemsDialog } from '@/components/import-items-dialog';
@@ -85,6 +86,7 @@ interface Props {
     customers: Customer[];
     /** Ventes de la même journée : seules cibles possibles pour une vente. */
     sales: Sale[];
+    availableStockByCategory: Record<number, number>;
     /** Session courante (via sa zone) pour créer la vente manquante. */
     session: DailySession | null;
     /** URL de retour explicite fournie par le backend (journée liée ou liste). */
@@ -99,7 +101,7 @@ export default function InvoiceShow({
     categories,
     customers,
     sales,
-    session,
+    availableStockByCategory,
     backUrl,
 }: Props) {
     // --- State Management (Manual Synchronization) ---
@@ -118,6 +120,7 @@ export default function InvoiceShow({
     // State لـ Sale Dialog (Vente) : les lignes de facture à vendre
     const [saleItemIds, setSaleItemIds] = useState<number[]>([]);
     const [isSaleOpen, setIsSaleOpen] = useState(false);
+    const [isGlobalSaleOpen, setIsGlobalSaleOpen] = useState(false);
 
     // فـ Show.tsx
     if (invoice.items !== prevItems) {
@@ -416,6 +419,19 @@ export default function InvoiceShow({
                     <Printer className="h-3 w-3" />
                 </Button>
 
+                {sales.length > 0 && (
+                    <Button
+                        onClick={() => setIsGlobalSaleOpen(true)}
+                        variant="outline"
+                        size="sm"
+                        title="Ajouter un article à une vente"
+                        aria-label="Ajouter un article à une vente"
+                        className="h-9 border-amber-200 text-amber-700 shadow-sm hover:bg-amber-50 dark:border-amber-900 dark:bg-neutral-900 dark:text-amber-300 dark:hover:bg-amber-950/40"
+                    >
+                        <ShoppingCart className="h-4 w-4" />
+                    </Button>
+                )}
+
                 <ImportItemsDialog onImport={handleImport} />
 
                 <ExportDropdown onExport={handleExport} />
@@ -646,6 +662,15 @@ export default function InvoiceShow({
                     sales={sales}
                 />
             )}
+
+            <GlobalSaleDialog
+                open={isGlobalSaleOpen}
+                onOpenChange={setIsGlobalSaleOpen}
+                sales={sales}
+                items={items}
+                boats={boats}
+                availableStockByCategory={availableStockByCategory}
+            />
         </div>
     );
 }

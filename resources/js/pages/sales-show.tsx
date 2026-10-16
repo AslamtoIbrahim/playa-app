@@ -1,9 +1,8 @@
 ﻿import { Head, router } from '@inertiajs/react';
-import { ArrowLeft, Camera, Printer, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, Camera, Printer } from 'lucide-react';
 
 import { ExportDropdown } from '@/components/export-dropdown';
 import { SaleHeader } from '@/components/sale-header';
-import { GlobalSaleDialog } from '@/components/global-sale-dialog';
 import { SalePrintFooter } from '@/components/sale-print-footer';
 import { SaleReceiptChargesTable } from '@/components/sale-receipt-charges-table';
 import SaleShowItemRow from '@/components/sale-show-item-row';
@@ -29,7 +28,6 @@ import { SaleWorker } from '@/types/sale-worker';
 import { SessionZone } from '@/types/session-zone';
 import { Boat } from '@/types/boat';
 import { Item } from '@/types/item';
-import { useState } from 'react';
 
 interface Props {
     /** Sale with its manually managed line items. */
@@ -58,10 +56,7 @@ export default function SalesShow({
     sale,
     sessionZones,
     backUrl,
-    catalogItems,
-    boats,
 }: Props) {
-    const [saleDialogOpen, setSaleDialogOpen] = useState(false);
     const items = sale.items || [];
 
     const stats = useSaleCalculations(sale);
@@ -122,17 +117,6 @@ export default function SalesShow({
                     className="h-9 border-slate-200 text-slate-500 shadow-sm hover:bg-slate-50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
                 >
                     <Camera className="h-4 w-4" />
-                </Button>
-
-                <Button
-                    onClick={() => setSaleDialogOpen(true)}
-                    variant="outline"
-                    size="sm"
-                    title="Ajouter un article à la vente"
-                    aria-label="Ajouter un article à la vente"
-                    className="h-9 border-amber-200 text-amber-700 shadow-sm hover:bg-amber-50 dark:border-amber-900 dark:bg-neutral-900 dark:text-amber-300 dark:hover:bg-amber-950/40"
-                >
-                    <ShoppingCart className="h-4 w-4" />
                 </Button>
 
                 <Button
@@ -208,13 +192,6 @@ export default function SalesShow({
 
             <SalePrintFooter stats={stats} />
 
-            <GlobalSaleDialog
-                open={saleDialogOpen}
-                onOpenChange={setSaleDialogOpen}
-                sale={sale}
-                items={catalogItems}
-                boats={boats}
-            />
         </div>
     );
 }

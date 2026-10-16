@@ -7,8 +7,10 @@ use App\Models\Category;
 use App\Models\Company;
 use App\Models\Customer;
 use App\Models\Invoice;
+use App\Models\InvoiceItem;
 use App\Models\Item;
 use App\Models\Sale;
+use App\Models\SaleItem;
 use App\Models\SessionZone;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -163,6 +165,21 @@ class InvoiceController extends Controller
             ? Sale::where('session_id', $session->id)->with('customer')->latest('id')->get()
             : Sale::whereRaw('1 = 0')->get();
 
+        $availableStockByCategory = [];
+
+        if ($session) {
+            foreach (Category::query()->pluck('id') as $categoryId) {
+                $purchased = InvoiceItem::whereHas('item', fn ($query) => $query->where('category_id', $categoryId))
+                    ->whereHas('invoice.sessionZone', fn ($query) => $query->where('daily_session_id', $session->id))
+                    ->sum('unit_count');
+                $sold = SaleItem::whereHas('item', fn ($query) => $query->where('category_id', $categoryId))
+                    ->whereHas('sale', fn ($query) => $query->where('session_id', $session->id))
+                    ->sum(DB::raw('ABS(unit_count)'));
+
+                $availableStockByCategory[$categoryId] = max(0, (float) $purchased - (float) $sold);
+            }
+        }
+
         return Inertia::render('invoice-show', [
             'invoice' => $invoice,
             'boats' => Boat::all(['id', 'name']),
@@ -179,6 +196,7 @@ class InvoiceController extends Controller
             ])),
             'customers' => Customer::all(['id', 'name']),
             'sales' => $sales,
+            'availableStockByCategory' => $availableStockByCategory,
             'session' => $session,
             'backUrl' => $backUrl,
         ]);
