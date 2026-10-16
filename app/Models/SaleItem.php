@@ -7,12 +7,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
- * Distribution d'une ligne de facture d'achat vers une vente.
+ * Editable line item belonging to a sale.
  *
- * Une même ligne de facture (invoice_item) peut être vendue en plusieurs
- * fois, à des ventes différentes (donc des clients différents), jusqu'à
- * épuisement de sa quantité. Les quantités, prix et écarts viennent de la
- * différence associée et ne sont pas recalculés à partir de la facture.
+ * Invoice-backed and unspecified items share the same independent price,
+ * quantity, amount, tax, and difference calculations.
  */
 class SaleItem extends Model
 {
@@ -23,9 +21,14 @@ class SaleItem extends Model
     protected $fillable = [
         'sale_id',
         'invoice_item_id',
-        'difference_id',
+        'item_id',
+        'boat_id',
         'unit_count',
+        'sale_price',
         'real_price',
+        'amount',
+        'tax',
+        'is_with_tax',
         'total_diff',
     ];
 
@@ -33,6 +36,10 @@ class SaleItem extends Model
         'unit_count' => 'decimal:2',
         'real_price' => 'decimal:2',
         'total_diff' => 'decimal:2',
+        'sale_price' => 'decimal:2',
+        'amount' => 'decimal:2',
+        'tax' => 'decimal:2',
+        'is_with_tax' => 'boolean',
     ];
 
     /**
@@ -51,9 +58,14 @@ class SaleItem extends Model
         return $this->belongsTo(InvoiceItem::class, 'invoice_item_id');
     }
 
-    public function difference(): BelongsTo
+    public function item(): BelongsTo
     {
-        return $this->belongsTo(Difference::class);
+        return $this->belongsTo(Item::class);
+    }
+
+    public function boat(): BelongsTo
+    {
+        return $this->belongsTo(Boat::class);
     }
 
     /**
@@ -64,12 +76,11 @@ class SaleItem extends Model
         parent::boot();
 
         static::saving(function ($item) {
-            if ($item->difference_id) {
-                $difference = $item->difference()->firstOrFail();
-                $item->real_price = $difference->real_price;
-                $invoicePrice = (float) ($difference->invoiceItem?->unit_price ?? 0);
-                $item->total_diff = ((float) $difference->real_price - $invoicePrice) * (float) $item->unit_count;
-            }
+            $count = (float) $item->unit_count;
+            $salePrice = (float) $item->sale_price;
+            $item->amount = $count * (float) $item->real_price;
+            $item->tax = $item->is_with_tax ? $item->amount * 0.03 : 0;
+            $item->total_diff = ($salePrice - (float) $item->real_price) * $count;
         });
 
         // 2. Totaux de la vente recalculés après chaque changement (Save, Update, Delete)

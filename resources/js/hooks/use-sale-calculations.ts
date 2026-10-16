@@ -53,7 +53,10 @@ export const useSaleCalculations = (sale: Sale) => {
             const totalValeur = saleAmount - totalDiff - totalCharges - totalWorkers;
 
             // Taxe de 3 % sur la valeur seule (hors écart).
-            const taxAmount = computeSaleTax(totalValeur);
+            const taxAmount = (sale.items ?? []).reduce(
+                (sum, item) => sum + (Number(item.tax) || 0),
+                0,
+            );
 
             // Frais de caisse : 1 DH par caisse.
             const boxesFee = computeSaleBoxesFee(totalBoxes);

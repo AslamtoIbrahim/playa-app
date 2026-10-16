@@ -60,18 +60,12 @@ trait CalculatesSessionTotals
             })->sum('total_amount');
 
         // Les ventes directes restent rattachées à la journée via sales.session_id.
-        $directSaleItems = (float) SaleItem::whereHas('invoiceItem.invoice', function ($q) use ($sessionZoneIds) {
-            $q->whereIn('session_zone_id', $sessionZoneIds)->where('type', 'purchase');
-        })->selectRaw('COALESCE(SUM(unit_count * real_price), 0) as aggregate')->value('aggregate');
-
-        // Use the exact difference row sold; sales do not calculate a separate
-        // difference of their own.
-        $directSalesDiff = (float) Difference::whereHas('invoiceItem.invoice', function ($q) use ($sessionZoneIds) {
-            $q->whereIn('session_zone_id', $sessionZoneIds)->where('type', 'purchase');
-        })->whereHas('saleItems')->sum('total_diff');
-
-        // Taxe de 3 % sur la valeur seule (lignes hors écart).
-        $directSalesTax = ($directSaleItems - $directSalesDiff) * 0.03;
+        $directSaleItems = (float) SaleItem::whereHas('sale.session.sessionZones', function ($q) use ($sessionZoneIds) {
+            $q->whereIn('session_zones.id', $sessionZoneIds);
+        })->sum('amount');
+        $directSalesTax = (float) SaleItem::whereHas('sale.session.sessionZones', function ($q) use ($sessionZoneIds) {
+            $q->whereIn('session_zones.id', $sessionZoneIds);
+        })->sum('tax');
 
         // Frais de caisse : 1 DH par caisse.
         $directSalesBoxesFee = (float) Sale::whereHas('session.sessionZones', function ($q) use ($sessionZoneIds) {

@@ -4,6 +4,9 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
 import {
     Table,
     TableBody,
@@ -13,400 +16,484 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { navigateToAdjacentCell } from '@/lib/table-navigation';
+import { SearchSelect } from '@/components/search-select';
 import { InvoiceItem } from '@/types/invoice-item';
-import type { Difference } from '@/types/difference';
+import { SaleItem } from '@/types/sale-item';
 import { Sale } from '@/types/sale';
-import { AlertCircle, BadgeCheck, Ship, ShoppingCart } from 'lucide-react';
-import { Fragment, useMemo } from 'react';
-import { DifferenceSaleRow } from './difference-sale-row';
-import { Badge } from './ui/badge';
-import MissingDialogSale from './missing-dialog-sale';
-import type { DailySession } from '@/types/daily-session';
-import type { Customer } from '@/types/customer';
+import { router } from '@inertiajs/react';
+import { ShoppingCart, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { toast } from 'sonner';
 
 interface Props {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    /** Lignes de facture d'achat à vendre (une ou plusieurs). */
     items: InvoiceItem[];
-    /** Ventes de la journée en cours, seules cibles possibles. */
     sales: Sale[];
-    /** Session courante (via sa zone) pour créer la vente manquante. */
-    session: DailySession | null;
-    /** Clients disponibles pour la nouvelle vente. */
-    customers: Customer[];
 }
 
-/**
- * Dialogue de vente : répartit une ou plusieurs lignes de facture d'achat
- * vers des ventes de la même journée.
- *
- * Chaque ligne de répartition est vendue au client et avec les valeurs déjà
- * définis dans la boîte de dialogue des différences.
- */
-export function SaleDialog({
-    open,
-    onOpenChange,
-    items,
-    sales,
-    session,
-    customers,
-}: Props) {
-    const handleOpenChange = (nextOpen: boolean): void => {
-        onOpenChange(nextOpen);
+export function SaleDialog({ open, onOpenChange, items, sales }: Props) {
+    const [saleIds, setSaleIds] = useState<Record<string, string>>({});
+    const [counts, setCounts] = useState<Record<string, string>>({});
+    const [prices, setPrices] = useState<Record<string, string>>({});
+    const [realPrices, setRealPrices] = useState<Record<string, string>>({});
+    const [taxFlags, setTaxFlags] = useState<Record<string, boolean>>({});
+    const [openSaleIds, setOpenSaleIds] = useState<Record<string, boolean>>({});
+
+    const saleOptions = sales.map((sale) => ({
+        id: sale.id,
+        name: sale.customer?.name ?? `Vente #${sale.id}`,
+    }));
+
+    const remaining = (item: InvoiceItem): number =>
+        Math.max(
+            0,
+            Number(item.unit_count) -
+                (item.sale_items ?? []).filter((saleItem) => !saleItem.deleted_at).reduce(
+                    (sum, saleItem) =>
+                        sum + Math.abs(Number(saleItem.unit_count)),
+                    0,
+                ),
+        );
+
+    const save = (
+        item: InvoiceItem,
+        line?: SaleItem,
+        selectedSaleId?: number,
+    ): void => {
+        const key = line ? `sale-${line.id}` : `item-${item.id}`;
+        const count = Number(counts[key] ?? (line ? Math.abs(Number(line.unit_count)) : remaining(item)));
+        const salePrice = Number(prices[key] ?? line?.sale_price ?? item.unit_price);
+        const realPrice = Number(
+            realPrices[key] ?? line?.real_price ??
+                item.differences?.[0]?.real_price ??
+                item.unit_price,
+        );
+
+        const saleId = selectedSaleId ?? Number(saleIds[key] ?? line?.sale_id);
+
+        if (!saleId || !count) {
+            toast.error('Choisissez une vente et une quantit\u00e9.');
+
+            return;
+        }
+
+        const payload = {
+                sale_id: saleId,
+                invoice_item_id: item.id,
+                item_id: item.item_id,
+                boat_id: item.boat_id,
+                unit_count: count > 0 ? -count : count,
+                sale_price: salePrice,
+                real_price: realPrice,
+                is_with_tax: taxFlags[key] ?? line?.is_with_tax ?? false,
+            };
+        const options = {
+                preserveScroll: true,
+                onSuccess: () => {
+                    if (!line) {
+                        setSaleIds((current) => {
+                            const next = { ...current };
+                            delete next[key];
+
+                            return next;
+                        });
+                        setCounts((current) => {
+                            const next = { ...current };
+                            delete next[key];
+
+                            return next;
+                        });
+                        setPrices((current) => {
+                            const next = { ...current };
+                            delete next[key];
+
+                            return next;
+                        });
+                        setRealPrices((current) => {
+                            const next = { ...current };
+                            delete next[key];
+
+                            return next;
+                        });
+                        setTaxFlags((current) => {
+                            const next = { ...current };
+                            delete next[key];
+
+                            return next;
+                        });
+                    }
+
+                    toast.success(line ? 'Ligne de vente mise à jour.' : 'Ligne de vente enregistrée.');
+                },
+                onError: (errors: Record<string, string>) => {
+                    toast.error(
+                        Object.values(errors)[0] ??
+                            'Stock insuffisant ou donn\u00e9es invalides.',
+                        { duration: 6000 },
+                    );
+                },
+            };
+
+        if (line) {
+router.patch(`/sale-items/${line.id}`, payload, options);
+} else {
+router.post('/sale-items', payload, options);
+}
     };
 
-    const remainingTotal = useMemo((): number => {
-        {
-            return items.reduce((sum, item) => {
-                {
-                    return (
-                        sum +
-                        (item.differences ?? []).reduce(
-                            (remaining, difference) =>
-                                remaining +
-                                Math.max(
-                                    0,
-                                    Number(difference.unit_count) -
-                                        (difference.sale_items ?? []).reduce(
-                                            (count, saleItem) =>
-                                                count +
-                                                Number(saleItem.unit_count),
-                                            0,
-                                        ),
-                                ),
-                            0,
-                        )
-                    );
-                }
-            }, 0);
-        }
-    }, [items]);
-
-    const title = useMemo((): string => {
-        {
-            if (items.length === 0) {
-                {
-                    return 'Vente';
-                }
-            }
-
-            if (items.length === 1) {
-                {
-                    return items[0].item?.name || 'Article';
-                }
-            }
-
-            return `${items.length} articles`;
-        }
-    }, [items]);
-
-    const assignedTotal = useMemo(
-        () =>
-            items.reduce(
-                (sum, item) =>
-                    sum +
-                    (item.differences ?? []).reduce(
-                        (differenceSum, difference) =>
-                            differenceSum +
-                            (difference.sale_items ?? []).reduce(
-                                (saleSum, saleItem) =>
-                                    saleSum + Number(saleItem.unit_count),
-                                0,
-                            ),
-                        0,
-                    ),
-                0,
-            ),
-        [items],
-    );
-
-    const hasNoSale = sales.length === 0;
-
-    const canCreateSale = session !== null && customers.length > 0;
-
     return (
-        <Dialog open={open} onOpenChange={handleOpenChange}>
-            <DialogContent className="flex max-h-[90vh] w-fit max-w-[calc(100vw-2rem)] flex-col gap-0 overflow-hidden rounded-2xl border border-emerald-100 p-0 shadow-2xl sm:max-w-4xl dark:border-emerald-950 dark:bg-neutral-950 dark:text-neutral-100">
-                <DialogHeader className="shrink-0 border-b border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-4 pb-3 sm:p-5 dark:border-emerald-950 dark:from-emerald-950/50 dark:via-neutral-950 dark:to-teal-950/30">
-                    <div className="flex flex-col gap-3 pr-8">
-                        <div className="flex items-start justify-between gap-4">
-                            <div className="flex min-w-0 items-center gap-3">
-                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/20 dark:bg-emerald-500">
-                                    <ShoppingCart className="h-4 w-4" />
-                                </div>
-                                <div className="min-w-0">
-                                    <div className="mb-1 flex items-center gap-2">
-                                        <span className="text-[10px] font-bold tracking-[0.18em] text-emerald-700 uppercase dark:text-emerald-300">
-                                            Ventes · Clients
-                                        </span>
-                                        <span className="h-1 w-1 rounded-full bg-emerald-300" />
-                                        <span className="text-[10px] font-semibold text-slate-500 dark:text-neutral-400">
-                                            Depuis les achats
-                                        </span>
-                                    </div>
-                                    <DialogTitle className="truncate text-xl font-bold text-slate-900 capitalize sm:text-2xl dark:text-neutral-100">
-                                        {title}
-                                    </DialogTitle>
-                                    <div className="mt-1 flex flex-wrap items-center gap-2">
-                                        <Badge
-                                            variant="secondary"
-                                            className="gap-1.5 border-emerald-100 bg-white/80 text-[10px] font-semibold text-slate-600 dark:border-emerald-900 dark:bg-neutral-900 dark:text-neutral-300"
-                                        >
-                                            <Ship className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
-                                            {items.length === 1
-                                                ? items[0].boat?.name ||
-                                                  'Sans bateau'
-                                                : `${items.length} lignes d’achat`}
-                                        </Badge>
-                                        {assignedTotal > 0 && (
-                                            <span className="flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
-                                                <BadgeCheck className="h-3.5 w-3.5" />
-                                                {assignedTotal} déjà vendu
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                            <div
-                                className={cn(
-                                    'shrink-0 rounded-xl border px-3 py-2 text-right shadow-sm',
-                                    remainingTotal <= 0
-                                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300'
-                                        : 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-300',
-                                )}
-                            >
-                                <div className="text-[9px] font-bold tracking-widest uppercase">
-                                    {remainingTotal <= 0
-                                        ? 'Ventes complètes'
-                                        : 'Reste à vendre'}
-                                </div>
-                                <div className="mt-0.5 flex items-center justify-end gap-1 text-sm font-black">
-                                    {remainingTotal <= 0
-                                        ? 'TERMINÉ'
-                                        : remainingTotal}
-                                    {remainingTotal < 0 && (
-                                        <AlertCircle className="h-3.5 w-3.5" />
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="flex flex-wrap items-center justify-around gap-x-5 gap-y-1 rounded-xl border border-white/80 bg-white/60 px-3 py-2 text-xs shadow-sm dark:border-neutral-800 dark:bg-neutral-900/60">
-                            <span className="text-slate-500 dark:text-neutral-400">
-                                Qté vendue{' '}
-                                <strong className="ml-1 text-slate-900 dark:text-neutral-100">
-                                    {assignedTotal}
-                                </strong>
-                            </span>
-                            <span className="text-slate-500 dark:text-neutral-400">
-                                Clients disponibles{' '}
-                                <strong className="ml-1 text-emerald-700 dark:text-emerald-300">
-                                    {sales.length}
-                                </strong>
-                            </span>
-                            <span className="text-slate-500 dark:text-neutral-400">
-                                Lignes d’achat{' '}
-                                <strong className="ml-1 text-slate-900 dark:text-neutral-100">
-                                    {items.length}
-                                </strong>
-                            </span>
-                        </div>
-
-                        {hasNoSale && canCreateSale && (
-                            <div className="flex w-full items-center gap-2">
-                                <div className="flex w-full items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-400">
-                                    <ShoppingCart className="h-3.5 w-3.5" />
-                                    Aucune vente pour cette journée.
-                                </div>
-                                <MissingDialogSale
-                                    sessionId={session.id}
-                                    sessionDate={session.session_date}
-                                    customers={customers}
-                                />
-                            </div>
-                        )}
-                    </div>
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="flex max-h-[88vh] w-[calc(100vw-2rem)] max-w-5xl flex-col gap-0 overflow-hidden rounded-2xl border border-amber-100 p-0 shadow-2xl sm:max-w-5xl dark:border-amber-950 dark:bg-neutral-950 dark:text-neutral-100">
+                <DialogHeader className="shrink-0 border-b border-amber-100 bg-linear-to-br from-amber-50 via-white to-orange-50 p-4 pr-12 text-left dark:border-amber-950 dark:from-amber-950/50 dark:via-neutral-950 dark:to-orange-950/30">
+                    <DialogTitle className="flex items-center gap-2 text-xl font-bold text-slate-900 dark:text-neutral-100">
+                        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                            <ShoppingCart className="size-4" />
+                        </span>
+                        {'Vente \u00b7 Articles s\u00e9lectionn\u00e9s'}
+                    </DialogTitle>
                 </DialogHeader>
 
-                <div className="min-h-0 flex-1 overflow-x-auto overflow-y-auto bg-slate-50/60 dark:bg-neutral-950">
-                    <Table className="w-auto border-collapse">
+                <div className="min-h-0 flex-1 overflow-auto bg-slate-50/60 p-3 dark:bg-neutral-950">
+                    <Table className="w-auto min-w-212.5 border-collapse">
                         <TableHeader className="sticky top-0 z-20 bg-slate-50/80 shadow-sm backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-900/90">
                             <TableRow className="border-b border-slate-100 hover:bg-transparent dark:border-neutral-800">
-                                <TableHead className="min-w-44 py-4 pl-6 text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
+                                <TableHead className="min-w-40 py-4 pl-6 text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
                                     Client
                                 </TableHead>
+                                <TableHead className="min-w-28 py-4 text-center text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
+                                    Bateau
+                                </TableHead>
+                                <TableHead className="min-w-32 py-4 text-center text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
+                                    Article
+                                </TableHead>
                                 <TableHead className="w-20 py-4 text-center text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
-                                    Qté
+                                    {'Quantit\u00e9'}
                                 </TableHead>
                                 <TableHead className="w-28 py-4 text-center text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
-                                    P.R
+                                    {'Prix r\u00e9el'}
                                 </TableHead>
                                 <TableHead className="w-28 py-4 text-center text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
-                                    Diff Total
+                                    Prix vente
                                 </TableHead>
-                                <TableHead className="w-15 py-4"></TableHead>
+                                <TableHead className="w-28 py-4 text-center text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
+                                    Montant
+                                </TableHead>
+                                <TableHead className="w-20 py-4 text-center text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
+                                    Taxe 3%
+                                </TableHead>
+                                <TableHead className="w-20 py-4 text-center text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
+                                    Avec taxe
+                                </TableHead>
+                                <TableHead className="w-28 py-4 text-center text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
+                                    Total diff
+                                </TableHead>
+                                <TableHead className="w-12" />
                             </TableRow>
                         </TableHeader>
-
-                        <TableBody key={items.map((item) => item.id).join('-')}>
+                        <TableBody>
                             {items.map((item) => {
-                                {
-                                    const differences: Difference[] =
-                                        item.differences || [];
-                                    const remaining = differences.reduce(
-                                        (sum, difference) =>
-                                            sum +
-                                            Math.max(
-                                                0,
-                                                Number(difference.unit_count) -
-                                                    (
-                                                        difference.sale_items ??
-                                                        []
-                                                    ).reduce(
-                                                        (count, saleItem) =>
-                                                            count +
-                                                            Number(
-                                                                saleItem.unit_count,
-                                                            ),
-                                                        0,
-                                                    ),
-                                            ),
-                                        0,
-                                    );
+                                if (remaining(item) <= 0) {
+return null;
+}
+
+                                const key = `item-${item.id}`;
+                                const count = Number(
+                                    counts[key] ?? remaining(item),
+                                );
+                                const realPrice = Number(
+                                    realPrices[key] ??
+                                        item.differences?.[0]?.real_price ??
+                                        item.unit_price,
+                                );
+                                const salePrice = Number(
+                                    prices[key] ?? item.unit_price,
+                                );
+                                const amount = count * realPrice;
+                                const isWithTax = taxFlags[key] ?? false;
+
+                                return (
+                                    <TableRow
+                                        key={item.id}
+                                        className="group h-10 min-h-10 border-b border-slate-100 transition-colors hover:bg-slate-50/50 dark:border-neutral-800 dark:hover:bg-neutral-900/40"
+                                    >
+                                        <TableCell className="min-w-40 border-r border-slate-100 p-0 pl-1 dark:border-neutral-800">
+                                            <SearchSelect
+                                                value={saleIds[key] ?? ''}
+                                                options={saleOptions}
+                                                placeholder="Client..."
+                                                emptyMessage="Aucun client trouve."
+                                                open={
+                                                    openSaleIds[key] ??
+                                                    false
+                                                }
+                                                onOpenChange={(isOpen) =>
+                                                    setOpenSaleIds(
+                                                        (current) => ({
+                                                            ...current,
+                                                            [key]: isOpen,
+                                                        }),
+                                                    )
+                                                }
+                                                onKeyDown={(event) => {
+                                                    if (openSaleIds[key]) {
+                                                        return;
+                                                    }
+
+                                                    if (event.key === 'Enter') {
+                                                        event.preventDefault();
+                                                        save(item);
+
+                                                        return;
+                                                    }
+
+                                                    navigateToAdjacentCell(
+                                                        event,
+                                                    );
+                                                }}
+                                                onSelect={(id) =>
+                                                    setSaleIds((current) => ({
+                                                        ...current,
+                                                        [key]: String(id),
+                                                    }))
+                                                }
+                                                className="h-10 w-full border-none bg-transparent px-3  font-medium text-slate-900 shadow-none capitalize focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800"
+                                            />
+                                        </TableCell>
+                                        <TableCell className="min-w-28 border-r border-slate-100 px-3 py-0 font-medium capitalize dark:border-neutral-800">
+                                            <span className="block truncate text-slate-700 dark:text-neutral-300">
+                                                {item.boat?.name ?? '\u2014'}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell className="min-w-32 border-r border-slate-100 px-3 py-0 font-medium capitalize dark:border-neutral-800">
+                                            <span className="block truncate text-slate-900 dark:text-neutral-100">
+                                                {item.item?.name ?? 'Article'}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell className="w-20 border-r border-slate-100 p-0 dark:border-neutral-800">
+                                            <Input
+                                                type="number"
+                                                step="any"
+                                                value={
+                                                    counts[key] ??
+                                                    remaining(item)
+                                                }
+                                                onChange={(event) =>
+                                                    setCounts((current) => ({
+                                                        ...current,
+                                                        [key]:
+                                                            event.target.value,
+                                                    }))
+                                                }
+                                                onKeyDown={(event) => {
+                                                    if (event.key === 'Enter') {
+                                                        event.preventDefault();
+                                                        save(item);
+
+                                                        return;
+                                                    }
+
+                                                    navigateToAdjacentCell(
+                                                        event,
+                                                    );
+                                                }}
+                                                className="h-10 border-none bg-transparent text-center text-slate-900 transition-all focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                                aria-label="Quantit\u00e9 vendue"
+                                            />
+                                        </TableCell>
+                                        <TableCell className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800">
+                                            <Input
+                                                type="number"
+                                                step="any"
+                                                value={
+                                                    realPrices[key] ??
+                                                    item.differences?.[0]
+                                                        ?.real_price ??
+                                                    item.unit_price
+                                                }
+                                                onChange={(event) =>
+                                                    setRealPrices(
+                                                        (current) => ({
+                                                            ...current,
+                                                            [key]:
+                                                                event.target
+                                                                    .value,
+                                                        }),
+                                                    )
+                                                }
+                                                onKeyDown={(event) => {
+                                                    if (event.key === 'Enter') {
+                                                        event.preventDefault();
+                                                        save(item);
+
+                                                        return;
+                                                    }
+
+                                                    navigateToAdjacentCell(
+                                                        event,
+                                                    );
+                                                }}
+                                                className="h-10 border-none bg-transparent text-center text-slate-900 transition-all focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                                aria-label="Prix r\u00e9el"
+                                            />
+                                        </TableCell>
+                                        <TableCell className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800">
+                                            <Input
+                                                type="number"
+                                                step="any"
+                                                value={
+                                                    prices[key] ??
+                                                    item.unit_price
+                                                }
+                                                onChange={(event) =>
+                                                    setPrices((current) => ({
+                                                        ...current,
+                                                        [key]:
+                                                            event.target.value,
+                                                    }))
+                                                }
+                                                onKeyDown={(event) => {
+                                                    if (event.key === 'Enter') {
+                                                        event.preventDefault();
+                                                        save(item);
+
+                                                        return;
+                                                    }
+
+                                                    navigateToAdjacentCell(
+                                                        event,
+                                                    );
+                                                }}
+                                                className="h-10 border-none bg-transparent text-center text-slate-900 transition-all focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                                aria-label="Prix de vente"
+                                            />
+                                        </TableCell>
+                                        <TableCell className="w-28 border-r border-slate-100 px-3 py-0 text-right text-xs font-bold tabular-nums text-slate-700 dark:border-neutral-800 dark:text-neutral-300">
+                                            {amount.toLocaleString('fr-FR')}
+                                        </TableCell>
+                                        <TableCell className="w-20 border-r border-slate-100 px-3 py-0 text-right text-xs tabular-nums text-slate-600 dark:border-neutral-800 dark:text-neutral-400">
+                                            {(isWithTax
+                                                ? amount * 0.03
+                                                : 0
+                                            ).toLocaleString('fr-FR')}
+                                        </TableCell>
+                                        <TableCell className="w-20 border-r border-slate-100 p-0 text-center dark:border-neutral-800">
+                                            <Checkbox
+                                                checked={isWithTax}
+                                                onKeyDown={(event) => {
+                                                    if (event.key === 'Enter') {
+                                                        event.preventDefault();
+                                                        event.currentTarget.click();
+
+                                                        return;
+                                                    }
+
+                                                    navigateToAdjacentCell(event);
+                                                }}
+                                                onCheckedChange={(checked) =>
+                                                    setTaxFlags((current) => ({
+                                                        ...current,
+                                                        [key]: checked === true,
+                                                    }))
+                                                }
+                                                aria-label="Vendre avec taxe"
+                                            />
+                                        </TableCell>
+                                        <TableCell className={cn('w-28 px-3 py-0 text-right text-xs font-bold tabular-nums', (salePrice - realPrice) * count < 0 ? 'text-rose-600 dark:text-rose-400' : (salePrice - realPrice) * count > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-neutral-300')}>
+                                            {(
+                                                (salePrice - realPrice) *
+                                                count
+                                            ).toLocaleString('fr-FR')}
+                                        </TableCell>
+                                        <TableCell className="w-12" />
+                                    </TableRow>
+                                );
+                            })}
+                            {items.flatMap((item) =>
+                                (item.sale_items ?? []).map((line) => {
+                                    const key = `sale-${line.id}`;
+                                    const quantity = counts[key] ?? String(Math.abs(Number(line.unit_count)));
 
                                     return (
-                                        <Fragment key={item.id}>
-                                            {/* Bandeau de la ligne de facture */}
-                                            <TableRow className="border-b border-slate-100 bg-slate-100/70 hover:bg-slate-100/70 dark:border-neutral-800 dark:bg-neutral-900">
-                                                <TableCell
-                                                    colSpan={5}
-                                                    className="py-2 "
+                                        <TableRow key={key} className="group h-10 border-b border-slate-100 dark:border-neutral-800">
+                                            <TableCell className="min-w-40 border-r border-slate-100 p-0 dark:border-neutral-800">
+                                                <SearchSelect
+                                                    value={saleIds[key] ?? String(line.sale_id)}
+                                                    options={saleOptions}
+                                                    placeholder="Client..."
+                                                    emptyMessage="Aucun client trouvé."
+                                                    open={openSaleIds[key] ?? false}
+                                                    onOpenChange={(open) => setOpenSaleIds((state) => ({ ...state, [key]: open }))}
+                                                    onKeyDown={(event) => {
+                                                        if (openSaleIds[key]) {
+                                                            return;
+                                                        }
+
+                                                        navigateToAdjacentCell(event);
+                                                    }}
+                                                    onSelect={(id) => {
+                                                        const selectedId = Number(id);
+                                                        setSaleIds((state) => ({ ...state, [key]: String(selectedId) }));
+                                                        save(item, line, selectedId);
+                                                    }}
+                                                    className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 shadow-none capitalize focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800"
+                                                />
+                                            </TableCell>
+                                            <TableCell className="min-w-28 border-r border-slate-100 px-3 dark:border-neutral-800">{item.boat?.name ?? '—'}</TableCell>
+                                            <TableCell className="min-w-32 border-r border-slate-100 px-3 dark:border-neutral-800">{item.item?.name ?? 'Article'}</TableCell>
+                                            <TableCell className="w-20 border-r border-slate-100 p-0 dark:border-neutral-800">
+                                                <Input type="number" step="any" value={quantity} onChange={(event) => setCounts((state) => ({ ...state, [key]: event.target.value }))} onBlur={() => save(item, line)} onKeyDown={(event) => {
+                                                    if (event.key === 'Enter') {
+                                                        event.preventDefault();
+                                                        save(item, line);
+                                                    } else {
+                                                        navigateToAdjacentCell(event);
+                                                    }
+                                                }} className="h-10 border-none bg-transparent text-center [appearance:textfield] focus-visible:bg-slate-100 focus-visible:ring-0 dark:focus-visible:bg-neutral-800 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" aria-label="Quantité vendue" />
+                                            </TableCell>
+                                            <TableCell className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800"><Input type="number" step="any" value={realPrices[key] ?? line.real_price} onChange={(event) => setRealPrices((state) => ({ ...state, [key]: event.target.value }))} onBlur={() => save(item, line)} onKeyDown={navigateToAdjacentCell} className="h-10 border-none bg-transparent text-center [appearance:textfield] focus-visible:bg-slate-100 focus-visible:ring-0 dark:focus-visible:bg-neutral-800 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" aria-label="Prix réel" /></TableCell>
+                                            <TableCell className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800"><Input type="number" step="any" value={prices[key] ?? line.sale_price} onChange={(event) => setPrices((state) => ({ ...state, [key]: event.target.value }))} onBlur={() => save(item, line)} onKeyDown={navigateToAdjacentCell} className="h-10 border-none bg-transparent text-center [appearance:textfield] focus-visible:bg-slate-100 focus-visible:ring-0 dark:focus-visible:bg-neutral-800 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" aria-label="Prix de vente" /></TableCell>
+                                            <TableCell className="w-28 border-r border-slate-100 px-3 text-right dark:border-neutral-800">{Math.abs(Number(line.amount)).toLocaleString('fr-FR')}</TableCell>
+                                            <TableCell className="w-20 border-r border-slate-100 px-3 text-right dark:border-neutral-800">{Math.abs(Number(line.tax)).toLocaleString('fr-FR')}</TableCell>
+                                            <TableCell className="w-20 border-r border-slate-100 text-center dark:border-neutral-800">
+                                                <Checkbox checked={taxFlags[key] ?? line.is_with_tax} onKeyDown={(event) => {
+                                                    if (event.key === 'Enter') {
+                                                        event.preventDefault();
+                                                        event.currentTarget.click();
+
+                                                        return;
+                                                    }
+
+                                                    navigateToAdjacentCell(event);
+                                                }} onCheckedChange={(checked) => {
+                                                    const isWithTax = checked === true;
+                                                    setTaxFlags((state) => ({ ...state, [key]: isWithTax }));
+                                                    router.patch(`/sale-items/${line.id}`, { is_with_tax: isWithTax }, { preserveScroll: true });
+                                                }} aria-label="Vendre avec taxe" />
+                                            </TableCell>
+                                            <TableCell className="w-28 px-3 text-right">{Number(line.total_diff ?? 0).toLocaleString('fr-FR')}</TableCell>
+                                            <TableCell className="w-12 p-0 text-center">
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="size-10 text-slate-400 hover:text-red-600 dark:text-neutral-500 dark:hover:text-red-400"
+                                                    aria-label="Supprimer la ligne de vente"
+                                                    onClick={() => {
+                                                        router.delete(`/sale-items/${line.id}`, {
+                                                            preserveScroll: true,
+                                                            onSuccess: () => toast.success('Ligne de vente supprimée.'),
+                                                            onError: () => toast.error('Impossible de supprimer cette ligne.'),
+                                                        });
+                                                    }}
                                                 >
-                                                    <div className="flex w-full items-center justify-between gap-4">
-                                                        <div className="flex w-full items-center justify-around gap-2">
-                                                            <Badge
-                                                                variant="secondary"
-                                                                className="flex items-center gap-1.5 border-slate-200 bg-white px-2 py-0.5 text-xs font-bold text-slate-600 uppercase dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300"
-                                                            >
-                                                                <Ship className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                                                                {item.boat
-                                                                    ?.name ||
-                                                                    'Sans bateau'}
-                                                            </Badge>
-
-                                                            <span className="text-xs font-black tracking-wide text-slate-900 uppercase dark:text-neutral-100">
-                                                                {item.item
-                                                                    ?.name ||
-                                                                    'Article'}
-                                                            </span>
-
-                                                            <span className="text-[12px] font-medium text-slate-600 uppercase dark:text-neutral-400">
-                                                                {
-                                                                    item.unit_count
-                                                                }{' '}
-                                                                {item.unit}{' '}
-                                                                <span className="lowercase">
-                                                                    x{' '}
-                                                                </span>
-                                                                {
-                                                                    item.unit_price
-                                                                }{' '}
-                                                                DH
-                                                            </span>
-                                                        </div>
-
-                                                        <span
-                                                            className={cn(
-                                                                'rounded border px-2 py-0.5 text-[10px] font-bold',
-                                                                remaining <= 0
-                                                                    ? 'border-green-200 bg-green-50 text-green-700 dark:border-green-900/60 dark:bg-green-950/40 dark:text-green-400'
-                                                                    : 'border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-900/60 dark:bg-orange-950/40 dark:text-orange-400',
-                                                            )}
-                                                        >
-                                                            {remaining <= 0
-                                                                ? 'TERMINÉ'
-                                                                : `RESTE: ${remaining} ${item.unit ?? ''}`}
-                                                        </span>
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-
-                                            {differences.map((difference) => {
-                                                const assigned =
-                                                    difference.sale_items ?? [];
-                                                const unallocated = Math.max(
-                                                    0,
-                                                    Number(
-                                                        difference.unit_count,
-                                                    ) -
-                                                        assigned.reduce(
-                                                            (sum, row) =>
-                                                                sum +
-                                                                Number(
-                                                                    row.unit_count,
-                                                                ),
-                                                            0,
-                                                        ),
-                                                );
-
-                                                return (
-                                                    <Fragment
-                                                        key={difference.id}
-                                                    >
-                                                        {assigned.map(
-                                                            (saleItem) => (
-                                                                <DifferenceSaleRow
-                                                                    key={
-                                                                        saleItem.id
-                                                                    }
-                                                                    difference={
-                                                                        difference
-                                                                    }
-                                                                    sales={
-                                                                        sales
-                                                                    }
-                                                                    saleItem={
-                                                                        saleItem
-                                                                    }
-                                                                    remaining={
-                                                                        unallocated
-                                                                    }
-                                                                />
-                                                            ),
-                                                        )}
-                                                        {unallocated > 0 && (
-                                                            <DifferenceSaleRow
-                                                                key={`${difference.id}-new-${unallocated}`}
-                                                                difference={
-                                                                    difference
-                                                                }
-                                                                sales={sales}
-                                                                remaining={
-                                                                    unallocated
-                                                                }
-                                                            />
-                                                        )}
-                                                    </Fragment>
-                                                );
-                                            })}
-                                        </Fragment>
+                                                    <Trash2 className="size-4" />
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
                                     );
-                                }
-                            })}
-                            {items.every(
-                                (item) => !item.differences?.length,
-                            ) && (
-                                <TableRow>
-                                    <TableCell
-                                        colSpan={5}
-                                        className="py-6 text-center text-sm text-slate-500 dark:text-neutral-400"
-                                    >
-                                        Aucune répartition. Ajoutez des lignes
-                                        dans le dialogue des différences avant
-                                        de vendre.
-                                    </TableCell>
-                                </TableRow>
+                                }),
                             )}
                         </TableBody>
                     </Table>

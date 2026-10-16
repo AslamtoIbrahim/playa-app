@@ -644,8 +644,6 @@ export default function InvoiceShow({
                     onOpenChange={setIsSaleOpen}
                     items={saleItems}
                     sales={sales}
-                    session={session}
-                    customers={customers}
                 />
             )}
         </div>

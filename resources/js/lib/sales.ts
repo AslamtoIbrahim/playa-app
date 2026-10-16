@@ -69,35 +69,17 @@ export function computeInvoiceItemRemainingCount(
  * recalculé par la vente.
  */
 export function computeSaleItemValue(
-    item: Pick<
-        SaleItem,
-        'unit_count' | 'real_price' | 'total_diff' | 'difference'
-    >,
+    item: Pick<SaleItem, 'amount'>,
 ): number {
-    return (
-        (Number(item.unit_count) || 0) * (Number(item.real_price) || 0) -
-        computeSaleItemDifference(item)
-    );
+    return Number(item.amount) || 0;
 }
 
 /** Difference contributed by this sale allocation, not the full source row. */
 export function computeSaleItemDifference(
-    item: Pick<SaleItem, 'unit_count' | 'total_diff' | 'difference'>,
+    item: Pick<SaleItem, 'unit_count' | 'total_diff'>,
 ): number {
     const storedDifference = Number(item.total_diff);
-    const sourceDifference = Number(item.difference?.total_diff) || 0;
-
-    // Newly written allocations carry their own total. For older rows where
-    // that value is still the database default (zero), prorate the source.
-    if (storedDifference !== 0 || sourceDifference === 0) {
-        return storedDifference || 0;
-    }
-
-    const sourceCount = Number(item.difference?.unit_count) || 0;
-
-    return sourceCount > 0
-        ? (sourceDifference * (Number(item.unit_count) || 0)) / sourceCount
-        : 0;
+    return storedDifference || 0;
 }
 
 /**
@@ -107,7 +89,7 @@ export function computeSaleItemDifference(
  * associées aux lignes de vente.
  */
 export function computeSaleTotalDiff(
-    items?: Pick<SaleItem, 'unit_count' | 'total_diff' | 'difference'>[] | null,
+    items?: Pick<SaleItem, 'unit_count' | 'total_diff'>[] | null,
 ): number {
     if (!items) {
         return 0;
@@ -140,10 +122,15 @@ export function computeSaleNetToPayFromSale(
     const totalValeur =
         (Number(sale.amount) || 0) - totalDiff - totalCharges - totalWorkers;
 
+    const tax = (sale.items ?? []).reduce(
+        (sum, item) => sum + (Number(item.tax) || 0),
+        0,
+    );
+
     return computeSaleNetToPay(
         totalValeur,
         totalDiff,
-        computeSaleTax(totalValeur),
+        tax,
         computeSaleBoxesFee(sale.boxes),
         totalCharges + totalWorkers,
     );

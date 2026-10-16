@@ -84,9 +84,7 @@ class Sale extends Model
         $items = $this->items()->with('invoiceItem')->get();
 
         // 1. Somme des montants (unit_count * real_price)
-        $totalHT = $items->sum(function ($item) {
-            return (float) $item->unit_count * (float) $item->real_price;
-        });
+        $totalHT = $items->sum(fn ($item) => (float) $item->amount);
 
         // 1b. Montants des bons imputés à cette vente (pas de double comptage :
         // les charges ne recouvrent jamais les lignes de facture).

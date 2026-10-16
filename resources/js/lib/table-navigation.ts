@@ -16,7 +16,7 @@ import type { KeyboardEvent } from 'react';
  */
 
 /** Sélecteur des éléments que l'on peut cibler au clavier dans une cellule. */
-const FOCUSABLE_CELL_SELECTOR = 'input, button, [role="combobox"]';
+const FOCUSABLE_CELL_SELECTOR = 'input, button, [role="combobox"], [role="checkbox"]';
 
 const ARROW_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
 

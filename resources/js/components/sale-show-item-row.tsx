@@ -1,96 +1,40 @@
 import { TableCell, TableRow } from '@/components/ui/table';
-import { formatDifferenceAmount } from '@/lib/differences';
-import { computeSaleItemDifference, computeSaleItemValue } from '@/lib/sales';
-import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 import { SaleItem } from '@/types/sale-item';
+import { router } from '@inertiajs/react';
+import { Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 
-interface Props {
-    /** Ligne de distribution : la donnée affichée est déduite de la facture d'achat d'origine. */
-    item: SaleItem;
-}
-
-/**
- * Ligne en lecture seule de la fiche d'une vente.
- *
- * La vente est alimentée depuis les lignes de facture d'achat : la ligne affiche
- * donc le bateau et l'article de la facture d'origine, la quantité vendue, son
- * unité, le prix réel pratiqué, le prix unitaire de la facture, l'écart en
- * résultant et la valeur de la vente. Les montants sont alignés à droite comme
- * sur la fiche facture, la dernière colonne (l'écart) étant isolée par un filet.
- */
-export function SaleShowItemRow({ item }: Props) {
-    const invoiceItem = item.invoice_item;
-
-    // Valeur hors écart : l'écart a sa propre colonne.
-    const value = computeSaleItemValue(item);
-
-    const diff = computeSaleItemDifference(item);
-
-    return (
-        <TableRow className="h-12 border-b border-slate-100 transition-colors hover:bg-slate-50/50 dark:border-neutral-800 dark:hover:bg-neutral-900/40">
-            <TableCell className="border-r border-slate-100 px-4 text-sm font-semibold text-slate-900 capitalize dark:border-neutral-800 dark:text-neutral-100">
-                {invoiceItem?.boat?.name || '—'}
-            </TableCell>
-
-            <TableCell className="border-r border-slate-100 px-4 text-sm font-medium text-slate-700 capitalize dark:border-neutral-800 dark:text-neutral-200">
-                {invoiceItem?.item?.name || 'Article'}
-            </TableCell>
-
-            <TableCell className="w-24 border-r border-slate-100 text-center text-sm font-bold text-slate-900 dark:border-neutral-800 dark:text-neutral-100">
-                {item.unit_count}
-            </TableCell>
-
-            <TableCell className="w-24 border-r border-slate-100 px-4 text-center text-xs font-medium text-slate-500 uppercase dark:border-neutral-800 dark:text-neutral-400">
-                {invoiceItem?.unit || '—'}
-            </TableCell>
-
-            <TableCell className="w-24 border-r border-slate-100 px-4 text-right text-sm font-medium text-slate-700 dark:border-neutral-800 dark:text-neutral-200">
-                {invoiceItem && Number(invoiceItem.unit_count) > 0
-                    ? (
-                          Number(invoiceItem.weight) *
-                          (Number(item.unit_count) /
-                              Number(invoiceItem.unit_count))
-                      ).toLocaleString('fr-FR', {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                      })
-                    : '—'}
-            </TableCell>
-
-            <TableCell className="w-32 border-r border-slate-100 px-4 text-right text-sm font-medium text-slate-700 dark:border-neutral-800 dark:text-neutral-200">
-                {Number(item.real_price).toLocaleString('fr-FR', {
-                    minimumFractionDigits: 2,
-                })}
-            </TableCell>
-
-            <TableCell className="w-32 border-r border-slate-100 px-4 text-right text-sm text-slate-500 dark:border-neutral-800 dark:text-neutral-400">
-                {invoiceItem
-                    ? Number(invoiceItem.unit_price).toLocaleString('fr-FR', {
-                          minimumFractionDigits: 2,
-                      })
-                    : '—'}
-            </TableCell>
-
-            <TableCell className="w-36 border-r border-slate-100 bg-slate-50/10 px-6 text-right text-sm font-bold text-slate-900 dark:border-neutral-800 dark:bg-neutral-900/20 dark:text-neutral-100">
-                {value.toLocaleString('fr-FR', {
-                    minimumFractionDigits: 2,
-                })}
-            </TableCell>
-
-            <TableCell
-                className={cn(
-                    'w-32 border-l border-slate-100 bg-slate-50/10 px-6 text-right text-sm font-bold dark:border-neutral-800 dark:bg-neutral-900/20',
-                    diff < 0
-                        ? 'text-red-600 dark:text-red-400'
-                        : diff > 0
-                          ? 'text-green-600 dark:text-green-400'
-                          : 'text-slate-600 dark:text-neutral-300',
-                )}
+export function SaleShowItemRow({ item }: { item: SaleItem }) {
+    return <TableRow>
+        <TableCell>{item.boat?.name ?? item.invoice_item?.boat?.name ?? '—'}</TableCell>
+        <TableCell>{item.item?.name ?? item.invoice_item?.item?.name ?? '—'}</TableCell>
+        <TableCell className="text-right">{Number(item.unit_count).toLocaleString('fr-FR')}</TableCell>
+        <TableCell className="text-right">{Number(item.sale_price).toLocaleString('fr-FR')}</TableCell>
+        <TableCell className="text-right">{Number(item.real_price).toLocaleString('fr-FR')}</TableCell>
+        <TableCell className="text-right">{Math.abs(Number(item.amount)).toLocaleString('fr-FR')}</TableCell>
+        <TableCell className="text-right">{Number(item.tax).toLocaleString('fr-FR')}</TableCell>
+        <TableCell className="text-center">{item.is_with_tax ? 'Oui' : 'Non'}</TableCell>
+        <TableCell className="text-right">{Number(item.total_diff).toLocaleString('fr-FR')}</TableCell>
+        <TableCell className="w-12 p-0 text-center">
+            <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="Supprimer la ligne de vente"
+                className="text-slate-400 hover:text-red-600 dark:text-neutral-500 dark:hover:text-red-400"
+                onClick={() => {
+                    router.delete(`/sale-items/${item.id}`, {
+                        preserveScroll: true,
+                        onSuccess: () => toast.success('Ligne de vente supprimée.'),
+                        onError: () => toast.error('Impossible de supprimer cette ligne.'),
+                    });
+                }}
             >
-                {(diff > 0 ? '+' : '') + formatDifferenceAmount(diff)}
-            </TableCell>
-        </TableRow>
-    );
+                <Trash2 className="size-4" />
+            </Button>
+        </TableCell>
+    </TableRow>;
 }
 
 export default SaleShowItemRow;

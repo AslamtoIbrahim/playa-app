@@ -3,7 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\Boat;
 use App\Models\DailySession;
+use App\Models\InvoiceItem;
+use App\Models\Item;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use Illuminate\Http\Request;
@@ -96,7 +99,8 @@ class SaleController extends Controller
             'items.invoiceItem.invoice',
             'items.invoiceItem.invoice.sessionZone.zone',
             'items.invoiceItem.invoice.sessionZone.dailySession',
-            'items.difference',
+            'items.item',
+            'items.boat',
             'charges.receipt.boat',
             'charges.receipt.customer',
             'charges.receipt.sessionZone.zone',
@@ -107,7 +111,8 @@ class SaleController extends Controller
 
         // Filter out sale items whose invoice item is soft-deleted
         $sale->items = $sale->items->filter(function ($item) {
-            return ! is_null($item->invoiceItem) && ! is_null($item->invoiceItem->fresh());
+            return is_null($item->invoice_item_id)
+                || (! is_null($item->invoiceItem) && ! is_null($item->invoiceItem->fresh()));
         })->values();
 
         $sessionZones = $sale->items
@@ -124,6 +129,21 @@ class SaleController extends Controller
 
         $customers = Customer::select('id', 'name')->get();
 
+        $categoryPrices = InvoiceItem::with('item:id,category_id')
+            ->whereHas('invoice.sessionZone', fn ($query) => $query->where('daily_session_id', $sale->session_id))
+            ->get(['id', 'item_id', 'unit_count', 'unit_price'])
+            ->filter(fn (InvoiceItem $invoiceItem) => $invoiceItem->item !== null)
+            ->groupBy(fn (InvoiceItem $invoiceItem) => $invoiceItem->item->category_id)
+            ->map(function ($categoryLines): float {
+                $quantity = (float) $categoryLines->sum('unit_count');
+
+                return $quantity > 0
+                    ? (float) $categoryLines->sum(fn (InvoiceItem $line) => (float) $line->unit_price * (float) $line->unit_count) / $quantity
+                    : 0;
+            });
+        $catalogItems = Item::select('id', 'name', 'category_id')->get()
+            ->each(fn (Item $item) => $item->setAttribute('default_price', $categoryPrices[$item->category_id] ?? 0));
+
         // Return to the originating daily session when the sale was opened
         // from its sales table; otherwise return to the sales list.
         $session = $sale->session;
@@ -139,6 +159,8 @@ class SaleController extends Controller
             'sessionZones' => $sessionZones,
             'sales' => $daySales,
             'customers' => $customers,
+            'catalogItems' => $catalogItems,
+            'boats' => Boat::select('id', 'name')->orderBy('name')->get(),
             'backUrl' => $backUrl,
         ]);
     }
@@ -156,7 +178,7 @@ class SaleController extends Controller
 
         if (
             (int) $validated['customer_id'] !== (int) $sale->customer_id
-            && $sale->items()->whereNotNull('difference_id')->exists()
+            && $sale->items()->exists()
         ) {
             return back()->withErrors([
                 'customer_id' => 'Le client ne peut pas être modifié tant que la vente contient des répartitions.',

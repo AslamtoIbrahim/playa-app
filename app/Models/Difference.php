@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Difference extends Model
 {
@@ -35,23 +34,4 @@ class Difference extends Model
         return $this->belongsTo(Customer::class);
     }
 
-    public function saleItems(): HasMany
-    {
-        return $this->hasMany(SaleItem::class);
-    }
-
-    protected static function boot()
-    {
-        parent::boot();
-
-        static::saved(function (Difference $difference) {
-            foreach ($difference->saleItems()->get() as $saleItem) {
-                $saleItem->save();
-            }
-        });
-
-        static::deleting(function (Difference $difference) {
-            $difference->saleItems()->get()->each->delete();
-        });
-    }
 }

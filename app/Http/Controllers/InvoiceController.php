@@ -137,7 +137,6 @@ class InvoiceController extends Controller
             'items.item',
             'items.boat',
             'items.differences.customer',
-            'items.differences.saleItems.sale.customer',
             'items.saleItems.sale.customer',
             'sessionZone.dailySession', // Changed 'session' to 'sessionZone'
             'sessionZone.zone',
@@ -253,8 +252,12 @@ class InvoiceController extends Controller
                 $invoiceItem->saleItems()->create([
                     'sale_id' => $sale->id,
                     'unit_count' => $remaining,
+                    'item_id' => $invoiceItem->item_id,
+                    'boat_id' => $invoiceItem->boat_id,
+                    'sale_price' => $invoiceItem->unit_price,
                     // Prix facturé : total_diff = 0, aucune différence.
                     'real_price' => $invoiceItem->unit_price,
+                    'is_with_tax' => false,
                 ]);
             }
 

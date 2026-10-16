@@ -10,20 +10,26 @@ import type { Sale } from './sale';
 export interface SaleItem {
     id: number;
     sale_id: number;
-    invoice_item_id: number;
-    difference_id?: number | null;
+    invoice_item_id?: number | null;
+    item_id: number;
+    boat_id?: number | null;
 
     // Quantité vendue sur cette ligne
     unit_count: number;
 
     // Prix réel pratiqué
     real_price: number;
+    sale_price: number;
+    amount: number;
+    tax: number;
+    is_with_tax: boolean;
     total_diff?: number;
 
     // Relationships loaded from backend
     sale?: Sale;
     invoice_item?: InvoiceItem;
-    difference?: import('./difference').Difference;
+    item?: import('./item').Item;
+    boat?: import('./boat').Boat;
 
     created_at?: string;
     updated_at?: string;
@@ -35,6 +41,10 @@ export interface SaleItem {
  */
 export interface SaleItemRequest {
     sale_id: number;
-    difference_id: number;
+    invoice_item_id?: number | null;
+    item_id: number;
     unit_count: number;
+    sale_price: number;
+    real_price: number;
+    is_with_tax: boolean;
 }

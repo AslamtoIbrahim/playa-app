@@ -2,142 +2,109 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Difference;
+use App\Models\InvoiceItem;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
-/**
- * Distribution des lignes de facture d'achat vers les ventes.
- *
- * La quantité, le prix et l'écart viennent de la ligne `Difference`, tandis
- * que le client est celui de la vente choisie. Aucun écart de vente n'est recalculé.
- */
 class SaleItemController extends Controller
 {
-    /**
-     * 1. Associer une ligne de répartition à une vente de la même journée.
-     */
     public function store(Request $request)
     {
-        $validated = $request->validate([
+        $data = $request->validate([
             'sale_id' => 'required|exists:sales,id',
-            'difference_id' => 'required|exists:differences,id',
-            'unit_count' => 'required|numeric|gt:0',
+            'invoice_item_id' => 'nullable|exists:invoice_items,id',
+            'item_id' => 'required|exists:items,id',
+            'boat_id' => 'nullable|exists:boats,id',
+            'unit_count' => 'required|numeric|not_in:0',
+            'sale_price' => 'required|numeric|min:0',
+            'real_price' => 'required|numeric|min:0',
+            'is_with_tax' => 'required|boolean',
         ]);
 
-        return DB::transaction(function () use ($validated) {
-            $sale = Sale::findOrFail($validated['sale_id']);
+        return DB::transaction(function () use ($data) {
+            $sale = Sale::findOrFail($data['sale_id']);
+            $invoiceItem = ! empty($data['invoice_item_id']) ? InvoiceItem::with('invoice.sessionZone')->findOrFail($data['invoice_item_id']) : null;
 
-            // Lock the source row so simultaneous requests cannot sell it twice.
-            $difference = Difference::with('invoiceItem.invoice.sessionZone')
-                ->lockForUpdate()
-                ->findOrFail($validated['difference_id']);
-            $invoiceItem = $difference->invoiceItem;
-
-            if (! $invoiceItem) {
-                return back()->with('error', 'Cette répartition ne dépend pas d’une ligne de facture.');
+            if ($invoiceItem && (int) $invoiceItem->invoice?->sessionZone?->daily_session_id !== (int) $sale->session_id) {
+                return back()->with('error', 'La vente doit appartenir à la même session que la ligne de facture.');
+            }
+            if ($invoiceItem) {
+                $data['item_id'] = $invoiceItem->item_id;
+                $data['boat_id'] = $invoiceItem->boat_id;
             }
 
-            // La vente doit appartenir à la même journée que la facture d'achat.
-            $invoiceSessionId = $invoiceItem->invoice?->sessionZone?->daily_session_id;
+            $this->assertStockAvailable($sale, (int) $data['item_id'], abs((float) $data['unit_count']));
+            $unitCount = (float) $data['unit_count'];
+            $realPrice = (float) $data['real_price'];
+            $salePrice = (float) $data['sale_price'];
+            $amount = $unitCount * $realPrice;
 
-            if ($invoiceSessionId === null || (int) $sale->session_id !== (int) $invoiceSessionId) {
-                return back()->with('error', 'La vente doit appartenir à la même journée que la facture.');
-            }
-
-            $allocated = (float) $difference->saleItems()->sum('unit_count');
-            $quantity = (float) $validated['unit_count'];
-            if ($quantity > (float) $difference->unit_count - $allocated + 0.00001) {
-                return back()->with('error', 'La quantité dépasse le reste disponible.');
-            }
-
-            $invoiceItem->saleItems()->create([
-                'sale_id' => $sale->id,
-                'difference_id' => $difference->id,
-                'unit_count' => $quantity,
+            $item = SaleItem::create([
+                ...$data,
+                'invoice_item_id' => $invoiceItem?->id,
+                'unit_count' => $unitCount,
+                'real_price' => $realPrice,
+                'amount' => $amount,
+                'tax' => $data['is_with_tax'] ? $amount * 0.03 : 0,
+                'total_diff' => ($salePrice - $realPrice) * $unitCount,
             ]);
 
-            return back()->with([
-                'success' => 'Vente enregistrée ! ✅',
-                'updated_item' => $invoiceItem->fresh()->load('saleItems.sale.customer'),
-            ]);
+            return back()->with('success', 'Vente enregistrée.');
         });
     }
 
-    /**
-     * 2. Move a sold difference row between sales in the same session.
-     *
-     * The sale's customer is chosen independently; quantities and prices come
-     * from the linked difference.
-     */
     public function update(Request $request, SaleItem $saleItem)
     {
-        $validated = $request->validate([
-            'sale_id' => 'sometimes|integer|exists:sales,id',
-            'unit_count' => 'sometimes|numeric|gt:0',
-        ], [
-            'sale_id.integer' => "L'identifiant de vente est invalide.",
-            'sale_id.exists' => "Cette vente n'existe pas.",
+        $data = $request->validate([
+            'sale_id' => 'sometimes|exists:sales,id',
+            'unit_count' => 'sometimes|numeric|not_in:0',
+            'sale_price' => 'sometimes|numeric|min:0',
+            'real_price' => 'sometimes|numeric|min:0',
+            'is_with_tax' => 'sometimes|boolean',
         ]);
 
-        return DB::transaction(function () use ($validated, $saleItem) {
-            $invoiceItem = $saleItem->invoiceItem;
-
-            $previousSaleId = (int) $saleItem->sale_id;
-            $targetSaleId = isset($validated['sale_id']) ? (int) $validated['sale_id'] : null;
-
-            // Client switch: moving the line to another sale is only allowed
-            // when that sale shares the session of the source invoice line.
-            if ($targetSaleId !== null && $targetSaleId !== $previousSaleId) {
-                $sale = Sale::findOrFail($targetSaleId);
-
-                $invoiceSessionId = $invoiceItem?->invoice?->sessionZone?->daily_session_id;
-
-                if ($invoiceSessionId === null || (int) $sale->session_id !== (int) $invoiceSessionId) {
-                    return back()->with('error', 'La vente doit appartenir à la même journée que la facture.');
-                }
+        return DB::transaction(function () use ($data, $saleItem) {
+            $sale = Sale::findOrFail($data['sale_id'] ?? $saleItem->sale_id);
+            if ((int) $sale->session_id !== (int) $saleItem->sale->session_id) {
+                return back()->with('error', 'La vente doit rester dans la session courante.');
             }
-
-            if (isset($validated['unit_count']) && $saleItem->difference_id) {
-                $difference = Difference::lockForUpdate()->findOrFail($saleItem->difference_id);
-                $allocatedOthers = (float) $difference->saleItems()->where('id', '!=', $saleItem->id)->sum('unit_count');
-                if ((float) $validated['unit_count'] > (float) $difference->unit_count - $allocatedOthers + 0.00001) {
-                    return back()->with('error', 'La quantité dépasse le reste disponible.');
-                }
-            }
-
-            // Reset the relation so the `saved` hook targets the new sale.
-            $saleItem->unsetRelation('sale');
-
-            $saleItem->update([
-                'sale_id' => $targetSaleId ?? $saleItem->sale_id,
-                'unit_count' => $validated['unit_count'] ?? $saleItem->unit_count,
-            ]);
-
-            // The `saved` hook recomputed the target sale: when the line moved,
-            // the previous sale must drop it from its totals as well.
-            if ($targetSaleId !== null && $targetSaleId !== $previousSaleId) {
-                Sale::find($previousSaleId)?->calculateTotals();
-            }
+            $count = (float) ($data['unit_count'] ?? $saleItem->unit_count);
+            $price = (float) ($data['sale_price'] ?? $saleItem->sale_price);
+            $real = (float) ($data['real_price'] ?? $saleItem->real_price);
+            $withTax = (bool) ($data['is_with_tax'] ?? $saleItem->is_with_tax);
+            $this->assertStockAvailable($sale, (int) $saleItem->item_id, abs($count), $saleItem->id);
+            $saleItem->update([...$data, 'amount' => $count * $real, 'tax' => $withTax ? $count * $real * 0.03 : 0, 'total_diff' => ($price - $real) * $count]);
 
             return back()->with('success', 'Ligne mise à jour.');
         });
     }
 
-    /**
-     * 3. Remove the sale assignment so this difference can be sold again.
-     */
     public function destroy(SaleItem $saleItem)
     {
-        $invoiceItem = $saleItem->invoiceItem;
-
         $saleItem->delete();
+        return back()->with('success', 'Ligne supprimée.');
+    }
 
-        return back()->with([
-            'success' => 'Supprimée ! ✅',
-            'updated_item' => $invoiceItem?->fresh()->load('saleItems.sale.customer'),
-        ]);
+    private function assertStockAvailable(Sale $sale, int $itemId, float $requested, ?int $exceptId = null): void
+    {
+        $item = \App\Models\Item::findOrFail($itemId);
+        InvoiceItem::whereHas('item', fn ($q) => $q->where('category_id', $item->category_id))
+            ->whereHas('invoice.sessionZone', fn ($q) => $q->where('daily_session_id', $sale->session_id))
+            ->lockForUpdate()->get(['id']);
+        $purchased = (float) InvoiceItem::whereHas('item', fn ($q) => $q->where('category_id', $item->category_id))
+            ->whereHas('invoice.sessionZone', fn ($q) => $q->where('daily_session_id', $sale->session_id))
+            ->sum('unit_count');
+        $soldQuery = SaleItem::whereHas('item', fn ($q) => $q->where('category_id', $item->category_id))
+            ->whereHas('sale', fn ($q) => $q->where('session_id', $sale->session_id));
+        if ($exceptId) $soldQuery->where('id', '!=', $exceptId);
+        $available = $purchased - (float) $soldQuery->sum(DB::raw('ABS(unit_count)'));
+        if ($requested > $available + 0.00001) {
+            throw ValidationException::withMessages([
+                'unit_count' => "Stock insuffisant pour {$item->name} : {$available} unité(s) disponible(s).",
+            ]);
+        }
     }
 }

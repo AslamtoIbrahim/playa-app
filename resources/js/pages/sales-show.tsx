@@ -1,8 +1,9 @@
-import { Head, router } from '@inertiajs/react';
-import { ArrowLeft, Camera, Printer } from 'lucide-react';
+﻿import { Head, router } from '@inertiajs/react';
+import { ArrowLeft, Camera, Printer, ShoppingCart } from 'lucide-react';
 
 import { ExportDropdown } from '@/components/export-dropdown';
 import { SaleHeader } from '@/components/sale-header';
+import { GlobalSaleDialog } from '@/components/global-sale-dialog';
 import { SalePrintFooter } from '@/components/sale-print-footer';
 import { SaleReceiptChargesTable } from '@/components/sale-receipt-charges-table';
 import SaleShowItemRow from '@/components/sale-show-item-row';
@@ -26,39 +27,41 @@ import { SaleCharge } from '@/types/sale-charge';
 import { SaleItem } from '@/types/sale-item';
 import { SaleWorker } from '@/types/sale-worker';
 import { SessionZone } from '@/types/session-zone';
+import { Boat } from '@/types/boat';
+import { Item } from '@/types/item';
+import { useState } from 'react';
 
 interface Props {
-    /** Vente et ses distributions, alimentées par les factures d'achat. */
+    /** Sale with its manually managed line items. */
     sale: Sale & {
         items: SaleItem[];
         charges?: SaleCharge[];
         workers?: SaleWorker[];
     };
     /**
-     * Zones de journée couvertes par les lignes de la vente, déduites des
-     * factures d'achat d'origine (une vente est rattachée à une journée, pas à
-     * une zone).
+     * Session zones inferred from invoice-backed lines; manual lines have no
+     * invoice zone. A sale belongs to a daily session rather than one zone.
      */
     sessionZones: SessionZone[];
     /** URL de retour explicite fournie par le backend (journée liée ou liste). */
     backUrl: string;
     /** Ventes de la journée. */
     sales?: Sale[];
+    catalogItems: Item[];
+    boats: Boat[];
 }
 
 /**
- * Fiche d'une vente.
- *
- * La vente ne porte plus de lignes saisies à la main : elle est alimentée
- * uniquement depuis les lignes de facture d'achat, via le dialogue de vente.
- * La fiche est donc en lecture seule : bateau, article, quantité, unité, prix réel,
- * prix unitaire de la facture, écart et valeur.
+ * Sale details and its saved item lines.
  */
 export default function SalesShow({
     sale,
     sessionZones,
     backUrl,
+    catalogItems,
+    boats,
 }: Props) {
+    const [saleDialogOpen, setSaleDialogOpen] = useState(false);
     const items = sale.items || [];
 
     const stats = useSaleCalculations(sale);
@@ -122,6 +125,17 @@ export default function SalesShow({
                 </Button>
 
                 <Button
+                    onClick={() => setSaleDialogOpen(true)}
+                    variant="outline"
+                    size="sm"
+                    title="Ajouter un article à la vente"
+                    aria-label="Ajouter un article à la vente"
+                    className="h-9 border-amber-200 text-amber-700 shadow-sm hover:bg-amber-50 dark:border-amber-900 dark:bg-neutral-900 dark:text-amber-300 dark:hover:bg-amber-950/40"
+                >
+                    <ShoppingCart className="h-4 w-4" />
+                </Button>
+
+                <Button
                     onClick={handlePrint}
                     variant="outline"
                     size="sm"
@@ -140,33 +154,16 @@ export default function SalesShow({
                 <Table>
                     <TableHeader className="border-b border-slate-100 bg-slate-50/50 dark:border-neutral-800 dark:bg-neutral-900/50">
                         <TableRow className="h-11 hover:bg-transparent">
-                            <TableHead className="w-56 border-r border-slate-100 px-4 text-[10px] font-black tracking-tight text-slate-500 uppercase dark:border-neutral-800 dark:text-neutral-400">
-                                Bateau
-                            </TableHead>
-                            <TableHead className="w-56 border-r border-slate-100 px-4 text-[10px] font-black tracking-tight text-slate-500 uppercase dark:border-neutral-800 dark:text-neutral-400">
-                                Espèces
-                            </TableHead>
-                            <TableHead className="w-24 border-r border-slate-100 text-center text-[10px] font-black tracking-tight text-slate-500 uppercase dark:border-neutral-800 dark:text-neutral-400">
-                                Qte / NC
-                            </TableHead>
-                            <TableHead className="w-24 border-r border-slate-100 text-center text-[10px] font-black tracking-tight text-slate-500 uppercase dark:border-neutral-800 dark:text-neutral-400">
-                                Unité
-                            </TableHead>
-                            <TableHead className="w-24 border-r border-slate-100 px-4 text-right text-[10px] font-black tracking-tight text-slate-500 uppercase dark:border-neutral-800 dark:text-neutral-400">
-                                Poids Kg
-                            </TableHead>
-                            <TableHead className="w-32 border-r border-slate-100 px-4 text-right text-[10px] font-black tracking-tight text-slate-500 uppercase dark:border-neutral-800 dark:text-neutral-400">
-                                Prix Réel
-                            </TableHead>
-                            <TableHead className="w-32 border-r border-slate-100 px-4 text-right text-[10px] font-black tracking-tight text-slate-500 uppercase dark:border-neutral-800 dark:text-neutral-400">
-                                P.U Facture
-                            </TableHead>
-                            <TableHead className="w-36 border-r border-slate-100 px-6 text-right text-[10px] font-black tracking-tight text-slate-500 uppercase dark:border-neutral-800 dark:text-neutral-400">
-                                Valeur DH
-                            </TableHead>
-                            <TableHead className="w-32 border-l border-slate-100 px-6 text-right text-[10px] font-black tracking-tight text-slate-500 uppercase dark:border-neutral-800 dark:text-neutral-400">
-                                Diff Total
-                            </TableHead>
+                            <TableHead>Bateau</TableHead>
+                            <TableHead>Article</TableHead>
+                            <TableHead>Quantité</TableHead>
+                            <TableHead>Prix vente</TableHead>
+                            <TableHead>Prix réel</TableHead>
+                            <TableHead>Montant</TableHead>
+                            <TableHead>Taxe 3%</TableHead>
+                            <TableHead>Avec taxe</TableHead>
+                            <TableHead>Total diff</TableHead>
+                            <TableHead aria-label="Actions" />
                         </TableRow>
                     </TableHeader>
 
@@ -178,7 +175,7 @@ export default function SalesShow({
                         ) : (
                             <TableRow>
                                 <TableCell
-                                    colSpan={9}
+                                    colSpan={10}
                                     className="py-24 text-center font-medium text-muted-foreground italic"
                                 >
                                     Aucune ligne de vente enregistrée pour le
@@ -210,6 +207,14 @@ export default function SalesShow({
             </div>
 
             <SalePrintFooter stats={stats} />
+
+            <GlobalSaleDialog
+                open={saleDialogOpen}
+                onOpenChange={setSaleDialogOpen}
+                sale={sale}
+                items={catalogItems}
+                boats={boats}
+            />
         </div>
     );
 }
