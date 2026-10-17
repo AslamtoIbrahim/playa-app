@@ -60,6 +60,7 @@ class SaleItemController extends Controller
     {
         $data = $request->validate([
             'sale_id' => 'sometimes|exists:sales,id',
+            'item_id' => 'sometimes|exists:items,id',
             'unit_count' => 'sometimes|numeric|not_in:0',
             'sale_price' => 'sometimes|numeric|min:0.01',
             'real_price' => 'sometimes|numeric|min:0',
@@ -75,7 +76,8 @@ class SaleItemController extends Controller
             $price = (float) ($data['sale_price'] ?? $saleItem->sale_price);
             $real = (float) ($data['real_price'] ?? $saleItem->real_price);
             $withTax = (bool) ($data['is_with_tax'] ?? $saleItem->is_with_tax);
-            $this->assertStockAvailable($sale, (int) $saleItem->item_id, abs($count), $saleItem->id);
+            $itemId = (int) ($data['item_id'] ?? $saleItem->item_id);
+            $this->assertStockAvailable($sale, $itemId, abs($count), $saleItem->id);
             $saleItem->update([...$data, 'amount' => $count * $real, 'tax' => $withTax ? $count * $real * 0.03 : 0, 'total_diff' => ($price - $real) * $count]);
 
             return back()->with('success', 'Ligne mise à jour.');

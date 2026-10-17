@@ -2,6 +2,7 @@ import {
     Dialog,
     DialogContent,
     DialogHeader,
+    DialogDescription,
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -21,6 +22,7 @@ import { SearchSelect } from '@/components/search-select';
 import { InvoiceItem } from '@/types/invoice-item';
 import { SaleItem } from '@/types/sale-item';
 import { Sale } from '@/types/sale';
+import type { Item as CatalogItem } from '@/types/item';
 import { router } from '@inertiajs/react';
 import { ShoppingCart, Trash2 } from 'lucide-react';
 import { useState } from 'react';
@@ -31,15 +33,18 @@ interface Props {
     onOpenChange: (open: boolean) => void;
     items: InvoiceItem[];
     sales: Sale[];
+    catalogItems: CatalogItem[];
 }
 
-export function SaleDialog({ open, onOpenChange, items, sales }: Props) {
+export function SaleDialog({ open, onOpenChange, items, sales, catalogItems }: Props) {
     const [saleIds, setSaleIds] = useState<Record<string, string>>({});
     const [counts, setCounts] = useState<Record<string, string>>({});
     const [prices, setPrices] = useState<Record<string, string>>({});
     const [realPrices, setRealPrices] = useState<Record<string, string>>({});
     const [taxFlags, setTaxFlags] = useState<Record<string, boolean>>({});
     const [openSaleIds, setOpenSaleIds] = useState<Record<string, boolean>>({});
+    const [itemIds, setItemIds] = useState<Record<string, string>>({});
+    const [openItemIds, setOpenItemIds] = useState<Record<string, boolean>>({});
 
     const saleOptions = sales.map((sale) => ({
         id: sale.id,
@@ -61,6 +66,7 @@ export function SaleDialog({ open, onOpenChange, items, sales }: Props) {
         item: InvoiceItem,
         line?: SaleItem,
         selectedSaleId?: number,
+        selectedItemId?: number,
     ): void => {
         const key = line ? `sale-${line.id}` : `item-${item.id}`;
         const count = Number(counts[key] ?? (line ? Math.abs(Number(line.unit_count)) : remaining(item)));
@@ -82,7 +88,7 @@ export function SaleDialog({ open, onOpenChange, items, sales }: Props) {
         const payload = {
                 sale_id: saleId,
                 invoice_item_id: item.id,
-                item_id: item.item_id,
+                item_id: selectedItemId ?? item.item_id,
                 boat_id: item.boat_id,
                 unit_count: count > 0 ? -count : count,
                 sale_price: salePrice,
@@ -153,6 +159,9 @@ router.post('/sale-items', payload, options);
                         </span>
                         {'Vente \u00b7 Articles s\u00e9lectionn\u00e9s'}
                     </DialogTitle>
+                    <DialogDescription className="sr-only">
+                        Saisissez et modifiez les lignes de vente.
+                    </DialogDescription>
                 </DialogHeader>
 
                 <div className="min-h-0 flex-1 overflow-auto bg-slate-50/60 p-3 dark:bg-neutral-950">
@@ -441,7 +450,23 @@ return null;
                                                 />
                                             </TableCell>
                                             <TableCell className="min-w-28 border-r border-slate-100 px-3 dark:border-neutral-800">{item.boat?.name ?? '—'}</TableCell>
-                                            <TableCell className="min-w-32 border-r border-slate-100 px-3 dark:border-neutral-800">{item.item?.name ?? 'Article'}</TableCell>
+                                            <TableCell className="min-w-32 border-r border-slate-100 p-0 dark:border-neutral-800">
+                                                <SearchSelect
+                                                    value={itemIds[key] ?? String(line.item_id)}
+                                                    options={catalogItems.map((option) => ({ id: option.id, name: option.name }))}
+                                                    placeholder="Article..."
+                                                    emptyMessage="Aucun article trouvé."
+                                                    open={openItemIds[key] ?? false}
+                                                    onOpenChange={(open) => setOpenItemIds((state) => ({ ...state, [key]: open }))}
+                                                    onKeyDown={navigateToAdjacentCell}
+                                                    onSelect={(id) => {
+                                                        const selectedId = Number(id);
+                                                        setItemIds((state) => ({ ...state, [key]: String(selectedId) }));
+                                                        save(item, line, undefined, selectedId);
+                                                    }}
+                                                    className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 shadow-none capitalize focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800"
+                                                />
+                                            </TableCell>
                                             <TableCell className="w-20 border-r border-slate-100 p-0 dark:border-neutral-800">
                                                 <Input type="number" step="any" value={quantity} onChange={(event) => setCounts((state) => ({ ...state, [key]: event.target.value }))} onBlur={() => save(item, line)} onKeyDown={(event) => {
                                                     if (event.key === 'Enter') {

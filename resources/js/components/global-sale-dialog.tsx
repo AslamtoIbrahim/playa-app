@@ -1,6 +1,7 @@
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
@@ -64,6 +65,9 @@ export function GlobalSaleDialog({
     const [itemSelectOpen, setItemSelectOpen] = useState(false);
     const [selectedSaleId, setSelectedSaleId] = useState(sale ? String(sale.id) : '');
     const [saleSelectOpen, setSaleSelectOpen] = useState(false);
+    const [articleIds, setArticleIds] = useState<Record<string, string>>({});
+    const [openArticleIds, setOpenArticleIds] = useState<Record<string, boolean>>({});
+    const [openClientIds, setOpenClientIds] = useState<Record<string, boolean>>({});
     const selectedSale = sale ?? sales.find((candidate) => String(candidate.id) === selectedSaleId);
     const boatlessSaleItems = sales.flatMap((currentSale) =>
         (currentSale.items ?? [])
@@ -91,7 +95,12 @@ export function GlobalSaleDialog({
     };
 
     const handleCellKeyDown = (event: KeyboardEvent<HTMLElement>): void => {
-        if (itemSelectOpen || saleSelectOpen) {
+        if (
+            itemSelectOpen ||
+            saleSelectOpen ||
+            Object.values(openArticleIds).some(Boolean) ||
+            Object.values(openClientIds).some(Boolean)
+        ) {
             return;
         }
 
@@ -187,9 +196,9 @@ export function GlobalSaleDialog({
                         <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white shadow-lg shadow-amber-500/20"><ShoppingCart className="size-4" /></span>
                         Vente globale · Articles avec ou sans bateau
                     </DialogTitle>
-                    <p className="pl-12 text-xs text-slate-500 dark:text-neutral-400">
+                    <DialogDescription className="pl-12 text-xs text-slate-500 dark:text-neutral-400">
                         Règle : la quantité vendue ne doit pas dépasser le stock restant de cette catégorie pour la journée.
-                    </p>
+                    </DialogDescription>
                 </DialogHeader>
 
                 <div className="min-h-0 flex-1 overflow-auto bg-slate-50/60 p-3 dark:bg-neutral-950">
@@ -354,9 +363,25 @@ export function GlobalSaleDialog({
                             {boatlessSaleItems.map((line) => (
                                 <TableRow key={line.id} className="group h-10 border-b border-slate-100 dark:border-neutral-800">
                                     <TableCell className="min-w-40 border-r border-slate-100 p-0 dark:border-neutral-800">
-                                        <SearchSelect value={String(line.sale_id)} options={sales.map((option) => ({ id: option.id, name: option.customer?.name ?? `Vente #${option.id}` }))} placeholder="Client..." emptyMessage="Aucun client trouvé." onSelect={(id) => updateSaleItem(line, { sale_id: Number(id) })} className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 shadow-none capitalize focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800" />
+                                        <SearchSelect value={String(line.sale_id)} options={sales.map((option) => ({ id: option.id, name: option.customer?.name ?? `Vente #${option.id}` }))} placeholder="Client..." emptyMessage="Aucun client trouvé." open={openClientIds[String(line.id)] ?? false} onOpenChange={(open) => setOpenClientIds((state) => ({ ...state, [String(line.id)]: open }))} onKeyDown={handleCellKeyDown} onSelect={(id) => updateSaleItem(line, { sale_id: Number(id) })} className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 shadow-none capitalize focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800" />
                                     </TableCell>
-                                    <TableCell className="min-w-40 border-r border-slate-100 px-3 dark:border-neutral-800">{line.item?.name ?? `Article #${line.item_id}`}</TableCell>
+                                    <TableCell className="min-w-40 border-r border-slate-100 p-0 dark:border-neutral-800">
+                                        <SearchSelect
+                                            value={articleIds[String(line.id)] ?? String(line.item_id)}
+                                            options={items.map((item) => ({ id: item.id, name: item.name }))}
+                                            placeholder="Article..."
+                                            emptyMessage="Aucun article trouvé."
+                                            open={openArticleIds[String(line.id)] ?? false}
+                                            onOpenChange={(open) => setOpenArticleIds((state) => ({ ...state, [String(line.id)]: open }))}
+                                            onKeyDown={handleCellKeyDown}
+                                            onSelect={(id) => {
+                                                const itemId = Number(id);
+                                                setArticleIds((state) => ({ ...state, [String(line.id)]: String(itemId) }));
+                                                updateSaleItem(line, { item_id: itemId });
+                                            }}
+                                            className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 shadow-none capitalize focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800"
+                                        />
+                                    </TableCell>
                                     <TableCell className="w-20 border-r border-slate-100 p-0 dark:border-neutral-800"><Input type="number" min="0" step="any" defaultValue={Math.abs(Number(line.unit_count))} onBlur={(event) => { const count = Number(event.target.value); if (count > 0) { updateSaleItem(line, { unit_count: -count }); } }} onKeyDown={navigateToAdjacentCell} className="h-10 border-none bg-transparent text-center [appearance:textfield] focus-visible:bg-slate-100 focus-visible:ring-0 dark:focus-visible:bg-neutral-800 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" aria-label="Quantité vendue" /></TableCell>
                                     <TableCell className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800"><Input type="number" min="0.01" step="any" defaultValue={line.sale_price} onBlur={(event) => { const price = Number(event.target.value); if (price > 0) { updateSaleItem(line, { sale_price: price }); } }} onKeyDown={navigateToAdjacentCell} className="h-10 border-none bg-transparent text-center [appearance:textfield] focus-visible:bg-slate-100 focus-visible:ring-0 dark:focus-visible:bg-neutral-800 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" aria-label="Prix de vente" /></TableCell>
                                     <TableCell className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800"><Input type="number" min="0" step="any" defaultValue={line.real_price} onBlur={(event) => updateSaleItem(line, { real_price: Number(event.target.value) })} onKeyDown={navigateToAdjacentCell} className="h-10 border-none bg-transparent text-center [appearance:textfield] focus-visible:bg-slate-100 focus-visible:ring-0 dark:focus-visible:bg-neutral-800 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" aria-label="Prix réel" /></TableCell>

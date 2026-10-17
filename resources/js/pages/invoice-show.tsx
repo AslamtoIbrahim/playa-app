@@ -660,6 +660,7 @@ export default function InvoiceShow({
                     onOpenChange={setIsSaleOpen}
                     items={saleItems}
                     sales={sales}
+                    catalogItems={items}
                 />
             )}
 
