@@ -96,6 +96,18 @@ export function GlobalSaleDialog({
         setDraft((current) => ({ ...current, ...updates }));
     };
 
+    const handleDialogOpenChange = (nextOpen: boolean): void => {
+        if (!nextOpen) {
+            setDraft(initialDraft);
+
+            if (!sale) {
+                setSelectedSaleId('');
+            }
+        }
+
+        onOpenChange(nextOpen);
+    };
+
     const handleCellKeyDown = (event: KeyboardEvent<HTMLElement>): void => {
         if (
             itemSelectOpen ||
@@ -181,7 +193,7 @@ export function GlobalSaleDialog({
     };
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
+        <Dialog open={open} onOpenChange={handleDialogOpenChange}>
             <DialogContent className="flex max-h-[88vh] w-11/12 max-w-5xl flex-col gap-0 overflow-hidden rounded-2xl border border-amber-100 p-0 shadow-2xl sm:max-w-5xl dark:border-amber-950 dark:bg-neutral-950 dark:text-neutral-100">
                 <DialogHeader className="shrink-0 border-b border-amber-200 bg-gradient-to-br from-amber-50 via-white to-yellow-50 p-3 pr-12 text-left dark:border-amber-950 dark:from-amber-950/50 dark:via-neutral-950 dark:to-yellow-950/30">
                     <div className="mb-1 text-[10px] font-bold tracking-[0.18em] text-amber-700 uppercase dark:text-amber-300">
@@ -231,7 +243,7 @@ export function GlobalSaleDialog({
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            <TableRow className="group h-10 min-h-10 border-b border-slate-100 transition-colors hover:bg-slate-50/50 dark:border-neutral-800 dark:hover:bg-neutral-900/40">
+                            <TableRow className="group h-10 min-h-10 border-b border-amber-200 bg-amber-50/70 transition-colors hover:bg-amber-100/70 dark:border-amber-900 dark:bg-amber-950/30 dark:hover:bg-amber-950/50">
                                 <TableCell className="min-w-40 border-r border-slate-100 p-0 dark:border-neutral-800">
                                     {sale ? (
                                         <span className="block truncate px-3 font-medium text-slate-900 dark:text-neutral-100">
