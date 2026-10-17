@@ -53,7 +53,6 @@ export default function InvoiceItemRow({
     invoiceId,
     item,
     boats,
-    items,
     isNew,
     selected,
     onSelectChange,

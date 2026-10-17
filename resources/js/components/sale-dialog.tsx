@@ -90,8 +90,10 @@ export function SaleDialog({ open, onOpenChange, items, sales, catalogItems, ava
 
         const saleId = selectedSaleId ?? Number(saleIds[key] ?? line?.sale_id);
         const articleId = selectedItemId ?? (itemIds[key] ? Number(itemIds[key]) : line?.item_id);
+        
         if (count > maxCount + 0.00001) {
             toast.error(`La quantité dépasse le reste disponible de cette catégorie (${maxCount}).`);
+            
             return;
         }
 

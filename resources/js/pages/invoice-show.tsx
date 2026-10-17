@@ -149,6 +149,16 @@ export default function InvoiceShow({
     const invoiceCategoryIds = new Set(
         invoice.items.map((item) => item.category_id),
     );
+    const categoryUnitById = invoice.items.reduce<Record<number, string>>(
+        (unitsByCategory, item) => {
+            if (!unitsByCategory[item.category_id]) {
+                unitsByCategory[item.category_id] = item.unit;
+            }
+
+            return unitsByCategory;
+        },
+        {},
+    );
     const invoiceCatalogItems = items.filter((item) =>
         invoiceCategoryIds.has(item.category_id),
     );
@@ -678,6 +688,9 @@ export default function InvoiceShow({
                 sales={sales}
                 items={items}
                 invoiceCatalogItems={invoiceCatalogItems}
+                categories={categories}
+                invoiceCategoryIds={[...invoiceCategoryIds]}
+                categoryUnitById={categoryUnitById}
                 availableStockByCategory={availableStockByCategory}
             />
         </div>

@@ -107,7 +107,7 @@ export function DifferenceDialog({
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="flex max-h-[90vh] w-fit max-w-[calc(100vw-2rem)] flex-col gap-0 overflow-hidden rounded-2xl border border-indigo-100 p-0 shadow-2xl sm:max-w-4xl dark:border-indigo-950 dark:bg-neutral-950 dark:text-neutral-100">
-                <DialogHeader className="shrink-0 border-b border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-sky-50 p-4 pb-3 sm:p-5 dark:border-indigo-950 dark:from-indigo-950/50 dark:via-neutral-950 dark:to-sky-950/30">
+                <DialogHeader className="shrink-0 border-b border-indigo-100 bg-linear-to-br from-indigo-50 via-white to-sky-50 p-4 pb-3 sm:p-5 dark:border-indigo-950 dark:from-indigo-950/50 dark:via-neutral-950 dark:to-sky-950/30">
                     <div className="flex flex-col gap-3 pr-8">
                         <div className="flex items-start justify-between gap-4">
                             <div className="flex min-w-0 items-center gap-3">
