@@ -78,6 +78,7 @@ export default function InvoiceItemRow({
         submitSave,
         handleKeyDown,
         handleBlur,
+        handleRowBlur,
     } = useInvoiceItem({ invoiceId, item, isNew });
 
     const {
@@ -123,6 +124,7 @@ export default function InvoiceItemRow({
         <TableRow
             ref={setNodeRef}
             style={style}
+            onBlurCapture={handleRowBlur}
             className={cn(
                 'group border-b border-slate-100 dark:border-neutral-800',
                 isNew

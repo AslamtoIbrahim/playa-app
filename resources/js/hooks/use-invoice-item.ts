@@ -1,7 +1,7 @@
 import { store, update } from '@/routes/invoices/items';
 import { InvoiceItem } from '@/types/invoice-item';
 import { router } from '@inertiajs/react';
-import { KeyboardEvent, useEffect, useRef, useState } from 'react';
+import { FocusEvent, KeyboardEvent, useEffect, useRef, useState } from 'react';
 
 /**
  * Délai d'inactivité avant l'enregistrement automatique d'une modification.
@@ -9,7 +9,7 @@ import { KeyboardEvent, useEffect, useRef, useState } from 'react';
  * pour qu'aucune saisie ne soit perdue si l'utilisateur oublie « Entrée ».
  */
 const AUTO_SAVE_DELAY = 700;
-const NEW_ITEM_AUTO_SAVE_DELAY = 3000;
+const NEW_ITEM_AUTO_SAVE_DELAY = 10000;
 
 /** Délai de reprise quand une requête est déjà en vol. */
 const AUTO_SAVE_RETRY_DELAY = 200;
@@ -323,10 +323,13 @@ export function useInvoiceItem({
 
         clearSaveTimer();
 
-        saveTimerRef.current = setTimeout(() => {
-            saveTimerRef.current = null;
-            flushSave();
-        }, isNew ? NEW_ITEM_AUTO_SAVE_DELAY : delay);
+        saveTimerRef.current = setTimeout(
+            () => {
+                saveTimerRef.current = null;
+                flushSave();
+            },
+            isNew ? NEW_ITEM_AUTO_SAVE_DELAY : delay,
+        );
     };
 
     const saveDraftOnLeave = () => {
@@ -363,10 +366,10 @@ export function useInvoiceItem({
         });
         formData.append('_token', token);
 
-        if (navigator.sendBeacon?.(store(invoiceId), formData)) {
+        if (navigator.sendBeacon?.(store(invoiceId).url, formData)) {
             savedSignatureRef.current = toSignature(currentData);
         } else {
-            void fetch(store(invoiceId), {
+            void fetch(store(invoiceId).url, {
                 method: 'POST',
                 body: formData,
                 credentials: 'same-origin',
@@ -403,6 +406,23 @@ export function useInvoiceItem({
         if (!isNew) {
             flushSave();
         }
+    };
+
+    const handleRowBlur = (event: FocusEvent<HTMLTableRowElement>) => {
+        if (!isNew || openBoat || openItem) {
+            return;
+        }
+
+        const nextTarget = event.relatedTarget;
+
+        if (
+            nextTarget instanceof Node &&
+            event.currentTarget.contains(nextTarget)
+        ) {
+            return;
+        }
+
+        flushSave();
     };
 
     const handleKeyDown = (
@@ -555,5 +575,6 @@ export function useInvoiceItem({
         submitSave,
         handleKeyDown,
         handleBlur,
+        handleRowBlur,
     };
 }
