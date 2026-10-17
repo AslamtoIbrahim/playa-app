@@ -24,7 +24,6 @@ import type { Sale } from '@/types/sale';
 import type { SaleItem } from '@/types/sale-item';
 import { router } from '@inertiajs/react';
 import { ShoppingCart } from 'lucide-react';
-import { AlertCircle } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -51,6 +50,12 @@ const initialDraft: Draft = {
     salePrice: '',
     realPrice: '',
     isWithTax: false,
+};
+
+const numberInputValue = (value: number | string): string => {
+    const number = Number(value);
+
+    return Number.isFinite(number) ? String(number) : '';
 };
 
 export function GlobalSaleDialog({
@@ -112,12 +117,7 @@ export function GlobalSaleDialog({
     };
 
     const handleItemChange = (itemId: string): void => {
-        updateDraft({
-            itemId,
-            unitCount: '',
-            realPrice: '',
-            salePrice: '',
-        });
+        updateDraft({ itemId });
     };
 
     const handleSave = (): void => {
@@ -134,7 +134,7 @@ export function GlobalSaleDialog({
         }
 
         if (exceedsInvoiceQuantity) {
-            toast.error(`La quantité dépasse le reste disponible sur cette facture (${remainingInvoiceCount}).`);
+            toast.error(`Quantité supérieure au stock restant : ${remainingInvoiceCount}.`);
 
             return;
         }
@@ -353,7 +353,7 @@ export function GlobalSaleDialog({
                                     <TableCell className="min-w-40 border-r border-slate-100 p-0 dark:border-neutral-800">
                                         <SearchSelect value={String(line.sale_id)} options={sales.map((option) => ({ id: option.id, name: option.customer?.name ?? `Vente #${option.id}` }))} placeholder="Client..." emptyMessage="Aucun client trouvé." open={openClientIds[String(line.id)] ?? false} onOpenChange={(open) => setOpenClientIds((state) => ({ ...state, [String(line.id)]: open }))} onKeyDown={handleCellKeyDown} onSelect={(id) => updateSaleItem(line, { sale_id: Number(id) })} className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 shadow-none capitalize focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800" />
                                     </TableCell>
-                                    <TableCell className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800"><Input type="number" min="0.01" step="any" defaultValue={line.sale_price} onBlur={(event) => { const price = Number(event.target.value); if (price > 0) { updateSaleItem(line, { sale_price: price }); } }} onKeyDown={navigateToAdjacentCell} className="h-10 border-none bg-transparent text-center [appearance:textfield] focus-visible:bg-slate-100 focus-visible:ring-0 dark:focus-visible:bg-neutral-800 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" aria-label="Prix de vente" /></TableCell>
+                                    <TableCell className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800"><Input type="number" min="0.01" step="any" defaultValue={numberInputValue(line.sale_price)} onBlur={(event) => { const price = Number(event.target.value); if (price > 0) { updateSaleItem(line, { sale_price: price }); } }} onKeyDown={navigateToAdjacentCell} className="h-10 border-none bg-transparent text-center [appearance:textfield] focus-visible:bg-slate-100 focus-visible:ring-0 dark:focus-visible:bg-neutral-800 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" aria-label="Prix de vente" /></TableCell>
                                     <TableCell className="min-w-40 border-r border-slate-100 p-0 dark:border-neutral-800">
                                         <SearchSelect
                                             value={articleIds[String(line.id)] ?? String(line.item_id)}
@@ -371,8 +371,8 @@ export function GlobalSaleDialog({
                                             className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 shadow-none capitalize focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800"
                                         />
                                     </TableCell>
-                                    <TableCell className="w-20 border-r border-slate-100 p-0 dark:border-neutral-800"><Input type="number" min="0" step="any" defaultValue={Math.abs(Number(line.unit_count))} onBlur={(event) => { const count = Number(event.target.value); if (count > 0) { updateSaleItem(line, { unit_count: -count }); } }} onKeyDown={navigateToAdjacentCell} className="h-10 border-none bg-transparent text-center [appearance:textfield] focus-visible:bg-slate-100 focus-visible:ring-0 dark:focus-visible:bg-neutral-800 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" aria-label="Quantité vendue" /></TableCell>
-                                    <TableCell className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800"><Input type="number" min="0" step="any" defaultValue={line.real_price} onBlur={(event) => updateSaleItem(line, { real_price: Number(event.target.value) })} onKeyDown={navigateToAdjacentCell} className="h-10 border-none bg-transparent text-center [appearance:textfield] focus-visible:bg-slate-100 focus-visible:ring-0 dark:focus-visible:bg-neutral-800 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" aria-label="Prix réel" /></TableCell>
+                                    <TableCell className="w-20 border-r border-slate-100 p-0 dark:border-neutral-800"><Input type="number" min="0" step="any" defaultValue={numberInputValue(Math.abs(Number(line.unit_count)))} onBlur={(event) => { const count = Number(event.target.value); if (count > 0) { updateSaleItem(line, { unit_count: -count }); } }} onKeyDown={navigateToAdjacentCell} className="h-10 border-none bg-transparent text-center [appearance:textfield] focus-visible:bg-slate-100 focus-visible:ring-0 dark:focus-visible:bg-neutral-800 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" aria-label="Quantité vendue" /></TableCell>
+                                    <TableCell className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800"><Input type="number" min="0" step="any" defaultValue={numberInputValue(line.real_price)} onBlur={(event) => updateSaleItem(line, { real_price: Number(event.target.value) })} onKeyDown={navigateToAdjacentCell} className="h-10 border-none bg-transparent text-center [appearance:textfield] focus-visible:bg-slate-100 focus-visible:ring-0 dark:focus-visible:bg-neutral-800 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" aria-label="Prix réel" /></TableCell>
                                     <TableCell className="w-28 border-r border-slate-100 px-3 text-right dark:border-neutral-800">{Math.abs(Number(line.amount)).toLocaleString('fr-FR')}</TableCell>
                                     <TableCell className="w-20 border-r border-slate-100 px-3 text-right dark:border-neutral-800">{Math.abs(Number(line.tax)).toLocaleString('fr-FR')}</TableCell>
                                     <TableCell className="w-20 border-r border-slate-100 text-center dark:border-neutral-800"><Checkbox checked={line.is_with_tax} onCheckedChange={(checked) => updateSaleItem(line, { is_with_tax: checked === true })} aria-label="Vendre avec taxe" /></TableCell>
@@ -381,18 +381,6 @@ export function GlobalSaleDialog({
                             ))}
                         </TableBody>
                     </Table>
-                    {exceedsInvoiceQuantity && (
-                        <div role="alert" className="mt-2 flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">
-                            <AlertCircle className="size-4 shrink-0" />
-                            Quantité supérieure au stock restant : {remainingInvoiceCount}.
-                        </div>
-                    )}
-                    {selectedItem && (!Number.isFinite(salePrice) || salePrice <= 0) && (
-                        <div role="alert" className="mt-2 flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">
-                            <AlertCircle className="size-4 shrink-0" />
-                            Le prix de vente doit être supérieur à zéro.
-                        </div>
-                    )}
                 </div>
             </DialogContent>
         </Dialog>
