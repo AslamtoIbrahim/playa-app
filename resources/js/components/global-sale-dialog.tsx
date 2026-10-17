@@ -18,12 +18,13 @@ import {
 import { cn } from '@/lib/utils';
 import { SearchSelect } from '@/components/search-select';
 import { navigateToAdjacentCell } from '@/lib/table-navigation';
+import { Button } from '@/components/ui/button';
 import type { KeyboardEvent } from 'react';
 import type { Item } from '@/types/item';
 import type { Sale } from '@/types/sale';
 import type { SaleItem } from '@/types/sale-item';
 import { router } from '@inertiajs/react';
-import { ShoppingCart } from 'lucide-react';
+import { ShoppingCart, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -240,6 +241,7 @@ export function GlobalSaleDialog({
                                 <TableHead className="w-28 py-4 text-center text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
                                     Total diff
                                 </TableHead>
+                                <TableHead className="w-12" />
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -359,6 +361,7 @@ export function GlobalSaleDialog({
                                 <TableCell className={cn('w-28 px-3 py-0 text-right text-xs font-bold tabular-nums', totalDiff < 0 ? 'text-rose-600 dark:text-rose-400' : totalDiff > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-neutral-300')}>
                                     {totalDiff.toLocaleString('fr-FR')}
                                 </TableCell>
+                                <TableCell className="w-12" />
                             </TableRow>
                             {boatlessSaleItems.map((line) => (
                                 <TableRow key={line.id} className="group h-10 border-b border-slate-100 dark:border-neutral-800">
@@ -389,6 +392,24 @@ export function GlobalSaleDialog({
                                     <TableCell className="w-20 border-r border-slate-100 px-3 text-right dark:border-neutral-800">{Math.abs(Number(line.tax)).toLocaleString('fr-FR')}</TableCell>
                                     <TableCell className="w-20 border-r border-slate-100 text-center dark:border-neutral-800"><Checkbox checked={line.is_with_tax} onCheckedChange={(checked) => updateSaleItem(line, { is_with_tax: checked === true })} aria-label="Vendre avec taxe" /></TableCell>
                                     <TableCell className="w-28 px-3 text-right">{Number(line.total_diff ?? 0).toLocaleString('fr-FR')}</TableCell>
+                                    <TableCell className="w-12 p-0 text-center">
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="size-10 text-slate-400 hover:text-red-600 dark:text-neutral-500 dark:hover:text-red-400"
+                                            aria-label="Supprimer la ligne de vente"
+                                            onClick={() => {
+                                                router.delete(`/sale-items/${line.id}`, {
+                                                    preserveScroll: true,
+                                                    onSuccess: () => toast.success('Ligne de vente supprimée.'),
+                                                    onError: () => toast.error('Impossible de supprimer cette ligne.'),
+                                                });
+                                            }}
+                                        >
+                                            <Trash2 className="size-4" />
+                                        </Button>
+                                    </TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
