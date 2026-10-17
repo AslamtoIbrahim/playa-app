@@ -18,9 +18,9 @@ import { cn } from '@/lib/utils';
 import { SearchSelect } from '@/components/search-select';
 import { navigateToAdjacentCell } from '@/lib/table-navigation';
 import type { KeyboardEvent } from 'react';
-import type { Boat } from '@/types/boat';
 import type { Item } from '@/types/item';
 import type { Sale } from '@/types/sale';
+import type { SaleItem } from '@/types/sale-item';
 import { router } from '@inertiajs/react';
 import { ShoppingCart } from 'lucide-react';
 import { AlertCircle } from 'lucide-react';
@@ -33,13 +33,11 @@ interface Props {
     sale?: Sale;
     sales?: Sale[];
     items: Item[];
-    boats: Boat[];
     availableStockByCategory?: Record<number, number>;
 }
 
 interface Draft {
     itemId: string;
-    boatId: string;
     unitCount: string;
     salePrice: string;
     realPrice: string;
@@ -48,7 +46,6 @@ interface Draft {
 
 const initialDraft: Draft = {
     itemId: '',
-    boatId: '',
     unitCount: '1',
     salePrice: '',
     realPrice: '',
@@ -61,15 +58,17 @@ export function GlobalSaleDialog({
     sale,
     sales = [],
     items,
-    boats,
     availableStockByCategory = {},
 }: Props) {
     const [draft, setDraft] = useState<Draft>(initialDraft);
     const [itemSelectOpen, setItemSelectOpen] = useState(false);
-    const [boatSelectOpen, setBoatSelectOpen] = useState(false);
     const [selectedSaleId, setSelectedSaleId] = useState(sale ? String(sale.id) : '');
     const [saleSelectOpen, setSaleSelectOpen] = useState(false);
     const selectedSale = sale ?? sales.find((candidate) => String(candidate.id) === selectedSaleId);
+    const boatlessSaleItems = sales.flatMap((currentSale) =>
+        (currentSale.items ?? [])
+            .filter((line) => !line.deleted_at && !line.boat_id),
+    );
     const selectedItem = items.find((item) => String(item.id) === draft.itemId);
     const defaultPrice = selectedItem?.default_price ?? 0;
     const realPrice =
@@ -92,7 +91,7 @@ export function GlobalSaleDialog({
     };
 
     const handleCellKeyDown = (event: KeyboardEvent<HTMLElement>): void => {
-        if (itemSelectOpen || boatSelectOpen || saleSelectOpen) {
+        if (itemSelectOpen || saleSelectOpen) {
             return;
         }
 
@@ -123,7 +122,7 @@ export function GlobalSaleDialog({
             return;
         }
 
-        if (salePrice <= 0) {
+        if (!Number.isFinite(salePrice) || salePrice <= 0) {
             toast.error('Le prix de vente doit être supérieur à zéro.');
 
             return;
@@ -141,7 +140,7 @@ export function GlobalSaleDialog({
                 sale_id: selectedSale.id,
                 invoice_item_id: null,
                 item_id: Number(draft.itemId),
-                boat_id: draft.boatId ? Number(draft.boatId) : null,
+                boat_id: null,
                 unit_count: unitCount > 0 ? -unitCount : unitCount,
                 sale_price: salePrice,
                 real_price: realPrice,
@@ -166,6 +165,14 @@ export function GlobalSaleDialog({
                 },
             },
         );
+    };
+
+    const updateSaleItem = (line: SaleItem, updates: Partial<SaleItem>): void => {
+        router.patch(`/sale-items/${line.id}`, updates, {
+            preserveScroll: true,
+            onSuccess: () => toast.success('Ligne de vente mise à jour.'),
+            onError: (errors) => toast.error(Object.values(errors)[0] ?? 'Impossible de mettre à jour cette ligne.'),
+        });
     };
 
     return (
@@ -194,9 +201,6 @@ export function GlobalSaleDialog({
                                 </TableHead>
                                 <TableHead className="min-w-40 py-4 text-center text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
                                     Article
-                                </TableHead>
-                                <TableHead className="min-w-36 py-4 text-center text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
-                                    Bateau
                                 </TableHead>
                                 <TableHead className="w-20 py-4 text-center text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
                                     {'Quantit\u00e9'}
@@ -258,24 +262,6 @@ export function GlobalSaleDialog({
                                         onOpenChange={setItemSelectOpen}
                                         onSelect={(id) =>
                                             handleItemChange(String(id))
-                                        }
-                                        onKeyDown={handleCellKeyDown}
-                                        className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 shadow-none capitalize focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800"
-                                    />
-                                </TableCell>
-                                <TableCell className="min-w-36 border-r border-slate-100 p-0 dark:border-neutral-800">
-                                    <SearchSelect
-                                        value={draft.boatId}
-                                        options={boats.map((boat) => ({
-                                            id: boat.id,
-                                            name: boat.name,
-                                        }))}
-                                        placeholder="Sans bateau"
-                                        emptyMessage="Aucun bateau trouvé."
-                                        open={boatSelectOpen}
-                                        onOpenChange={setBoatSelectOpen}
-                                        onSelect={(id) =>
-                                            updateDraft({ boatId: String(id) })
                                         }
                                         onKeyDown={handleCellKeyDown}
                                         className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 shadow-none capitalize focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800"
@@ -365,6 +351,21 @@ export function GlobalSaleDialog({
                                     {totalDiff.toLocaleString('fr-FR')}
                                 </TableCell>
                             </TableRow>
+                            {boatlessSaleItems.map((line) => (
+                                <TableRow key={line.id} className="group h-10 border-b border-slate-100 dark:border-neutral-800">
+                                    <TableCell className="min-w-40 border-r border-slate-100 p-0 dark:border-neutral-800">
+                                        <SearchSelect value={String(line.sale_id)} options={sales.map((option) => ({ id: option.id, name: option.customer?.name ?? `Vente #${option.id}` }))} placeholder="Client..." emptyMessage="Aucun client trouvé." onSelect={(id) => updateSaleItem(line, { sale_id: Number(id) })} className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 shadow-none capitalize focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800" />
+                                    </TableCell>
+                                    <TableCell className="min-w-40 border-r border-slate-100 px-3 dark:border-neutral-800">{line.item?.name ?? `Article #${line.item_id}`}</TableCell>
+                                    <TableCell className="w-20 border-r border-slate-100 p-0 dark:border-neutral-800"><Input type="number" min="0" step="any" defaultValue={Math.abs(Number(line.unit_count))} onBlur={(event) => { const count = Number(event.target.value); if (count > 0) { updateSaleItem(line, { unit_count: -count }); } }} onKeyDown={navigateToAdjacentCell} className="h-10 border-none bg-transparent text-center [appearance:textfield] focus-visible:bg-slate-100 focus-visible:ring-0 dark:focus-visible:bg-neutral-800 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" aria-label="Quantité vendue" /></TableCell>
+                                    <TableCell className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800"><Input type="number" min="0.01" step="any" defaultValue={line.sale_price} onBlur={(event) => { const price = Number(event.target.value); if (price > 0) { updateSaleItem(line, { sale_price: price }); } }} onKeyDown={navigateToAdjacentCell} className="h-10 border-none bg-transparent text-center [appearance:textfield] focus-visible:bg-slate-100 focus-visible:ring-0 dark:focus-visible:bg-neutral-800 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" aria-label="Prix de vente" /></TableCell>
+                                    <TableCell className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800"><Input type="number" min="0" step="any" defaultValue={line.real_price} onBlur={(event) => updateSaleItem(line, { real_price: Number(event.target.value) })} onKeyDown={navigateToAdjacentCell} className="h-10 border-none bg-transparent text-center [appearance:textfield] focus-visible:bg-slate-100 focus-visible:ring-0 dark:focus-visible:bg-neutral-800 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" aria-label="Prix réel" /></TableCell>
+                                    <TableCell className="w-28 border-r border-slate-100 px-3 text-right dark:border-neutral-800">{Math.abs(Number(line.amount)).toLocaleString('fr-FR')}</TableCell>
+                                    <TableCell className="w-20 border-r border-slate-100 px-3 text-right dark:border-neutral-800">{Math.abs(Number(line.tax)).toLocaleString('fr-FR')}</TableCell>
+                                    <TableCell className="w-20 border-r border-slate-100 text-center dark:border-neutral-800"><Checkbox checked={line.is_with_tax} onCheckedChange={(checked) => updateSaleItem(line, { is_with_tax: checked === true })} aria-label="Vendre avec taxe" /></TableCell>
+                                    <TableCell className="w-28 px-3 text-right">{Number(line.total_diff ?? 0).toLocaleString('fr-FR')}</TableCell>
+                                </TableRow>
+                            ))}
                         </TableBody>
                     </Table>
                     {exceedsInvoiceQuantity && (
@@ -373,7 +374,7 @@ export function GlobalSaleDialog({
                             Quantité supérieure au stock restant : {remainingInvoiceCount}.
                         </div>
                     )}
-                    {selectedItem && salePrice <= 0 && (
+                    {selectedItem && (!Number.isFinite(salePrice) || salePrice <= 0) && (
                         <div role="alert" className="mt-2 flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">
                             <AlertCircle className="size-4 shrink-0" />
                             Le prix de vente doit être supérieur à zéro.

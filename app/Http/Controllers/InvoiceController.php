@@ -162,7 +162,7 @@ class InvoiceController extends Controller
         // Ventes de la même journée : la distribution d'une ligne d'achat ne
         // peut se faire que vers une vente de la journée en cours.
         $sales = $session
-            ? Sale::where('session_id', $session->id)->with('customer')->latest('id')->get()
+            ? Sale::where('session_id', $session->id)->with(['customer', 'items.item'])->latest('id')->get()
             : Sale::whereRaw('1 = 0')->get();
 
         $availableStockByCategory = [];

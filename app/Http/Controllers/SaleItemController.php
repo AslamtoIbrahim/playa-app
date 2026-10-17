@@ -19,7 +19,7 @@ class SaleItemController extends Controller
             'item_id' => 'required|exists:items,id',
             'boat_id' => 'nullable|exists:boats,id',
             'unit_count' => 'required|numeric|not_in:0',
-            'sale_price' => 'required|numeric|min:0',
+            'sale_price' => 'required|numeric|min:0.01',
             'real_price' => 'required|numeric|min:0',
             'is_with_tax' => 'required|boolean',
         ]);
@@ -61,7 +61,7 @@ class SaleItemController extends Controller
         $data = $request->validate([
             'sale_id' => 'sometimes|exists:sales,id',
             'unit_count' => 'sometimes|numeric|not_in:0',
-            'sale_price' => 'sometimes|numeric|min:0',
+            'sale_price' => 'sometimes|numeric|min:0.01',
             'real_price' => 'sometimes|numeric|min:0',
             'is_with_tax' => 'sometimes|boolean',
         ]);

@@ -668,7 +668,6 @@ export default function InvoiceShow({
                 onOpenChange={setIsGlobalSaleOpen}
                 sales={sales}
                 items={items}
-                boats={boats}
                 availableStockByCategory={availableStockByCategory}
             />
         </div>
