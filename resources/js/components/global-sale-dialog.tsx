@@ -134,8 +134,20 @@ export function GlobalSaleDialog({
     };
 
     const handleSave = (): void => {
-        if (!selectedSale || !draft.itemId || !draft.unitCount || unitCount === 0) {
-            toast.error('Choisissez une vente, un article et une quantité.');
+        if (!selectedSale) {
+            toast.error('Veuillez choisir un client.');
+
+            return;
+        }
+
+        if (!draft.itemId) {
+            toast.error('Veuillez choisir un article.');
+
+            return;
+        }
+
+        if (!draft.unitCount || !Number.isFinite(unitCount) || unitCount === 0) {
+            toast.error('Veuillez saisir une quantité valide.');
 
             return;
         }
@@ -399,8 +411,10 @@ export function GlobalSaleDialog({
                                             size="icon"
                                             className="size-10 text-slate-400 hover:text-red-600 dark:text-neutral-500 dark:hover:text-red-400"
                                             aria-label="Supprimer la ligne de vente"
+                                            onPointerDown={(event) => event.stopPropagation()}
                                             onClick={() => {
                                                 router.delete(`/sale-items/${line.id}`, {
+                                                    preserveState: true,
                                                     preserveScroll: true,
                                                     onSuccess: () => toast.success('Ligne de vente supprimée.'),
                                                     onError: () => toast.error('Impossible de supprimer cette ligne.'),
