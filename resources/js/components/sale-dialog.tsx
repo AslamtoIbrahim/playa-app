@@ -28,6 +28,12 @@ import { ShoppingCart, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
+const formatSaleNumber = (value: number): string =>
+    value.toLocaleString('fr-FR', {
+        minimumFractionDigits: Number.isInteger(value) ? 0 : 2,
+        maximumFractionDigits: 3,
+    });
+
 interface Props {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -289,7 +295,7 @@ return null;
                                             <Input
                                                 type="number"
                                                 step="any"
-                                                value={prices[key] ?? item.unit_price}
+                                                value={prices[key] ?? Number(item.unit_price)}
                                                 onChange={(event) => setPrices((current) => ({ ...current, [key]: event.target.value }))}
                                                 onKeyDown={(event) => {
                                                     if (event.key === 'Enter') {
@@ -354,9 +360,11 @@ return null;
                                                 step="any"
                                                 value={
                                                     realPrices[key] ??
-                                                    item.differences?.[0]
-                                                        ?.real_price ??
-                                                    item.unit_price
+                                                    Number(
+                                                        item.differences?.[0]
+                                                            ?.real_price ??
+                                                            item.unit_price,
+                                                    )
                                                 }
                                                 onChange={(event) =>
                                                     setRealPrices(
@@ -385,13 +393,12 @@ return null;
                                             />
                                         </TableCell>
                                         <TableCell className="w-28 border-r border-slate-100 px-3 py-0 text-right text-xs font-bold tabular-nums text-slate-700 dark:border-neutral-800 dark:text-neutral-300">
-                                            {amount.toLocaleString('fr-FR')}
+                                            {formatSaleNumber(amount)}
                                         </TableCell>
                                         <TableCell className="w-20 border-r border-slate-100 px-3 py-0 text-right text-xs tabular-nums text-slate-600 dark:border-neutral-800 dark:text-neutral-400">
-                                            {(isWithTax
-                                                ? amount * 0.03
-                                                : 0
-                                            ).toLocaleString('fr-FR')}
+                                            {formatSaleNumber(
+                                                isWithTax ? amount * 0.03 : 0,
+                                            )}
                                         </TableCell>
                                         <TableCell className="w-20 border-r border-slate-100 p-0 text-center dark:border-neutral-800">
                                             <Checkbox
@@ -416,10 +423,10 @@ return null;
                                             />
                                         </TableCell>
                                         <TableCell className={cn('w-28 px-3 py-0 text-right text-xs font-bold tabular-nums', (salePrice - realPrice) * count < 0 ? 'text-rose-600 dark:text-rose-400' : (salePrice - realPrice) * count > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-neutral-300')}>
-                                            {(
+                                            {formatSaleNumber(
                                                 (salePrice - realPrice) *
-                                                count
-                                            ).toLocaleString('fr-FR')}
+                                                    count,
+                                            )}
                                         </TableCell>
                                         <TableCell className="w-12" />
                                     </TableRow>
@@ -456,7 +463,7 @@ return null;
                                                 />
                                             </TableCell>
                                             <TableCell className="min-w-28 border-r border-slate-100 px-3 dark:border-neutral-800">{item.boat?.name ?? '—'}</TableCell>
-                                            <TableCell className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800"><Input type="number" step="any" value={prices[key] ?? line.sale_price} onChange={(event) => setPrices((state) => ({ ...state, [key]: event.target.value }))} onBlur={() => save(item, line)} onKeyDown={navigateToAdjacentCell} className="h-10 border-none bg-transparent text-center [appearance:textfield] focus-visible:bg-slate-100 focus-visible:ring-0 dark:focus-visible:bg-neutral-800 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" aria-label="Prix de vente" /></TableCell>
+                                            <TableCell className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800"><Input type="number" step="any" value={prices[key] ?? Number(line.sale_price)} onChange={(event) => setPrices((state) => ({ ...state, [key]: event.target.value }))} onBlur={() => save(item, line)} onKeyDown={navigateToAdjacentCell} className="h-10 border-none bg-transparent text-center [appearance:textfield] focus-visible:bg-slate-100 focus-visible:ring-0 dark:focus-visible:bg-neutral-800 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" aria-label="Prix de vente" /></TableCell>
                                             <TableCell className="min-w-32 border-r border-slate-100 p-0 dark:border-neutral-800">
                                                 <SearchSelect
                                                     value={itemIds[key] ?? String(line.item_id)}
@@ -484,9 +491,9 @@ return null;
                                                     }
                                                 }} className="h-10 border-none bg-transparent text-center [appearance:textfield] focus-visible:bg-slate-100 focus-visible:ring-0 dark:focus-visible:bg-neutral-800 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" aria-label="Quantité vendue" />
                                             </TableCell>
-                                            <TableCell className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800"><Input type="number" step="any" value={realPrices[key] ?? line.real_price} onChange={(event) => setRealPrices((state) => ({ ...state, [key]: event.target.value }))} onBlur={() => save(item, line)} onKeyDown={navigateToAdjacentCell} className="h-10 border-none bg-transparent text-center [appearance:textfield] focus-visible:bg-slate-100 focus-visible:ring-0 dark:focus-visible:bg-neutral-800 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" aria-label="Prix réel" /></TableCell>
-                                            <TableCell className="w-28 border-r border-slate-100 px-3 text-right dark:border-neutral-800">{Math.abs(Number(line.amount)).toLocaleString('fr-FR')}</TableCell>
-                                            <TableCell className="w-20 border-r border-slate-100 px-3 text-right dark:border-neutral-800">{Math.abs(Number(line.tax)).toLocaleString('fr-FR')}</TableCell>
+                                            <TableCell className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800"><Input type="number" step="any" value={realPrices[key] ?? Number(line.real_price)} onChange={(event) => setRealPrices((state) => ({ ...state, [key]: event.target.value }))} onBlur={() => save(item, line)} onKeyDown={navigateToAdjacentCell} className="h-10 border-none bg-transparent text-center [appearance:textfield] focus-visible:bg-slate-100 focus-visible:ring-0 dark:focus-visible:bg-neutral-800 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" aria-label="Prix réel" /></TableCell>
+                                            <TableCell className="w-28 border-r border-slate-100 px-3 text-right dark:border-neutral-800">{formatSaleNumber(Math.abs(Number(line.amount)))}</TableCell>
+                                            <TableCell className="w-20 border-r border-slate-100 px-3 text-right dark:border-neutral-800">{formatSaleNumber(Math.abs(Number(line.tax)))}</TableCell>
                                             <TableCell className="w-20 border-r border-slate-100 text-center dark:border-neutral-800">
                                                 <Checkbox checked={taxFlags[key] ?? line.is_with_tax} onKeyDown={(event) => {
                                                     if (event.key === 'Enter') {
@@ -503,7 +510,7 @@ return null;
                                                     router.patch(`/sale-items/${line.id}`, { is_with_tax: isWithTax }, { preserveScroll: true });
                                                 }} aria-label="Vendre avec taxe" />
                                             </TableCell>
-                                            <TableCell className="w-28 px-3 text-right">{Number(line.total_diff ?? 0).toLocaleString('fr-FR')}</TableCell>
+                                            <TableCell className="w-28 px-3 text-right">{formatSaleNumber(Number(line.total_diff ?? 0))}</TableCell>
                                             <TableCell className="w-12 p-0 text-center">
                                                 <Button
                                                     type="button"
