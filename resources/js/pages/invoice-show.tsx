@@ -146,6 +146,13 @@ export default function InvoiceShow({
         .map((id) => invoice.items?.find((item) => item.id === id))
         .filter((item): item is InvoiceItem => Boolean(item));
 
+    const invoiceCategoryIds = new Set(
+        invoice.items.map((item) => item.category_id),
+    );
+    const invoiceCatalogItems = items.filter((item) =>
+        invoiceCategoryIds.has(item.category_id),
+    );
+
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     /**
      * Lignes ciblées par la suppression en cours : sélection multiple ou
@@ -670,6 +677,7 @@ export default function InvoiceShow({
                 onOpenChange={setIsGlobalSaleOpen}
                 sales={sales}
                 items={items}
+                invoiceCatalogItems={invoiceCatalogItems}
                 availableStockByCategory={availableStockByCategory}
             />
         </div>

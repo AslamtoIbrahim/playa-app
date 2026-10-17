@@ -34,6 +34,7 @@ interface Props {
     sale?: Sale;
     sales?: Sale[];
     items: Item[];
+    invoiceCatalogItems: Item[];
     availableStockByCategory?: Record<number, number>;
 }
 
@@ -65,6 +66,7 @@ export function GlobalSaleDialog({
     sale,
     sales = [],
     items,
+    invoiceCatalogItems,
     availableStockByCategory = {},
 }: Props) {
     const [draft, setDraft] = useState<Draft>(initialDraft);
@@ -296,7 +298,7 @@ export function GlobalSaleDialog({
                                 <TableCell className="min-w-40 border-r border-slate-100 p-0 dark:border-neutral-800">
                                     <SearchSelect
                                         value={draft.itemId}
-                                        options={items.map((item) => ({
+                                        options={invoiceCatalogItems.map((item) => ({
                                             id: item.id,
                                             name: item.name,
                                         }))}
