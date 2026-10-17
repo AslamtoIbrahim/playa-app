@@ -47,7 +47,7 @@ interface Draft {
 
 const initialDraft: Draft = {
     itemId: '',
-    unitCount: '1',
+    unitCount: '',
     salePrice: '',
     realPrice: '',
     isWithTax: false,
@@ -74,18 +74,15 @@ export function GlobalSaleDialog({
             .filter((line) => !line.deleted_at && !line.boat_id),
     );
     const selectedItem = items.find((item) => String(item.id) === draft.itemId);
-    const defaultPrice = selectedItem?.default_price ?? 0;
-    const realPrice =
-        draft.realPrice === '' ? defaultPrice : Number(draft.realPrice);
-    const salePrice =
-        draft.salePrice === '' ? defaultPrice : Number(draft.salePrice);
+    const realPrice = Number(draft.realPrice || 0);
+    const salePrice = Number(draft.salePrice || 0);
+    const remainingInvoiceCount = selectedItem
+        ? availableStockByCategory[selectedItem.category_id]
+        : undefined;
     const unitCount = Number(draft.unitCount || 0);
     const amount = Math.abs(unitCount) * realPrice;
     const tax = draft.isWithTax ? amount * 0.03 : 0;
     const totalDiff = (salePrice - realPrice) * Math.abs(unitCount);
-    const remainingInvoiceCount = selectedItem
-        ? availableStockByCategory[selectedItem.category_id]
-        : undefined;
     const exceedsInvoiceQuantity =
         remainingInvoiceCount !== undefined &&
         Math.abs(unitCount) > remainingInvoiceCount;
@@ -115,12 +112,11 @@ export function GlobalSaleDialog({
     };
 
     const handleItemChange = (itemId: string): void => {
-        const item = items.find((candidate) => String(candidate.id) === itemId);
-        const price = item?.default_price ?? 0;
         updateDraft({
             itemId,
-            realPrice: String(price),
-            salePrice: String(price),
+            unitCount: '',
+            realPrice: '',
+            salePrice: '',
         });
     };
 
@@ -208,14 +204,14 @@ export function GlobalSaleDialog({
                                 <TableHead className="min-w-40 py-4 text-center text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
                                     Client
                                 </TableHead>
+                                <TableHead className="w-28 py-4 text-center text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
+                                    Prix vente
+                                </TableHead>
                                 <TableHead className="min-w-40 py-4 text-center text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
                                     Article
                                 </TableHead>
                                 <TableHead className="w-20 py-4 text-center text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
                                     {'Quantit\u00e9'}
-                                </TableHead>
-                                <TableHead className="w-28 py-4 text-center text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
-                                    Prix vente
                                 </TableHead>
                                 <TableHead className="w-28 py-4 text-center text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
                                     {'Prix r\u00e9el'}
@@ -258,6 +254,19 @@ export function GlobalSaleDialog({
                                         />
                                     )}
                                 </TableCell>
+                                <TableCell className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800">
+                                    <Input
+                                        type="number"
+                                        min="0.01"
+                                        step="any"
+                                        value={draft.salePrice}
+                                        placeholder="0"
+                                        onChange={(event) => updateDraft({ salePrice: event.target.value })}
+                                        onKeyDown={handleCellKeyDown}
+                                        className="h-10 border-none bg-transparent text-center [appearance:textfield] focus-visible:bg-slate-100 focus-visible:ring-0 dark:focus-visible:bg-neutral-800 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                        aria-label="Prix de vente"
+                                    />
+                                </TableCell>
                                 <TableCell className="min-w-40 border-r border-slate-100 p-0 dark:border-neutral-800">
                                     <SearchSelect
                                         value={draft.itemId}
@@ -282,6 +291,8 @@ export function GlobalSaleDialog({
                                         min="0"
                                         step="any"
                                         value={draft.unitCount}
+                                        placeholder="0"
+                                        max={remainingInvoiceCount}
                                         onChange={(event) =>
                                             updateDraft({
                                                 unitCount: event.target.value,
@@ -295,32 +306,9 @@ export function GlobalSaleDialog({
                                 <TableCell className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800">
                                     <Input
                                         type="number"
-                                        min="0.01"
                                         step="any"
-                                        value={
-                                            draft.salePrice === ''
-                                                ? defaultPrice
-                                                : draft.salePrice
-                                        }
-                                        onChange={(event) =>
-                                            updateDraft({
-                                                salePrice: event.target.value,
-                                            })
-                                        }
-                                        onKeyDown={handleCellKeyDown}
-                                        className="h-10 border-none bg-transparent text-center [appearance:textfield] focus-visible:bg-slate-100 focus-visible:ring-0 dark:focus-visible:bg-neutral-800 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                                        aria-label="Prix de vente"
-                                    />
-                                </TableCell>
-                                <TableCell className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800">
-                                    <Input
-                                        type="number"
-                                        step="any"
-                                        value={
-                                            draft.realPrice === ''
-                                                ? defaultPrice
-                                                : draft.realPrice
-                                        }
+                                        value={draft.realPrice}
+                                        placeholder="0"
                                         onChange={(event) =>
                                             updateDraft({
                                                 realPrice: event.target.value,
@@ -365,6 +353,7 @@ export function GlobalSaleDialog({
                                     <TableCell className="min-w-40 border-r border-slate-100 p-0 dark:border-neutral-800">
                                         <SearchSelect value={String(line.sale_id)} options={sales.map((option) => ({ id: option.id, name: option.customer?.name ?? `Vente #${option.id}` }))} placeholder="Client..." emptyMessage="Aucun client trouvé." open={openClientIds[String(line.id)] ?? false} onOpenChange={(open) => setOpenClientIds((state) => ({ ...state, [String(line.id)]: open }))} onKeyDown={handleCellKeyDown} onSelect={(id) => updateSaleItem(line, { sale_id: Number(id) })} className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 shadow-none capitalize focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800" />
                                     </TableCell>
+                                    <TableCell className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800"><Input type="number" min="0.01" step="any" defaultValue={line.sale_price} onBlur={(event) => { const price = Number(event.target.value); if (price > 0) { updateSaleItem(line, { sale_price: price }); } }} onKeyDown={navigateToAdjacentCell} className="h-10 border-none bg-transparent text-center [appearance:textfield] focus-visible:bg-slate-100 focus-visible:ring-0 dark:focus-visible:bg-neutral-800 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" aria-label="Prix de vente" /></TableCell>
                                     <TableCell className="min-w-40 border-r border-slate-100 p-0 dark:border-neutral-800">
                                         <SearchSelect
                                             value={articleIds[String(line.id)] ?? String(line.item_id)}
@@ -383,7 +372,6 @@ export function GlobalSaleDialog({
                                         />
                                     </TableCell>
                                     <TableCell className="w-20 border-r border-slate-100 p-0 dark:border-neutral-800"><Input type="number" min="0" step="any" defaultValue={Math.abs(Number(line.unit_count))} onBlur={(event) => { const count = Number(event.target.value); if (count > 0) { updateSaleItem(line, { unit_count: -count }); } }} onKeyDown={navigateToAdjacentCell} className="h-10 border-none bg-transparent text-center [appearance:textfield] focus-visible:bg-slate-100 focus-visible:ring-0 dark:focus-visible:bg-neutral-800 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" aria-label="Quantité vendue" /></TableCell>
-                                    <TableCell className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800"><Input type="number" min="0.01" step="any" defaultValue={line.sale_price} onBlur={(event) => { const price = Number(event.target.value); if (price > 0) { updateSaleItem(line, { sale_price: price }); } }} onKeyDown={navigateToAdjacentCell} className="h-10 border-none bg-transparent text-center [appearance:textfield] focus-visible:bg-slate-100 focus-visible:ring-0 dark:focus-visible:bg-neutral-800 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" aria-label="Prix de vente" /></TableCell>
                                     <TableCell className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800"><Input type="number" min="0" step="any" defaultValue={line.real_price} onBlur={(event) => updateSaleItem(line, { real_price: Number(event.target.value) })} onKeyDown={navigateToAdjacentCell} className="h-10 border-none bg-transparent text-center [appearance:textfield] focus-visible:bg-slate-100 focus-visible:ring-0 dark:focus-visible:bg-neutral-800 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" aria-label="Prix réel" /></TableCell>
                                     <TableCell className="w-28 border-r border-slate-100 px-3 text-right dark:border-neutral-800">{Math.abs(Number(line.amount)).toLocaleString('fr-FR')}</TableCell>
                                     <TableCell className="w-20 border-r border-slate-100 px-3 text-right dark:border-neutral-800">{Math.abs(Number(line.tax)).toLocaleString('fr-FR')}</TableCell>

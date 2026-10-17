@@ -15,7 +15,7 @@ class InvoiceItem extends Model
 
     protected $fillable = [
         'invoice_id',
-        'item_id',
+        'category_id',
         'boat_id',
         'unit',
         'box',
@@ -37,9 +37,9 @@ class InvoiceItem extends Model
     /**
      * العلاقة مع نوع السلعة
      */
-    public function item()
+    public function category()
     {
-        return $this->belongsTo(Item::class, 'item_id');
+        return $this->belongsTo(Category::class);
     }
 
     /**

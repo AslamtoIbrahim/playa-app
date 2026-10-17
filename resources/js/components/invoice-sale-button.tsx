@@ -69,7 +69,7 @@ export function InvoiceItemSaleButton({ item, onOpenSale }: Props) {
                     variant="ghost"
                     size="icon"
                     disabled={!item}
-                    aria-label={`Vendre ${item?.item?.name ?? 'la ligne'}`}
+                    aria-label={`Vendre ${item?.category?.name ?? 'la ligne'}`}
                     onClick={() => {
                         if (item) {
                             {

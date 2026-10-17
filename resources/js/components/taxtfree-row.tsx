@@ -30,7 +30,7 @@ export function TaxFreeRow({ diff }: RowProps) {
         <TableRow className="group hover:bg-slate-50/50">
             {/* Article */}
             <TableCell className="font-medium text-slate-700">
-                {diff.invoice_item?.item?.name || 'Article'}
+                {diff.invoice_item?.category?.name || diff.item?.name || 'Article'}
             </TableCell>
 
             {/* Quantité */}

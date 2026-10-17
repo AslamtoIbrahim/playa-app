@@ -31,7 +31,7 @@ import { InvoiceItemSaleButton } from './invoice-sale-button';
 import { useInvoiceItem } from '@/hooks/use-invoice-item';
 import { SearchSelect } from './search-select';
 import MissingBoatPopup from './missing-boat-popup';
-import MissingItemPopup from './missing-item-popup';
+import MissingCategoryPopup from './missing-category-popup';
 
 interface Props {
     invoiceId: number;
@@ -201,14 +201,11 @@ export default function InvoiceItemRow({
                 )}
             >
                 <SearchSelect
-                    value={data.item_id}
-                    options={items}
-                    placeholder="Saisir espèce..."
+                    value={data.category_id}
+                    options={categories}
+                    placeholder="Choisir catégorie..."
                     renderNoMatchAction={(search) => (
-                        <MissingItemPopup
-                            initialName={search}
-                            categories={categories}
-                        />
+                        <MissingCategoryPopup initialName={search} />
                     )}
                     open={openItem}
                     onOpenChange={setOpenItem}
@@ -220,20 +217,8 @@ export default function InvoiceItemRow({
                     }}
                     onSelect={(id) => {
                         {
-                            const selectedItem = items.find(
-                                (i) => String(i.id) === String(id),
-                            );
-                            const isPoulpe =
-                                selectedItem?.name
-                                    ?.toLowerCase()
-                                    .includes('poulpe') ||
-                                selectedItem?.name
-                                    ?.toLowerCase()
-                                    .includes('بولبو');
-
                             handleDataChange({
-                                item_id: id,
-                                unit: isPoulpe ? 'kg' : 'caisse',
+                                category_id: id,
                             });
 
                             setOpenItem(false);

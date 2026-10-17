@@ -357,6 +357,10 @@ class DifferenceController extends Controller
             if ($validated['invoice_item_id']) {
                 $invoiceItem = InvoiceItem::findOrFail($validated['invoice_item_id']);
 
+                if ((int) \App\Models\Item::findOrFail($validated['item_id'])->category_id !== (int) $invoiceItem->category_id) {
+                    throw \Illuminate\Validation\ValidationException::withMessages(['item_id' => 'Choisissez un article de la catégorie de la facture.']);
+                }
+
                 $alreadyDistributed = Difference::where('invoice_item_id', $invoiceItem->id)->sum('unit_count');
 
                 $remaining = $invoiceItem->unit_count - $alreadyDistributed;
@@ -406,6 +410,11 @@ class DifferenceController extends Controller
 
             if ($difference->invoice_item_id) {
                 $invoiceItem = $difference->invoiceItem;
+
+                $selectedArticle = \App\Models\Item::find($validated['item_id'] ?? $difference->item_id);
+                if ($selectedArticle && (int) $selectedArticle->category_id !== (int) $invoiceItem->category_id) {
+                    throw \Illuminate\Validation\ValidationException::withMessages(['item_id' => 'Choisissez un article de la catégorie de la facture.']);
+                }
 
                 $otherDist = Difference::where('invoice_item_id', $invoiceItem->id)
                     ->where('id', '!=', $difference->id)

@@ -31,4 +31,9 @@ class Category extends Model
     {
         return $this->hasMany(Item::class);
     }
+
+    public function invoiceItems(): HasMany
+    {
+        return $this->hasMany(InvoiceItem::class);
+    }
 }

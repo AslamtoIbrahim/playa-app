@@ -125,7 +125,7 @@ export function DifferenceDialog({
                                         </span>
                                     </div>
                                     <DialogTitle className="truncate text-xl font-bold text-slate-900 capitalize sm:text-2xl dark:text-neutral-100">
-                                        {item.item?.name || 'Article'}
+                                        {item.category?.name || 'Catégorie'}
                                     </DialogTitle>
                                     <div className="mt-1 flex flex-wrap items-center gap-2">
                                         <Badge
@@ -226,11 +226,11 @@ export function DifferenceDialog({
                                     isNew
                                     invoiceItemId={item.id}
                                     customers={customers}
-                                    items={items}
+                                    items={items.filter((article) => article.category_id === item.category_id)}
                                     categories={categories}
                                     maxAvailable={remainingCount}
                                     defaultCustomerId={ownerCustomerId}
-                                    defaultItemId={item.item_id}
+                                    defaultItemId={undefined}
                                     unitPrice={Number(item.unit_price)}
                                 />
                             )}
@@ -242,7 +242,7 @@ export function DifferenceDialog({
                                             key={`${item.id}-${diff.id}`}
                                             diff={diff}
                                             customers={customers}
-                                            items={items}
+                                            items={items.filter((article) => article.category_id === item.category_id)}
                                             categories={categories}
                                             maxAvailable={
                                                 remainingCount +

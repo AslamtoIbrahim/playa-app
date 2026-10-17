@@ -36,7 +36,7 @@ export function useInvoiceImport(boats: Boat[], items: Item[]) {
 
             return {
                 boat_id: boat.id,
-                item_id: item.id,
+                category_id: item.category_id,
                 unit_count: parseFloat(qte?.replace(',', '.')) || 0,
                 unit_price: parseFloat(prix?.replace(',', '.')) || 0,
                 unit: finalUnit,

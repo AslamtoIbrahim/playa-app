@@ -47,7 +47,7 @@ export function InvoiceRowActions({
                     ? data
                     : {
                           boat_id: null,
-                          item_id: null,
+                          category_id: null,
                           unit_count: 0,
                           unit_price: 0,
                           weight: 0,

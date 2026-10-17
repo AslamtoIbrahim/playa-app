@@ -21,7 +21,7 @@ class InvoiceItemController extends Controller
     {
         $validated = $request->validate([
             'boat_id' => 'nullable|exists:boats,id',
-            'item_id' => 'nullable|exists:items,id',
+            'category_id' => 'nullable|exists:categories,id',
             'unit_count' => 'nullable|numeric',
             'unit_price' => 'nullable|numeric',
             'weight' => 'nullable|numeric',
@@ -57,7 +57,7 @@ class InvoiceItemController extends Controller
 
             $invoice->items()->create([
                 'boat_id' => $validated['boat_id'] ?? null,
-                'item_id' => $validated['item_id'] ?? null,
+                'category_id' => $validated['category_id'] ?? null,
                 'unit' => $validated['unit'] ?? 'caisse',
                 'box' => $validated['box'] ?? 0, // Added here
                 'unit_count' => $unitCount,
@@ -81,7 +81,7 @@ class InvoiceItemController extends Controller
     public function update(Request $request, Invoice $invoice, InvoiceItem $item)
     {
         $validated = $request->validate([
-            'item_id' => 'nullable|exists:items,id',
+            'category_id' => 'nullable|exists:categories,id',
             'boat_id' => 'nullable|exists:boats,id',
             'unit_count' => 'nullable|numeric',
             'unit_price' => 'nullable|numeric',
@@ -99,7 +99,7 @@ class InvoiceItemController extends Controller
 
         DB::transaction(function () use ($item, $invoice, $validated, $rowAmount) {
             $item->update([
-                'item_id' => $validated['item_id'] ?? $item->item_id,
+                'category_id' => $validated['category_id'] ?? $item->category_id,
                 'boat_id' => $validated['boat_id'] ?? $item->boat_id,
                 'unit' => $validated['unit'] ?? $item->unit ?? 'caisse',
                 'box' => $validated['box'] ?? $item->box ?? 0, // Added here
@@ -126,7 +126,7 @@ class InvoiceItemController extends Controller
         $validated = $request->validate([
             'items' => 'required|array',
             'items.*.boat_id' => 'nullable|exists:boats,id',
-            'items.*.item_id' => 'nullable|exists:items,id',
+            'items.*.category_id' => 'nullable|exists:categories,id',
             'items.*.unit_count' => 'required|numeric',
             'items.*.unit_price' => 'required|numeric',
             'items.*.unit' => 'required|string',
@@ -142,7 +142,7 @@ class InvoiceItemController extends Controller
                     return [
                         'invoice_id' => $invoice->id,
                         'boat_id' => $item['boat_id'] ?? null,
-                        'item_id' => $item['item_id'] ?? null,
+                        'category_id' => $item['category_id'] ?? null,
                         'unit' => $item['unit'] ?? 'caisse',
                         'box' => $item['box'] ?? 0, // Added here
                         'unit_count' => $item['unit_count'],

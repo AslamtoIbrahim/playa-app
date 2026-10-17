@@ -94,9 +94,9 @@ class SaleController extends Controller
         $sale->load([
             'customer',
             'session',
-            'items.invoiceItem.item',
             'items.invoiceItem.boat',
             'items.invoiceItem.invoice',
+            'items.invoiceItem.category',
             'items.invoiceItem.invoice.sessionZone.zone',
             'items.invoiceItem.invoice.sessionZone.dailySession',
             'items.item',
@@ -129,11 +129,11 @@ class SaleController extends Controller
 
         $customers = Customer::select('id', 'name')->get();
 
-        $categoryPrices = InvoiceItem::with('item:id,category_id')
+        $categoryPrices = InvoiceItem::query()
             ->whereHas('invoice.sessionZone', fn ($query) => $query->where('daily_session_id', $sale->session_id))
-            ->get(['id', 'item_id', 'unit_count', 'unit_price'])
-            ->filter(fn (InvoiceItem $invoiceItem) => $invoiceItem->item !== null)
-            ->groupBy(fn (InvoiceItem $invoiceItem) => $invoiceItem->item->category_id)
+            ->get(['id', 'category_id', 'unit_count', 'unit_price'])
+            ->filter(fn (InvoiceItem $invoiceItem) => $invoiceItem->category_id !== null)
+            ->groupBy(fn (InvoiceItem $invoiceItem) => $invoiceItem->category_id)
             ->map(function ($categoryLines): float {
                 $quantity = (float) $categoryLines->sum('unit_count');
 

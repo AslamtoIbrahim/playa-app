@@ -320,7 +320,7 @@ export default function InvoiceShow({
 
         const cleanData = rawData.map((row) => ({
             boat_id: row.boat_id,
-            item_id: row.item_id,
+            category_id: row.category_id,
             unit_count: row.unit_count,
             unit_price: row.unit_price,
             unit: row.unit,
@@ -525,7 +525,7 @@ export default function InvoiceShow({
                                     Bateau
                                 </TableHead>
                                 <TableHead className="text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
-                                    Espèces
+                                    Catégorie
                                 </TableHead>
                                 <TableHead className="text-center text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
                                     Qte / NC
@@ -661,6 +661,7 @@ export default function InvoiceShow({
                     items={saleItems}
                     sales={sales}
                     catalogItems={items}
+                    availableStockByCategory={availableStockByCategory}
                 />
             )}
 

@@ -32,7 +32,10 @@ class SaleItemController extends Controller
                 return back()->with('error', 'La vente doit appartenir à la même session que la ligne de facture.');
             }
             if ($invoiceItem) {
-                $data['item_id'] = $invoiceItem->item_id;
+                $catalogItem = \App\Models\Item::findOrFail($data['item_id']);
+                if ((int) $catalogItem->category_id !== (int) $invoiceItem->category_id) {
+                    throw ValidationException::withMessages(['item_id' => 'Choisissez un article de la catégorie de la facture.']);
+                }
                 $data['boat_id'] = $invoiceItem->boat_id;
             }
 
@@ -77,6 +80,13 @@ class SaleItemController extends Controller
             $real = (float) ($data['real_price'] ?? $saleItem->real_price);
             $withTax = (bool) ($data['is_with_tax'] ?? $saleItem->is_with_tax);
             $itemId = (int) ($data['item_id'] ?? $saleItem->item_id);
+            if ($saleItem->invoice_item_id) {
+                $invoiceItem = $saleItem->invoiceItem;
+                $catalogItem = \App\Models\Item::findOrFail($itemId);
+                if ((int) $catalogItem->category_id !== (int) $invoiceItem->category_id) {
+                    throw ValidationException::withMessages(['item_id' => 'Choisissez un article de la catégorie de la facture.']);
+                }
+            }
             $this->assertStockAvailable($sale, $itemId, abs($count), $saleItem->id);
             $saleItem->update([...$data, 'amount' => $count * $real, 'tax' => $withTax ? $count * $real * 0.03 : 0, 'total_diff' => ($price - $real) * $count]);
 
@@ -93,10 +103,10 @@ class SaleItemController extends Controller
     private function assertStockAvailable(Sale $sale, int $itemId, float $requested, ?int $exceptId = null): void
     {
         $item = \App\Models\Item::findOrFail($itemId);
-        InvoiceItem::whereHas('item', fn ($q) => $q->where('category_id', $item->category_id))
+        InvoiceItem::where('category_id', $item->category_id)
             ->whereHas('invoice.sessionZone', fn ($q) => $q->where('daily_session_id', $sale->session_id))
             ->lockForUpdate()->get(['id']);
-        $purchased = (float) InvoiceItem::whereHas('item', fn ($q) => $q->where('category_id', $item->category_id))
+        $purchased = (float) InvoiceItem::where('category_id', $item->category_id)
             ->whereHas('invoice.sessionZone', fn ($q) => $q->where('daily_session_id', $sale->session_id))
             ->sum('unit_count');
         $soldQuery = SaleItem::whereHas('item', fn ($q) => $q->where('category_id', $item->category_id))

@@ -136,7 +136,7 @@ class InvoiceController extends Controller
             'billable',
             'officeRoom',
             'caution',
-            'items.item',
+            'items.category',
             'items.boat',
             'items.differences.customer',
             'items.saleItems.sale.customer',
@@ -169,7 +169,7 @@ class InvoiceController extends Controller
 
         if ($session) {
             foreach (Category::query()->pluck('id') as $categoryId) {
-                $purchased = InvoiceItem::whereHas('item', fn ($query) => $query->where('category_id', $categoryId))
+                $purchased = InvoiceItem::where('category_id', $categoryId)
                     ->whereHas('invoice.sessionZone', fn ($query) => $query->where('daily_session_id', $session->id))
                     ->sum('unit_count');
                 $sold = SaleItem::whereHas('item', fn ($query) => $query->where('category_id', $categoryId))
@@ -183,7 +183,7 @@ class InvoiceController extends Controller
         return Inertia::render('invoice-show', [
             'invoice' => $invoice,
             'boats' => Boat::all(['id', 'name']),
-            'items' => Item::all(['id', 'name']),
+            'items' => Item::all(['id', 'name', 'category_id']),
             'categories' => Category::all(['id', 'name']),
             'owners' => Customer::select('id', 'name')->get()->map(fn ($c) => [
                 'id' => $c->id,
@@ -270,7 +270,7 @@ class InvoiceController extends Controller
                 $invoiceItem->saleItems()->create([
                     'sale_id' => $sale->id,
                     'unit_count' => $remaining,
-                    'item_id' => $invoiceItem->item_id,
+                    'item_id' => Item::where('category_id', $invoiceItem->category_id)->value('id'),
                     'boat_id' => $invoiceItem->boat_id,
                     'sale_price' => $invoiceItem->unit_price,
                     // Prix facturé : total_diff = 0, aucune différence.

@@ -37,7 +37,7 @@ const SaleItemDragOverlay = ({ items }: Props) => {
 
                                     {/* Espèce */}
                                     <TableCell className="text-xs py-2 text-slate-600 min-w-45">
-                                        {item.invoice_item?.item?.name || '-'}
+                                        {item.invoice_item?.category?.name || item.item?.name || '-'}
                                     </TableCell>
 
                                     {/* Qte / NC */}

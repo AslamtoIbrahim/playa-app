@@ -33,7 +33,6 @@ class Item extends Model
 
     public function invoiceItems()
     {
-        // تأكد من اسم الـ Model ديال Invoice Items عندك
-        return $this->hasMany(InvoiceItem::class);
+        return $this->hasMany(InvoiceItem::class, 'category_id', 'category_id');
     }
 }

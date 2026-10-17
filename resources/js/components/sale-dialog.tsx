@@ -34,9 +34,10 @@ interface Props {
     items: InvoiceItem[];
     sales: Sale[];
     catalogItems: CatalogItem[];
+    availableStockByCategory?: Record<number, number>;
 }
 
-export function SaleDialog({ open, onOpenChange, items, sales, catalogItems }: Props) {
+export function SaleDialog({ open, onOpenChange, items, sales, catalogItems, availableStockByCategory = {} }: Props) {
     const [saleIds, setSaleIds] = useState<Record<string, string>>({});
     const [counts, setCounts] = useState<Record<string, string>>({});
     const [prices, setPrices] = useState<Record<string, string>>({});
@@ -69,7 +70,11 @@ export function SaleDialog({ open, onOpenChange, items, sales, catalogItems }: P
         selectedItemId?: number,
     ): void => {
         const key = line ? `sale-${line.id}` : `item-${item.id}`;
-        const count = Number(counts[key] ?? (line ? Math.abs(Number(line.unit_count)) : remaining(item)));
+        const categoryAvailable = availableStockByCategory[item.category_id];
+        const maxCount = categoryAvailable === undefined
+            ? remaining(item)
+            : categoryAvailable + (line ? Math.abs(Number(line.unit_count)) : 0);
+        const count = Number(counts[key] ?? (line ? Math.abs(Number(line.unit_count)) : Math.min(remaining(item), maxCount)));
         const salePrice = Number(prices[key] ?? line?.sale_price ?? item.unit_price);
         const realPrice = Number(
             realPrices[key] ?? line?.real_price ??
@@ -78,9 +83,14 @@ export function SaleDialog({ open, onOpenChange, items, sales, catalogItems }: P
         );
 
         const saleId = selectedSaleId ?? Number(saleIds[key] ?? line?.sale_id);
+        const articleId = selectedItemId ?? (itemIds[key] ? Number(itemIds[key]) : line?.item_id);
+        if (count > maxCount + 0.00001) {
+            toast.error(`La quantité dépasse le reste disponible de cette catégorie (${maxCount}).`);
+            return;
+        }
 
-        if (!saleId || !count) {
-            toast.error('Choisissez une vente et une quantit\u00e9.');
+        if (!saleId || !count || !articleId) {
+            toast.error('Choisissez une vente, un article et une quantit\u00e9.');
 
             return;
         }
@@ -88,7 +98,7 @@ export function SaleDialog({ open, onOpenChange, items, sales, catalogItems }: P
         const payload = {
                 sale_id: saleId,
                 invoice_item_id: item.id,
-                item_id: selectedItemId ?? item.item_id,
+                item_id: articleId,
                 boat_id: item.boat_id,
                 unit_count: count > 0 ? -count : count,
                 sale_price: salePrice,
@@ -174,6 +184,9 @@ router.post('/sale-items', payload, options);
                                 <TableHead className="min-w-28 py-4 text-center text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
                                     Bateau
                                 </TableHead>
+                                <TableHead className="w-28 py-4 text-center text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
+                                    Prix vente
+                                </TableHead>
                                 <TableHead className="min-w-32 py-4 text-center text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
                                     Article
                                 </TableHead>
@@ -182,9 +195,6 @@ router.post('/sale-items', payload, options);
                                 </TableHead>
                                 <TableHead className="w-28 py-4 text-center text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
                                     {'Prix r\u00e9el'}
-                                </TableHead>
-                                <TableHead className="w-28 py-4 text-center text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
-                                    Prix vente
                                 </TableHead>
                                 <TableHead className="w-28 py-4 text-center text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
                                     Montant
@@ -209,7 +219,7 @@ return null;
 
                                 const key = `item-${item.id}`;
                                 const count = Number(
-                                    counts[key] ?? remaining(item),
+                                    Math.min(Number(counts[key] ?? remaining(item)), availableStockByCategory[item.category_id] ?? remaining(item)),
                                 );
                                 const realPrice = Number(
                                     realPrices[key] ??
@@ -275,18 +285,45 @@ return null;
                                                 {item.boat?.name ?? '\u2014'}
                                             </span>
                                         </TableCell>
-                                        <TableCell className="min-w-32 border-r border-slate-100 px-3 py-0 font-medium capitalize dark:border-neutral-800">
-                                            <span className="block truncate text-slate-900 dark:text-neutral-100">
-                                                {item.item?.name ?? 'Article'}
-                                            </span>
+                                        <TableCell className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800">
+                                            <Input
+                                                type="number"
+                                                step="any"
+                                                value={prices[key] ?? item.unit_price}
+                                                onChange={(event) => setPrices((current) => ({ ...current, [key]: event.target.value }))}
+                                                onKeyDown={(event) => {
+                                                    if (event.key === 'Enter') {
+                                                        event.preventDefault();
+                                                        save(item);
+                                                        return;
+                                                    }
+                                                    navigateToAdjacentCell(event);
+                                                }}
+                                                className="h-10 border-none bg-transparent text-center text-slate-900 transition-all focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                                aria-label="Prix de vente"
+                                            />
+                                        </TableCell>
+                                        <TableCell className="min-w-32 border-r border-slate-100 p-0 dark:border-neutral-800">
+                                            <SearchSelect
+                                                value={itemIds[key] ?? ''}
+                                                options={catalogItems
+                                                    .filter((option) => option.category_id === item.category_id)
+                                                    .map((option) => ({ id: option.id, name: option.name }))}
+                                                placeholder={`${item.category?.name ?? 'Catégorie'} · Article...`}
+                                                emptyMessage="Aucun article dans cette catégorie."
+                                                open={openItemIds[key] ?? false}
+                                                onOpenChange={(open) => setOpenItemIds((state) => ({ ...state, [key]: open }))}
+                                                onKeyDown={navigateToAdjacentCell}
+                                                onSelect={(id) => setItemIds((state) => ({ ...state, [key]: String(id) }))}
+                                                className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 shadow-none capitalize focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800"
+                                            />
                                         </TableCell>
                                         <TableCell className="w-20 border-r border-slate-100 p-0 dark:border-neutral-800">
                                             <Input
                                                 type="number"
                                                 step="any"
                                                 value={
-                                                    counts[key] ??
-                                                    remaining(item)
+                                                    Math.min(Number(counts[key] ?? remaining(item)), availableStockByCategory[item.category_id] ?? remaining(item))
                                                 }
                                                 onChange={(event) =>
                                                     setCounts((current) => ({
@@ -345,37 +382,6 @@ return null;
                                                 }}
                                                 className="h-10 border-none bg-transparent text-center text-slate-900 transition-all focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                                                 aria-label="Prix r\u00e9el"
-                                            />
-                                        </TableCell>
-                                        <TableCell className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800">
-                                            <Input
-                                                type="number"
-                                                step="any"
-                                                value={
-                                                    prices[key] ??
-                                                    item.unit_price
-                                                }
-                                                onChange={(event) =>
-                                                    setPrices((current) => ({
-                                                        ...current,
-                                                        [key]:
-                                                            event.target.value,
-                                                    }))
-                                                }
-                                                onKeyDown={(event) => {
-                                                    if (event.key === 'Enter') {
-                                                        event.preventDefault();
-                                                        save(item);
-
-                                                        return;
-                                                    }
-
-                                                    navigateToAdjacentCell(
-                                                        event,
-                                                    );
-                                                }}
-                                                className="h-10 border-none bg-transparent text-center text-slate-900 transition-all focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                                                aria-label="Prix de vente"
                                             />
                                         </TableCell>
                                         <TableCell className="w-28 border-r border-slate-100 px-3 py-0 text-right text-xs font-bold tabular-nums text-slate-700 dark:border-neutral-800 dark:text-neutral-300">
@@ -450,10 +456,11 @@ return null;
                                                 />
                                             </TableCell>
                                             <TableCell className="min-w-28 border-r border-slate-100 px-3 dark:border-neutral-800">{item.boat?.name ?? '—'}</TableCell>
+                                            <TableCell className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800"><Input type="number" step="any" value={prices[key] ?? line.sale_price} onChange={(event) => setPrices((state) => ({ ...state, [key]: event.target.value }))} onBlur={() => save(item, line)} onKeyDown={navigateToAdjacentCell} className="h-10 border-none bg-transparent text-center [appearance:textfield] focus-visible:bg-slate-100 focus-visible:ring-0 dark:focus-visible:bg-neutral-800 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" aria-label="Prix de vente" /></TableCell>
                                             <TableCell className="min-w-32 border-r border-slate-100 p-0 dark:border-neutral-800">
                                                 <SearchSelect
                                                     value={itemIds[key] ?? String(line.item_id)}
-                                                    options={catalogItems.map((option) => ({ id: option.id, name: option.name }))}
+                                                    options={catalogItems.filter((option) => option.category_id === item.category_id).map((option) => ({ id: option.id, name: option.name }))}
                                                     placeholder="Article..."
                                                     emptyMessage="Aucun article trouvé."
                                                     open={openItemIds[key] ?? false}
@@ -478,7 +485,6 @@ return null;
                                                 }} className="h-10 border-none bg-transparent text-center [appearance:textfield] focus-visible:bg-slate-100 focus-visible:ring-0 dark:focus-visible:bg-neutral-800 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" aria-label="Quantité vendue" />
                                             </TableCell>
                                             <TableCell className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800"><Input type="number" step="any" value={realPrices[key] ?? line.real_price} onChange={(event) => setRealPrices((state) => ({ ...state, [key]: event.target.value }))} onBlur={() => save(item, line)} onKeyDown={navigateToAdjacentCell} className="h-10 border-none bg-transparent text-center [appearance:textfield] focus-visible:bg-slate-100 focus-visible:ring-0 dark:focus-visible:bg-neutral-800 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" aria-label="Prix réel" /></TableCell>
-                                            <TableCell className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800"><Input type="number" step="any" value={prices[key] ?? line.sale_price} onChange={(event) => setPrices((state) => ({ ...state, [key]: event.target.value }))} onBlur={() => save(item, line)} onKeyDown={navigateToAdjacentCell} className="h-10 border-none bg-transparent text-center [appearance:textfield] focus-visible:bg-slate-100 focus-visible:ring-0 dark:focus-visible:bg-neutral-800 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" aria-label="Prix de vente" /></TableCell>
                                             <TableCell className="w-28 border-r border-slate-100 px-3 text-right dark:border-neutral-800">{Math.abs(Number(line.amount)).toLocaleString('fr-FR')}</TableCell>
                                             <TableCell className="w-20 border-r border-slate-100 px-3 text-right dark:border-neutral-800">{Math.abs(Number(line.tax)).toLocaleString('fr-FR')}</TableCell>
                                             <TableCell className="w-20 border-r border-slate-100 text-center dark:border-neutral-800">

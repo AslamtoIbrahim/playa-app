@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 export function SaleShowItemRow({ item }: { item: SaleItem }) {
     return <TableRow>
         <TableCell>{item.boat?.name ?? item.invoice_item?.boat?.name ?? '—'}</TableCell>
-        <TableCell>{item.item?.name ?? item.invoice_item?.item?.name ?? '—'}</TableCell>
+        <TableCell>{item.item?.name ?? item.invoice_item?.category?.name ?? '—'}</TableCell>
         <TableCell className="text-right">{Number(item.unit_count).toLocaleString('fr-FR')}</TableCell>
         <TableCell className="text-right">{Number(item.sale_price).toLocaleString('fr-FR')}</TableCell>
         <TableCell className="text-right">{Number(item.real_price).toLocaleString('fr-FR')}</TableCell>

@@ -22,7 +22,7 @@ interface UseInvoiceItemProps {
 
 interface InvoiceItemData {
     boat_id: number | string;
-    item_id: number | string;
+    category_id: number | string;
     unit_count: number | string;
     unit_price: number | string;
     unit: string;
@@ -33,7 +33,7 @@ interface InvoiceItemData {
 const createEmptyData = (): InvoiceItemData => {
     return {
         boat_id: '',
-        item_id: '',
+        category_id: '',
         unit_count: '',
         unit_price: '',
         unit: 'caisse',
@@ -50,7 +50,7 @@ const createEmptyData = (): InvoiceItemData => {
 const toSignature = (payload: InvoiceItemData): string => {
     return JSON.stringify([
         String(payload.boat_id),
-        String(payload.item_id),
+        String(payload.category_id),
         String(payload.unit_count),
         String(payload.unit_price),
         String(payload.unit),
@@ -70,7 +70,7 @@ export function useInvoiceItem({
 
     const [data, setData] = useState<InvoiceItemData>({
         boat_id: item?.boat_id || '',
-        item_id: item?.item_id || '',
+        category_id: item?.category_id || '',
         unit_count: item?.unit_count || '',
         unit_price: item?.unit_price || '',
         unit: item?.unit || 'caisse',
@@ -191,7 +191,7 @@ export function useInvoiceItem({
 
     const hasDataToSave = (currentData = dataRef.current) =>
         currentData.boat_id !== '' ||
-        currentData.item_id !== '' ||
+        currentData.category_id !== '' ||
         String(currentData.unit_count).trim() !== '' ||
         String(currentData.unit_price).trim() !== '' ||
         currentData.unit !== 'caisse' ||
@@ -203,7 +203,7 @@ export function useInvoiceItem({
             {
                 return (
                     currentData.boat_id !== '' &&
-                    currentData.item_id !== '' &&
+                    currentData.category_id !== '' &&
                     Number(currentData.unit_price) > 0 &&
                     Number(currentData.unit_count) > 0
                 );
@@ -427,9 +427,9 @@ export function useInvoiceItem({
                     }
                 }
 
-                if (type === 'item' && data.item_id !== '') {
+                if (type === 'item' && data.category_id !== '') {
                     {
-                        handleDataChange({ item_id: '' });
+                        handleDataChange({ category_id: '' });
                     }
                 }
 
