@@ -1,4 +1,4 @@
-# Project Context & AI Rules
+# Project Context & AI Rules For Codex and Opencode 🧆
 
 ## Tech Stack & Core Packages
 - **Backend:** PHP 8.3, Laravel 13 (Eloquent ORM), Inertia.js (^3.0), Fortify[cite: 2].
