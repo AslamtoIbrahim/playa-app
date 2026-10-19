@@ -1,70 +1,75 @@
-# Project Context & AI Rules For Copilot 🎃
+# Project Rules
 
-## Tech Stack & Core Packages
-- **Backend:** PHP 8.3, Laravel 13 (Eloquent ORM), Inertia.js (^3.0), Fortify[cite: 2].
-- **Testing:** Pest (^4.4)[cite: 2].
-- **Frontend:** React 19, TypeScript, Tailwind CSS v4, Vite[cite: 3].
-- **UI & Components:** Radix UI primitives, Lucide React (Icons), Tailwind Merge, Class Variance Authority (CVA)[cite: 3].
-- **Utilities & Features:** 
-  - Drag and Drop (`@dnd-kit`)[cite: 3].
-  - Data Export & Generation (`xlsx`, `jspdf`, `html2pdf.js`)[cite: 3].
-  - Date manipulation (`date-fns`)[cite: 3].
+## Project Stack
 
-## Coding Standards & Guidelines
-- **TypeScript:** Always use strict types for frontend components, props, and Inertia page responses. Avoid `any` types.
-- **Laravel:** Write modern Laravel 13 code, leverage Form Requests for validation, Eloquent relationships, and Inertia controller responses.
-- **Styling:** Use Tailwind CSS v4 utility classes combined with `clsx` and `tailwind-merge` for dynamic classes.
-- **Code Quality:** Write clean, modular, and reusable components. Follow project linting rules (`pint` for PHP and `eslint`/`prettier` for Frontend)[cite: 2, 3].
-- **Direct Output:** Keep responses direct, focusing strictly on code and solutions without unnecessary conversational filler.
+- **Backend:** PHP 8.3, Laravel 13, Eloquent, Fortify.
+- **Frontend:** React 19, TypeScript, Inertia.js, Wayfinder, Tailwind CSS v4, Vite.
+- **UI:** shadcn/ui, Radix UI, Lucide React, CVA.
+- **Utilities:** `clsx`, `tailwind-merge`, `@dnd-kit`, `date-fns`, `xlsx`, `jspdf`, `html2pdf.js`.
+- **Testing:** Pest.
 
-## Code Formatting & ESLint Rules
-* **Empty Lines:** Always insert an empty line before `if` statements, `return` statements, and block blocks to satisfy ESLint rules.
-* **Direct Edits:** Always modify and write code directly using file editing tools without executing terminal echo/cat commands unless explicitly asked.
+## Core Development Rules
 
-* **Clean Imports:** Always remove unused imports, components, and variables from TSX/TS files before saving.
+- Follow the existing architecture, project conventions, and installed package versions.
+- Inspect relevant code and configuration before making changes.
+- Prefer simple, modular, reusable solutions. Make the smallest change that correctly solves the task.
+- Use strict TypeScript types; avoid `any`.
+- Always use curly braces for conditional and loop blocks, including single-line statements.
+- Leave an empty line before `if` and `return` statements, following project conventions.
+- Remove unused imports, variables, and code introduced by your changes.
+- Edit files directly using file-editing tools. Do not use terminal `echo` or `cat` to modify files unless explicitly requested.
 
-## Tailwind CSS Standards
-* **Canonical Classes:** Avoid arbitrary values like `max-w-[450px]` or `p-[16px]`. Always use Tailwind v4 canonical scale classes (e.g., `max-w-112.5` instead of `max-w-[450px]`).
+## Frontend, UI & Themes
 
-## Dark Mode & Styling Rules
-* **Dual Theme Support:** Always implement Tailwind CSS Dark Mode alongside Light Mode styles.
-* **Semantic Classes:** Never write hardcoded light classes without their dark counterpart (e.g., use `bg-white dark:bg-gray-900` or `text-slate-900 dark:text-slate-100`).
-* **Backgrounds & Text:** Ensure all card containers, popups, inputs, and text elements explicitly include `dark:` variant classes to avoid unreadable text in dark theme.
+- Follow existing React, TypeScript, shadcn/ui, and Radix UI patterns.
+- Use Tailwind CSS v4 and `clsx` / `tailwind-merge` for conditional class names.
+- Prefer standard Tailwind utility classes over arbitrary values when suitable equivalents exist.
+- Use Lucide React for icons.
+- Prefer existing shadcn/ui semantic color tokens, such as `bg-background`, `text-foreground`, `bg-card`, and `border-border`.
+- Preserve consistent styling and readable contrast in both light and dark themes. Use appropriate `dark:` variants when fixed colors are necessary.
+- Reuse existing components and theme conventions instead of introducing inconsistent styling.
 
+## Laravel, Inertia, Wayfinder & Forms
 
+- Follow Laravel 13 conventions and the installed versions of Inertia.js and Wayfinder.
+- Use Wayfinder-generated route helpers for navigation and form actions wherever supported. Avoid duplicating route URLs or HTTP methods unnecessarily.
+- Before creating or modifying forms, inspect the installed Inertia version, official documentation, and existing project patterns.
+- Prefer modern, version-compatible Inertia form APIs over legacy patterns when appropriate. Do not assume one form API fits every situation.
+- Keep frontend submissions, backend validation, error handling, and Inertia responses consistent.
+- Use Laravel Form Requests for validation where appropriate.
+- Follow existing Eloquent relationship and controller conventions.
+- Add or update relevant Pest tests when appropriate.
 
-# AI Development Rules & Guidelines
+## Documentation & Language
 
-## 1. Code Quality & Formatting (Strict Rules)
-- **ESLint & Prettier Compliance:** Always write code that strictly passes project ESLint and Prettier rules (`npm run lint:check` and `npm run format:check`).
-- **Curly Braces & Blocks:** NEVER omit curly braces `{}`. Always use curly braces for all `if`, `else`, `for`, `while`, and conditional blocks, even for single-line statements.
-- **PHP / Pint Compliance:** Backend PHP code must strictly comply with Laravel Pint standards (`composer lint:check`).
+### User-Facing Content — French
 
-## 2. Frontend Stack (React 19 & TypeScript)
-- **Strict Types:** Always use strict TypeScript types for components, props, state, and Inertia page responses. Absolutely **avoid `any`**.
-- **Styling:** Use Tailwind CSS v4 utility classes combined with `clsx` and `tailwind-merge` for dynamic classes.
-- **Icons & UI:** Utilize `lucide-react` for icons and Radix UI primitives with Class Variance Authority (CVA) where applicable.
+- Write all interface text in French, including labels, buttons, placeholders, validation messages, notifications, and user-visible errors.
 
-## 3. Backend Stack (Laravel 13 & Inertia)
-- **Modern Laravel:** Write modern Laravel 13 code leveraging Form Requests for validation, clean Eloquent relationships, and Inertia controller responses.
-- **Testing:** Ensure feature and unit tests are written or updated using Pest (^4.4).
+### Developer-Facing Content — English
 
-## 4. Response Guidelines
-- Keep responses direct and concise. Focus strictly on code and solutions without unnecessary conversational filler or introductory text.
+- Write code, identifiers, filenames, comments, documentation, PHPDoc, JSDoc, TSDoc, logs, and test descriptions in English.
+- Do not write developer documentation or code comments in French or Arabic unless explicitly requested.
+- Apply these language rules regardless of the conversation language.
 
-## 5. Language Rules (Strict)
+## Code Quality & Verification
 
-### User-Facing Content: French
-- Always write all user-facing frontend text in French.
-- This includes page titles, labels, buttons, placeholders, validation messages, alerts, dialogs, empty states, tooltips, and toast notifications.
-- Backend validation or error messages displayed to users must also be in French.
+- Follow the project's ESLint, Prettier, and Laravel Pint configurations.
+- Use the existing commands when appropriate:
 
-### Development Content: English
-- Always write code, variable names, function names, class names, file names, database fields, routes, and technical identifiers in English.
-- Always write documentation, README files, Markdown files, code comments, PHPDoc, JSDoc/TSDoc, API documentation, changelogs, logs, and test descriptions in English.
-- Never use French or Arabic for development content unless explicitly requested.
+  ```bash
+  npm run lint:check
+  ```
 
-### Important Distinction
-- The conversation language must not affect the project language rules.
-- French is only for content visible to the end user.
-- English is required for everything intended for developers or internal technical use.
+  ```bash
+  npm run format:check
+  ```
+
+  ```bash
+  composer lint:check
+  ```
+
+- Run relevant tests and checks after changes when possible.
+- Fix issues introduced by your changes.
+- Report verification results accurately; never claim a check passed unless it ran successfully.
+- Keep final responses concise, stating what changed and any relevant checks or remaining issues.
