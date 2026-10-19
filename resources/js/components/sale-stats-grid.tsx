@@ -32,7 +32,7 @@ export function SaleStatsGrid({ stats }: { stats: SaleStats }) {
                             Total Caisses
                         </p>
                         <p className="mt-2 text-xl font-bold tracking-tight text-slate-800 dark:text-neutral-100">
-                            {formatStatNumber(stats.totalBoxes)}
+                            {formatStatNumber(Math.abs(stats.totalBoxes))}
                         </p>
                     </div>
                     <div className={iconClass}><Package className="h-5 w-5" /></div>
@@ -46,7 +46,7 @@ export function SaleStatsGrid({ stats }: { stats: SaleStats }) {
                             Total Poids
                         </p>
                         <p className="mt-2 text-xl font-bold tracking-tight text-slate-800 dark:text-neutral-100">
-                            {formatStatNumber(stats.totalWeight)}
+                            {formatStatNumber(Math.abs(stats.totalWeight))}
                             <span className="ml-1.5 text-xs font-medium text-slate-400">KG</span>
                         </p>
                     </div>

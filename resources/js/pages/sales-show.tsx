@@ -59,7 +59,21 @@ export default function SalesShow({
 }: Props) {
     const items = sale.items || [];
 
-    const stats = useSaleCalculations(sale);
+    const calculatedStats = useSaleCalculations(sale);
+    const stats = {
+        ...calculatedStats,
+        totalBoxes: Math.abs(calculatedStats.totalBoxes),
+        totalValeur: Math.abs(calculatedStats.totalValeur),
+        netToPay: Math.abs(calculatedStats.netToPay),
+        formattedTotalValeur: Math.abs(calculatedStats.totalValeur).toLocaleString(
+            'fr-FR',
+            { minimumFractionDigits: 2, maximumFractionDigits: 2 },
+        ),
+        formattedNetToPay: Math.abs(calculatedStats.netToPay).toLocaleString(
+            'fr-FR',
+            { minimumFractionDigits: 2, maximumFractionDigits: 2 },
+        ),
+    };
 
     const { copyToClipboard } = useScreenshot();
 
@@ -140,13 +154,12 @@ export default function SalesShow({
                         <TableRow className="h-11 hover:bg-transparent">
                             <TableHead>Bateau</TableHead>
                             <TableHead>Article</TableHead>
-                            <TableHead>Quantité</TableHead>
-                            <TableHead>Prix vente</TableHead>
-                            <TableHead>Prix réel</TableHead>
-                            <TableHead>Montant</TableHead>
-                            <TableHead>Taxe 3%</TableHead>
-                            <TableHead>Avec taxe</TableHead>
-                            <TableHead>Total diff</TableHead>
+                            <TableHead className="text-center">Quantité</TableHead>
+                            <TableHead className="text-center">Prix vente</TableHead>
+                            <TableHead className="text-center">Prix réel</TableHead>
+                            <TableHead className="text-center">Montant</TableHead>
+                            <TableHead className="text-center">Taxe 3%</TableHead>
+                            <TableHead className="text-center">Total diff</TableHead>
                         </TableRow>
                     </TableHeader>
 
@@ -158,7 +171,7 @@ export default function SalesShow({
                         ) : (
                             <TableRow>
                                 <TableCell
-                                    colSpan={9}
+                                    colSpan={8}
                                     className="py-24 text-center font-medium text-muted-foreground italic"
                                 >
                                     Aucune ligne de vente enregistrée pour le

@@ -116,7 +116,7 @@ export function SessionTotalsCard({
         },
         {
             label: 'Total Ventes',
-            value: formatTotal(totals.sell),
+            value: formatTotal(Math.abs(totals.sell)),
             icon: ShoppingBag,
             cardClass:
                 'group border-slate-200/80 bg-linear-to-br from-white to-orange-50/70 dark:border-neutral-800 dark:from-neutral-900 dark:to-orange-950/20',
