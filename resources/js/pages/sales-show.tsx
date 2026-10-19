@@ -94,7 +94,7 @@ export default function SalesShow({
     };
 
     return (
-        <div className="mx-auto min-h-screen max-w-7xl space-y-6 bg-white p-6 font-sans text-slate-900 dark:bg-neutral-950 dark:text-neutral-100">
+        <div className="min-h-screen w-full min-w-0 space-y-6 bg-white p-6 font-sans text-slate-900 dark:bg-neutral-950 dark:text-neutral-100">
             <Head title={`Vente #${sale.id}`} />
 
             <button
@@ -147,7 +147,6 @@ export default function SalesShow({
                             <TableHead>Taxe 3%</TableHead>
                             <TableHead>Avec taxe</TableHead>
                             <TableHead>Total diff</TableHead>
-                            <TableHead aria-label="Actions" />
                         </TableRow>
                     </TableHeader>
 
@@ -159,7 +158,7 @@ export default function SalesShow({
                         ) : (
                             <TableRow>
                                 <TableCell
-                                    colSpan={10}
+                                    colSpan={9}
                                     className="py-24 text-center font-medium text-muted-foreground italic"
                                 >
                                     Aucune ligne de vente enregistrée pour le
