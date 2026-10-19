@@ -1,4 +1,5 @@
 import { Invoice } from '@/types/invoice';
+import { formatNumber } from '@/lib/utils';
 import { useMemo } from 'react';
 
 export const useInvoiceCalculations = (invoice: Invoice) => {
@@ -46,12 +47,6 @@ export const useInvoiceCalculations = (invoice: Invoice) => {
         const totalHT = netToPay - tvaAmount - totalBoxes;
 
         // تنسيق الأرقام (Formatting) باش نسهلو الخدمة على الـ Component
-        const formatNumber = (amount: number) =>
-            amount.toLocaleString('fr-FR', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-            });
-
         const categoryBreakdown = [...categoryTotals.entries()].map(
             ([id, category]) => ({
                 id,

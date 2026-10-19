@@ -7,14 +7,10 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
+import { formatNumber } from '@/lib/utils';
 import { Package } from 'lucide-react';
 import { useState } from 'react';
 import type { Stats } from '@/types/stats';
-
-const numberFormatter = new Intl.NumberFormat('fr-FR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-});
 
 interface Props {
     categories: Stats['categoryBreakdown'];
@@ -34,7 +30,7 @@ export function InvoiceCategoryBreakdownDialog({ categories }: Props) {
                                     Totaux par catégorie
                                 </p>
                                 <p className="mt-2 text-xl font-bold tracking-tight text-emerald-700 dark:text-emerald-300">
-                                    {numberFormatter.format(categories.length)}
+                                    {formatNumber(categories.length)}
                                     <span className="ml-1.5 text-xs font-medium text-slate-400">
                                         catégories
                                     </span>
@@ -92,9 +88,7 @@ export function InvoiceCategoryBreakdownDialog({ categories }: Props) {
                                             Total
                                         </p>
                                         <p className="text-[11px] font-bold text-slate-800 tabular-nums dark:text-neutral-100">
-                                            {numberFormatter.format(
-                                                category.total,
-                                            )}
+                                            {formatNumber(category.total)}
                                         </p>
                                     </div>
                                     <div>
@@ -102,9 +96,7 @@ export function InvoiceCategoryBreakdownDialog({ categories }: Props) {
                                             Vendu
                                         </p>
                                         <p className="text-[11px] font-bold text-amber-700 tabular-nums dark:text-amber-300">
-                                            {numberFormatter.format(
-                                                category.sold,
-                                            )}
+                                            {formatNumber(category.sold)}
                                         </p>
                                     </div>
                                     <div>
@@ -112,9 +104,7 @@ export function InvoiceCategoryBreakdownDialog({ categories }: Props) {
                                             Reste
                                         </p>
                                         <p className="text-[11px] font-bold text-emerald-700 tabular-nums dark:text-emerald-300">
-                                            {numberFormatter.format(
-                                                category.remaining,
-                                            )}
+                                            {formatNumber(category.remaining)}
                                         </p>
                                     </div>
                                 </div>
