@@ -7,10 +7,15 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
-import { formatNumber } from '@/lib/utils';
 import { Package } from 'lucide-react';
 import { useState } from 'react';
 import type { Stats } from '@/types/stats';
+
+function formatQuantity(value: number): string {
+    return new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 })
+        .format(value)
+        .replaceAll(',', ' ');
+}
 
 interface Props {
     categories: Stats['categoryBreakdown'];
@@ -22,7 +27,7 @@ export function InvoiceCategoryBreakdownDialog({ categories }: Props) {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <button type="button" className="w-full text-left lg:order-4">
+                <button type="button" className="w-full cursor-pointer text-left lg:order-4">
                     <Card className="group overflow-hidden border-emerald-200/80 bg-linear-to-br from-white to-emerald-50/70 py-2 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-emerald-900 dark:from-neutral-900 dark:to-emerald-950/20">
                         <CardContent className="flex min-h-16 items-center justify-between p-3">
                             <div>
@@ -30,7 +35,7 @@ export function InvoiceCategoryBreakdownDialog({ categories }: Props) {
                                     Totaux par catégorie
                                 </p>
                                 <p className="mt-2 text-xl font-bold tracking-tight text-emerald-700 dark:text-emerald-300">
-                                    {formatNumber(categories.length)}
+                                    {formatQuantity(categories.length)}
                                     <span className="ml-1.5 text-xs font-medium text-slate-400">
                                         catégories
                                     </span>
@@ -88,7 +93,7 @@ export function InvoiceCategoryBreakdownDialog({ categories }: Props) {
                                             Total
                                         </p>
                                         <p className="text-[11px] font-bold text-slate-800 tabular-nums dark:text-neutral-100">
-                                            {formatNumber(category.total)}
+                                            {formatQuantity(category.total)}
                                         </p>
                                     </div>
                                     <div>
@@ -96,7 +101,7 @@ export function InvoiceCategoryBreakdownDialog({ categories }: Props) {
                                             Vendu
                                         </p>
                                         <p className="text-[11px] font-bold text-amber-700 tabular-nums dark:text-amber-300">
-                                            {formatNumber(category.sold)}
+                                            {formatQuantity(category.sold)}
                                         </p>
                                     </div>
                                     <div>
@@ -104,7 +109,7 @@ export function InvoiceCategoryBreakdownDialog({ categories }: Props) {
                                             Reste
                                         </p>
                                         <p className="text-[11px] font-bold text-emerald-700 tabular-nums dark:text-emerald-300">
-                                            {formatNumber(category.remaining)}
+                                            {formatQuantity(category.remaining)}
                                         </p>
                                     </div>
                                 </div>
