@@ -140,7 +140,9 @@ export function SessionSalesTable({
 
                                 <TableCell className="text-right font-mono font-semibold">
                                     {formatCurrency(
-                                        computeSaleNetToPayFromSale(sale),
+                                        Math.abs(
+                                            computeSaleNetToPayFromSale(sale),
+                                        ),
                                     )}
                                 </TableCell>
 
