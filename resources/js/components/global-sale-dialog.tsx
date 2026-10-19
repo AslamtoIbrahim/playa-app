@@ -25,6 +25,7 @@ import type { Item } from '@/types/item';
 import type { Sale } from '@/types/sale';
 import { ShoppingCart, Trash2 } from 'lucide-react';
 import { useGlobalSaleDialog } from '@/hooks/use-global-sale-dialog';
+import type { KeyboardEvent } from 'react';
 
 interface Props {
     open: boolean;
@@ -56,6 +57,17 @@ const numberInputValue = (value: number | string): string => {
     const number = Number(value);
 
     return Number.isFinite(number) ? String(number) : '';
+};
+
+const handleSavedRowKeyDown = (event: KeyboardEvent<HTMLInputElement>): void => {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        event.currentTarget.blur();
+
+        return;
+    }
+
+    navigateToAdjacentCell(event);
 };
 
 export function GlobalSaleDialog({
@@ -332,7 +344,7 @@ export function GlobalSaleDialog({
                                                     });
                                                 }
                                             }}
-                                            onKeyDown={navigateToAdjacentCell}
+                                            onKeyDown={handleSavedRowKeyDown}
                                             className="h-10 border-none bg-transparent text-center [appearance:textfield] focus-visible:bg-slate-100 focus-visible:ring-0 dark:focus-visible:bg-neutral-800 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                                             aria-label="Prix de vente"
                                         />
@@ -369,7 +381,7 @@ export function GlobalSaleDialog({
                                                     });
                                                 }
                                             }}
-                                            onKeyDown={navigateToAdjacentCell}
+                                            onKeyDown={handleSavedRowKeyDown}
                                             className="h-10 border-none bg-transparent text-center [appearance:textfield] focus-visible:bg-slate-100 focus-visible:ring-0 dark:focus-visible:bg-neutral-800 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                                             aria-label="Quantité vendue"
                                         />
@@ -385,7 +397,7 @@ export function GlobalSaleDialog({
                                                     real_price: Number(event.target.value),
                                                 });
                                             }}
-                                            onKeyDown={navigateToAdjacentCell}
+                                            onKeyDown={handleSavedRowKeyDown}
                                             className="h-10 border-none bg-transparent text-center [appearance:textfield] focus-visible:bg-slate-100 focus-visible:ring-0 dark:focus-visible:bg-neutral-800 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                                             aria-label="Prix réel"
                                         />
