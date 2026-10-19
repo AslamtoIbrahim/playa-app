@@ -1,19 +1,24 @@
+import { InvoiceCategoryBreakdownDialog } from '@/components/invoice-category-breakdown-dialog';
 import { Card, CardContent } from '@/components/ui/card';
-import { currency } from '@/lib/utils';
 import { Stats } from '@/types/stats';
 import { Banknote, Diff, Package, Scale, Wallet } from 'lucide-react';
+
+const numberFormatter = new Intl.NumberFormat('fr-FR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+});
 
 export function InvoiceStatsGrid({ stats }: { stats: Stats }) {
     return (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 print:hidden">
-            <Card className="group overflow-hidden border-slate-200/80 bg-linear-to-br from-white to-slate-50 py-2 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md lg:order-4 dark:border-neutral-800 dark:from-neutral-900 dark:to-neutral-950">
+            <Card className="group overflow-hidden border-slate-200/80 bg-linear-to-br from-white to-slate-50 py-2 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md lg:order-5 dark:border-neutral-800 dark:from-neutral-900 dark:to-neutral-950">
                 <CardContent className="flex min-h-16 items-center justify-between p-3">
                     <div>
                         <p className="text-xs font-semibold tracking-wide text-slate-500 dark:text-neutral-400">
                             Total Caisses
                         </p>
                         <p className="mt-2 text-xl font-bold tracking-tight text-slate-800 dark:text-neutral-100">
-                            {stats.totalBoxes}
+                            {numberFormatter.format(stats.totalBoxes)}
                         </p>
                     </div>
                     <div className="rounded-xl bg-amber-100 p-1.5 text-amber-700 transition-transform group-hover:scale-110 dark:bg-amber-400/10 dark:text-amber-300">
@@ -48,7 +53,7 @@ export function InvoiceStatsGrid({ stats }: { stats: Stats }) {
                             Total HT
                         </p>
                         <p className="mt-2 text-xl font-bold tracking-tight text-blue-700 dark:text-blue-300">
-                            {currency(stats.totalHT)}
+                            {stats.formattedTotalHT}
                             <span className="ml-1.5 text-xs font-medium text-slate-400">
                                 DH
                             </span>
@@ -89,8 +94,12 @@ export function InvoiceStatsGrid({ stats }: { stats: Stats }) {
                 </CardContent>
             </Card>
 
+            <InvoiceCategoryBreakdownDialog
+                categories={stats.categoryBreakdown}
+            />
+
             {stats.formattedTotalDifference !== undefined && (
-                <Card className="group overflow-hidden border-slate-200/80 bg-linear-to-br from-white to-rose-50/70 py-2 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md lg:order-5 dark:border-neutral-800 dark:from-neutral-900 dark:to-rose-950/20">
+                <Card className="group overflow-hidden border-slate-200/80 bg-linear-to-br from-white to-rose-50/70 py-2 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md lg:order-6 dark:border-neutral-800 dark:from-neutral-900 dark:to-rose-950/20">
                     <CardContent className="flex min-h-16 items-center justify-between p-3">
                         <div>
                             <p className="text-xs font-semibold tracking-wide text-slate-500 dark:text-neutral-400">

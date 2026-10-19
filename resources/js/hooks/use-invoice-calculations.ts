@@ -8,6 +8,29 @@ export const useInvoiceCalculations = (invoice: Invoice) => {
         const totalBoxes = Number(invoice.boxes || 0);
         const totalWeight = Number(invoice.weight || 0);
         const invoiceItems = invoice.items ?? [];
+        const categoryTotals = new Map<
+            number,
+            { name: string; unit: string; total: number; sold: number }
+        >();
+
+        invoiceItems.forEach((item) => {
+            const current = categoryTotals.get(item.category_id) ?? {
+                name: item.category?.name ?? `Catégorie ${item.category_id}`,
+                unit: item.unit,
+                total: 0,
+                sold: 0,
+            };
+
+            current.total += Number(item.unit_count || 0);
+            current.sold += (item.sale_items ?? [])
+                .filter((saleItem) => !saleItem.deleted_at)
+                .reduce(
+                    (sum, saleItem) =>
+                        sum + Math.abs(Number(saleItem.unit_count || 0)),
+                    0,
+                );
+            categoryTotals.set(item.category_id, current);
+        });
         const differences = invoiceItems.flatMap(
             (item) => item.differences ?? [],
         );
@@ -23,11 +46,19 @@ export const useInvoiceCalculations = (invoice: Invoice) => {
         const totalHT = netToPay - tvaAmount - totalBoxes;
 
         // تنسيق الأرقام (Formatting) باش نسهلو الخدمة على الـ Component
-        const formatCurrency = (amount: number) =>
+        const formatNumber = (amount: number) =>
             amount.toLocaleString('fr-FR', {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
             });
+
+        const categoryBreakdown = [...categoryTotals.entries()].map(
+            ([id, category]) => ({
+                id,
+                ...category,
+                remaining: category.total - category.sold,
+            }),
+        );
 
         return {
             netToPay,
@@ -35,16 +66,17 @@ export const useInvoiceCalculations = (invoice: Invoice) => {
             totalBoxes,
             totalWeight,
             totalHT,
+            categoryBreakdown,
             // مكن ترجع حتى النسخ المنسقة واجدة
-            formattedNetToPay: formatCurrency(netToPay),
-            formattedTotalHT: formatCurrency(totalHT),
-            formattedTaxAndBoxes: (tvaAmount + totalBoxes).toFixed(2),
-            formattedWeight: totalWeight.toFixed(2),
+            formattedNetToPay: formatNumber(netToPay),
+            formattedTotalHT: formatNumber(totalHT),
+            formattedTaxAndBoxes: formatNumber(tvaAmount + totalBoxes),
+            formattedWeight: formatNumber(totalWeight),
             totalDifference,
             formattedTotalDifference:
                 totalDifference === undefined
                     ? undefined
-                    : formatCurrency(totalDifference),
+                    : formatNumber(totalDifference),
         };
     }, [
         invoice.amount,

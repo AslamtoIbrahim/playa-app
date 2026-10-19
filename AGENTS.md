@@ -29,6 +29,18 @@
 - Preserve consistent styling and readable contrast in both light and dark themes. Use appropriate `dark:` variants when fixed colors are necessary.
 - Reuse existing components and theme conventions instead of introducing inconsistent styling.
 
+## Component Design & Code Organization
+
+- Keep components simple, readable, and well-organized without unnecessary abstraction.
+- Do not create a new component, file, hook, or abstraction for every dialog, section, or small UI element.
+- Prefer keeping dialog-specific logic and UI in the existing component when it remains reasonably sized and easy to maintain.
+- Extract a component only when it provides meaningful reuse, separates a distinct responsibility, or significantly improves readability and maintainability.
+- Reuse existing components and patterns before introducing new ones.
+- Avoid both oversized components with unrelated responsibilities and excessive fragmentation into many small files.
+- Keep related logic together and organize code according to clear responsibilities.
+- Before introducing new files or restructuring components, inspect the existing implementation and choose the smallest maintainable solution.
+- Preserve existing component boundaries and architecture unless a change provides a clear, practical benefit.
+
 ## Laravel, Inertia, Wayfinder & Forms
 
 - Follow Laravel 13 conventions and the installed versions of Inertia.js and Wayfinder.
