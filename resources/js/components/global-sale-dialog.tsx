@@ -46,7 +46,7 @@ const categoryBadgeColors = [
     'border-teal-300 bg-teal-50 text-teal-800 dark:border-teal-800 dark:bg-teal-950/50 dark:text-teal-200',
     'border-orange-300 bg-orange-50 text-orange-800 dark:border-orange-800 dark:bg-orange-950/50 dark:text-orange-200',
     'border-indigo-300 bg-indigo-50 text-indigo-800 dark:border-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-200',
-    'border-pink-300 bg-pink-50 text-pink-800 dark:border-pink-800 dark:bg-pink-950/50 dark:text-pink-200',
+    'border-lime-300 bg-lime-50 text-lime-800 dark:border-lime-800 dark:bg-lime-950/50 dark:text-lime-200',
 ];
 
 const remainingCountFormatter = new Intl.NumberFormat('fr-FR', {
@@ -140,7 +140,7 @@ export function GlobalSaleDialog({
                                         variant="outline"
                                         className={cn(
                                             'h-6 gap-1 px-1.5 text-[10px] font-medium shadow-sm',
-                                            category.remaining <= 0
+                                            category.remaining === 0
                                                 ? 'animate-pulse border-red-400 bg-red-50 text-red-700 motion-reduce:animate-none dark:border-red-700 dark:bg-red-950/60 dark:text-red-300'
                                                 : categoryBadgeColors[
                                                       category.id %
