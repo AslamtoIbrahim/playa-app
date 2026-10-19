@@ -198,7 +198,7 @@ export function SessionSalesTable({
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-8 w-8 text-blue-500 hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-500/10 dark:hover:text-blue-400"
+                                                            className="h-8 w-8 text-blue-600 hover:bg-blue-100 hover:text-blue-800 dark:hover:bg-blue-500/10 dark:hover:text-blue-400"
                                                         >
                                                             <Pencil className="h-4 w-4" />
                                                         </Button>

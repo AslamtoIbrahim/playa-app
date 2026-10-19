@@ -82,11 +82,11 @@ export function SessionDifferencesTable({
                                     onClick={() => {
                                         openReport(item);
                                     }}
-                                    className="group cursor-pointer border-b border-slate-100 transition-colors last:border-0 hover:bg-blue-50/50 dark:border-neutral-800/70 dark:hover:bg-blue-950/20"
+                                    className="group cursor-pointer border-b border-slate-100 transition-colors last:border-0 hover:bg-blue-100/70 dark:border-neutral-800/70 dark:hover:bg-blue-950/20"
                                 >
                                     <TableCell className="py-4 text-sm font-semibold text-slate-700 dark:text-neutral-300">
                                         <div className="flex items-center gap-2">
-                                            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 ring-1 ring-blue-100 dark:bg-blue-950/50 dark:text-blue-300 dark:ring-blue-900/50">
+                                            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 text-blue-700 ring-1 ring-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:ring-blue-900/50">
                                                 <CalendarDays className="h-4 w-4" />
                                             </span>
                                             {formatDateDisplay(

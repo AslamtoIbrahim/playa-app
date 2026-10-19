@@ -91,7 +91,7 @@ export function SessionReceiptsTable({
                 receiptContext ? (
                     <>
                         <div className="flex items-center gap-3">
-                            <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-300">
+                            <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-blue-300 bg-blue-100 text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-300">
                                 <FileText className="h-4 w-4" />
                             </span>
                             <div>
@@ -168,12 +168,12 @@ export function SessionReceiptsTable({
                             receipts.map((receipt) => (
                                 <TableRow
                                     key={receipt.id}
-                                    className="group cursor-pointer border-b border-slate-100 transition-colors last:border-0 hover:bg-blue-50/50 dark:border-neutral-800/70 dark:hover:bg-blue-950/20"
+                                    className="group cursor-pointer border-b border-slate-100 transition-colors last:border-0 hover:bg-blue-100/70 dark:border-neutral-800/70 dark:hover:bg-blue-950/20"
                                     onClick={() => handleRowClick(receipt.id)}
                                 >
                                     <TableCell className="py-4">
                                         <span className="inline-flex items-center gap-2 font-mono text-xs font-bold text-slate-700 dark:text-neutral-200">
-                                            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 ring-1 ring-blue-100 group-hover:bg-blue-100 dark:bg-blue-950/50 dark:text-blue-300 dark:ring-blue-900/50 dark:group-hover:bg-blue-900/50">
+                                            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 text-blue-700 ring-1 ring-blue-200 group-hover:bg-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:ring-blue-900/50 dark:group-hover:bg-blue-900/50">
                                                 <FileText className="h-4 w-4" />
                                             </span>
                                             #{receipt.id}
