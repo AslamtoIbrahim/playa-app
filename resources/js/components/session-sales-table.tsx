@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { Lock, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Lock, Pencil, Plus, ReceiptText, Trash2 } from 'lucide-react';
 
 import AddSaleDialog from '@/components/add-sale-dialog';
 import DeleteSaleDialog from '@/components/delete-sale-dialog';
@@ -77,9 +77,21 @@ export function SessionSalesTable({
             header={
                 saleContext ? (
                     <>
-                        <span className="text-xs font-bold tracking-wide text-neutral-500 uppercase dark:text-neutral-400">
-                            {title} ({sales.length})
-                        </span>
+                        <div className="flex items-center gap-3">
+                            <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-900/50 dark:bg-orange-950/40 dark:text-orange-300">
+                                <ReceiptText className="h-4 w-4" />
+                            </span>
+                            <div>
+                                <p className="text-sm font-bold text-slate-800 dark:text-neutral-100">
+                                    {title}
+                                </p>
+                                <p className="text-xs text-slate-500 dark:text-neutral-400">
+                                    {sales.length} vente
+                                    {sales.length > 1 ? 's' : ''} enregistrée
+                                    {sales.length > 1 ? 's' : ''}
+                                </p>
+                            </div>
+                        </div>
 
                         {canAddSale ? (
                             <AddSaleDialog
@@ -89,7 +101,10 @@ export function SessionSalesTable({
                                 title="Nouvelle Vente"
                                 description="La journée et la date sont déjà définies : choisissez le client et le type de vente."
                                 trigger={
-                                    <Button size="sm" className="font-bold">
+                                    <Button
+                                        size="sm"
+                                        className="bg-orange-600 font-bold text-white shadow-sm hover:bg-orange-700 dark:bg-orange-600 dark:hover:bg-orange-500"
+                                    >
                                         <Plus className="mr-2 h-4 w-4" />{' '}
                                         Nouvelle Vente
                                     </Button>
@@ -110,101 +125,116 @@ export function SessionSalesTable({
                 ) : null
             }
         >
-            <Table>
-                <TableHeader className={sessionTableHeaderClass}>
-                    <TableRow>
-                        <TableHead>ID / N°</TableHead>
-                        <TableHead>Client</TableHead>
+            <div className="overflow-x-auto">
+                <Table className="min-w-160">
+                    <TableHeader
+                        className={`${sessionTableHeaderClass} [&_th]:h-12 [&_th]:bg-orange-50/70 [&_th]:text-[10px] [&_th]:tracking-[0.12em] dark:[&_th]:bg-orange-950/20`}
+                    >
+                        <TableRow>
+                            <TableHead>ID / N°</TableHead>
+                            <TableHead>Clients</TableHead>
 
-                        <TableHead className="text-right">Montant</TableHead>
+                            <TableHead className="text-right">
+                                Montant
+                            </TableHead>
 
-                        <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                </TableHeader>
+                            <TableHead className="text-right">
+                                Actions
+                            </TableHead>
+                        </TableRow>
+                    </TableHeader>
 
-                <TableBody>
-                    {sales.length > 0 ? (
-                        sales.map((sale) => (
-                            <TableRow
-                                key={sale.id}
-                                className="cursor-pointer"
-                                onClick={() => handleRowClick(sale.id)}
-                            >
-                                <TableCell className="font-medium">
-                                    #{sale.id}
-                                </TableCell>
-
-                                <TableCell className="text-neutral-600 dark:text-neutral-300">
-                                    {sale.customer?.name || '—'}
-                                </TableCell>
-
-                                <TableCell className="text-right font-mono font-semibold">
-                                    {formatCurrency(
-                                        Math.abs(
-                                            computeSaleNetToPayFromSale(sale),
-                                        ),
-                                    )}
-                                </TableCell>
-
-                                <TableCell
-                                    className="text-right"
-                                    onClick={(event) => {
-                                        event.stopPropagation();
-                                    }}
+                    <TableBody>
+                        {sales.length > 0 ? (
+                            sales.map((sale) => (
+                                <TableRow
+                                    key={sale.id}
+                                    className="group cursor-pointer border-b border-slate-100 transition-colors last:border-0 hover:bg-orange-50/60 dark:border-neutral-800/70 dark:hover:bg-orange-950/20"
+                                    onClick={() => handleRowClick(sale.id)}
                                 >
-                                    {saleContext ? (
-                                        <div className="flex items-center justify-end gap-1">
-                                            <EditSaleDialog
-                                                sale={sale}
-                                                customers={
-                                                    saleContext.customers
-                                                }
-                                                lockedSessionId={
-                                                    saleContext.sessionId
-                                                }
-                                                lockedDate={
-                                                    saleContext.sessionDate
-                                                }
-                                                trigger={
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8 text-blue-500 hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-500/10 dark:hover:text-blue-400"
-                                                    >
-                                                        <Pencil className="h-4 w-4" />
-                                                    </Button>
-                                                }
-                                            />
+                                    <TableCell className="py-4">
+                                        <span className="inline-flex items-center gap-2 font-mono text-xs font-bold text-slate-700 dark:text-neutral-200">
+                                            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-50 text-orange-600 ring-1 ring-orange-100 group-hover:bg-orange-100 dark:bg-orange-950/50 dark:text-orange-300 dark:ring-orange-900/50 dark:group-hover:bg-orange-900/50">
+                                                <ReceiptText className="h-4 w-4" />
+                                            </span>
+                                            #{sale.id}
+                                        </span>
+                                    </TableCell>
 
-                                            <DeleteSaleDialog
-                                                saleId={sale.id}
-                                                amount={sale.amount}
-                                                customerName={
-                                                    sale.customer?.name ||
-                                                    'Client Inconnu'
-                                                }
-                                                trigger={
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8 text-red-500 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/70 dark:hover:text-red-400"
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                }
-                                            />
-                                        </div>
-                                    ) : null}
-                                </TableCell>
-                            </TableRow>
-                        ))
-                    ) : (
-                        <SessionEmptyRow colSpan={4}>
-                            {emptyMessage}
-                        </SessionEmptyRow>
-                    )}
-                </TableBody>
-            </Table>
+                                    <TableCell className="font-semibold text-slate-800 dark:text-neutral-200">
+                                        {sale.customer?.name || '—'}
+                                    </TableCell>
+
+                                    <TableCell className="text-right font-mono text-sm font-bold text-slate-900 tabular-nums dark:text-neutral-100">
+                                        {formatCurrency(
+                                            Math.abs(
+                                                computeSaleNetToPayFromSale(
+                                                    sale,
+                                                ),
+                                            ),
+                                        )}
+                                    </TableCell>
+
+                                    <TableCell
+                                        className="text-right"
+                                        onClick={(event) => {
+                                            event.stopPropagation();
+                                        }}
+                                    >
+                                        {saleContext ? (
+                                            <div className="flex items-center justify-end gap-1">
+                                                <EditSaleDialog
+                                                    sale={sale}
+                                                    customers={
+                                                        saleContext.customers
+                                                    }
+                                                    lockedSessionId={
+                                                        saleContext.sessionId
+                                                    }
+                                                    lockedDate={
+                                                        saleContext.sessionDate
+                                                    }
+                                                    trigger={
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-blue-500 hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-500/10 dark:hover:text-blue-400"
+                                                        >
+                                                            <Pencil className="h-4 w-4" />
+                                                        </Button>
+                                                    }
+                                                />
+
+                                                <DeleteSaleDialog
+                                                    saleId={sale.id}
+                                                    amount={sale.amount}
+                                                    customerName={
+                                                        sale.customer?.name ||
+                                                        'Client Inconnu'
+                                                    }
+                                                    trigger={
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-red-500 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/70 dark:hover:text-red-400"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    }
+                                                />
+                                            </div>
+                                        ) : null}
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        ) : (
+                            <SessionEmptyRow colSpan={4}>
+                                {emptyMessage}
+                            </SessionEmptyRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
         </SessionTableShell>
     );
 }
