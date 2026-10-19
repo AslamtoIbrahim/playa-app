@@ -1,6 +1,6 @@
 import { Form } from '@inertiajs/react';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon, Plus } from 'lucide-react';
+import { Calendar as CalendarIcon, FileText, Plus } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -157,11 +157,18 @@ export default function AddInvoiceDialog({
                 )}
             </DialogTrigger>
 
-            <DialogContent className="sm:max-w-106.25">
-                <DialogHeader>
-                    <DialogTitle className="font-black text-slate-900 uppercase dark:text-neutral-100">
-                        {title}
-                    </DialogTitle>
+            <DialogContent className="overflow-hidden border-slate-200 p-0 sm:max-w-lg dark:border-neutral-800">
+                <DialogHeader className="border-b border-slate-200 bg-slate-50/80 px-6 py-5 dark:border-neutral-800 dark:bg-neutral-950/50">
+                    <div className="mb-1 flex items-center gap-3">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-300">
+                            <FileText className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <DialogTitle className="font-black text-slate-900 uppercase dark:text-neutral-100">
+                                {title}
+                            </DialogTitle>
+                        </div>
+                    </div>
                     <DialogDescription>{description}</DialogDescription>
                 </DialogHeader>
 
@@ -175,7 +182,7 @@ export default function AddInvoiceDialog({
                         setSelectedCautionId('');
                         resetContextState();
                     }}
-                    className="space-y-4 pt-4"
+                    className="space-y-5 px-6 py-5"
                 >
                     {({ processing, errors }) => (
                         <>

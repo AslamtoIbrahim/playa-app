@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { Lock, Plus, ShieldCheck } from 'lucide-react';
+import { FileText, Lock, Plus, ShieldCheck } from 'lucide-react';
 
 import AddInvoiceDialog from '@/components/add-invoice-dialog';
 import DeleteInvoiceDialog from '@/components/delete-invoice-dialog';
@@ -91,9 +91,21 @@ export function SessionInvoicesTable({
             header={
                 invoiceContext ? (
                     <>
-                        <span className="text-xs font-bold tracking-wide text-neutral-500 uppercase dark:text-neutral-400">
-                            {title} ({invoices.length})
-                        </span>
+                        <div className="flex items-center gap-3">
+                            <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-300">
+                                <FileText className="h-4 w-4" />
+                            </span>
+                            <div>
+                                <p className="text-sm font-bold text-slate-800 dark:text-neutral-100">
+                                    {title}
+                                </p>
+                                <p className="text-xs text-slate-500 dark:text-neutral-400">
+                                    {invoices.length} facture
+                                    {invoices.length > 1 ? 's' : ''} enregistrée
+                                    {invoices.length > 1 ? 's' : ''}
+                                </p>
+                            </div>
+                        </div>
 
                         {canAddInvoice ? (
                             <AddInvoiceDialog
@@ -114,7 +126,10 @@ export function SessionInvoicesTable({
                                 }
                                 description="La journée, la zone et la date sont déjà définies : choisissez le compte et le bureau."
                                 trigger={
-                                    <Button size="sm" className="font-bold">
+                                    <Button
+                                        size="sm"
+                                        className="bg-blue-600 font-bold text-white shadow-sm hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500"
+                                    >
                                         <Plus className="mr-2 h-4 w-4" />{' '}
                                         Ajouter une Facture
                                     </Button>
@@ -135,144 +150,168 @@ export function SessionInvoicesTable({
                 ) : null
             }
         >
-            <Table>
-                <TableHeader className={sessionTableHeaderClass}>
-                    <TableRow>
-                        <TableHead>ID / N°</TableHead>
-                        <TableHead>Client / Fournisseur</TableHead>
-                        <TableHead>Caution</TableHead>
+            <div className="overflow-x-auto">
+                <Table className="min-w-205">
+                    <TableHeader
+                        className={`${sessionTableHeaderClass} [&_th]:h-12 [&_th]:bg-slate-50/80 [&_th]:text-[10px] [&_th]:tracking-[0.12em] dark:[&_th]:bg-neutral-950/70`}
+                    >
+                        <TableRow>
+                            <TableHead>ID / N°</TableHead>
 
-                        <TableHead className="text-center">NC</TableHead>
+                            <TableHead>Clients</TableHead>
 
-                        <TableHead className="text-center">Poids Kg</TableHead>
+                            <TableHead>Caution</TableHead>
 
-                        <TableHead className="text-right">Montant</TableHead>
+                            <TableHead className="text-center">NC</TableHead>
 
-                        <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                </TableHeader>
+                            <TableHead className="text-center">
+                                Poids Kg
+                            </TableHead>
 
-                <TableBody>
-                    {invoices.length > 0 ? (
-                        invoices.map((invoice) => (
-                            <TableRow
-                                key={invoice.id}
-                                onClick={() => {
-                                    handleRowClick(invoice.id);
-                                }}
-                                className="cursor-pointer transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/60"
-                            >
-                                <TableCell className="font-medium">
-                                    {invoice.invoice_number
-                                        ? `#${invoice.invoice_number}`
-                                        : `#${invoice.id}`}
-                                </TableCell>
+                            <TableHead className="text-right">
+                                Montant
+                            </TableHead>
 
-                                <TableCell className="text-neutral-600 dark:text-neutral-300">
-                                    {invoice.billable?.name || '—'}
-                                </TableCell>
+                            <TableHead className="text-right">
+                                Actions
+                            </TableHead>
+                        </TableRow>
+                    </TableHeader>
 
-                                <TableCell>
-                                    {invoice.caution ? (
-                                        <div className="flex w-fit items-center gap-1.5 rounded-md border border-indigo-100 bg-indigo-50/50 px-2 py-0.5 text-xs font-bold text-indigo-700 dark:border-indigo-900/50 dark:bg-indigo-950/40 dark:text-indigo-400">
-                                            <ShieldCheck className="h-3 w-3 text-indigo-500 dark:text-indigo-400" />
-
-                                            <span className="max-w-30 truncate">
-                                                {invoice.caution.name}
-                                            </span>
-                                        </div>
-                                    ) : (
-                                        <span className="text-xs text-neutral-300 dark:text-neutral-600">
-                                            Aucune
-                                        </span>
-                                    )}
-                                </TableCell>
-
-                                <TableCell className="text-center font-bold text-neutral-700 dark:text-neutral-300">
-                                    {invoice.boxes || 0}
-                                </TableCell>
-
-                                <TableCell className="text-center font-bold text-neutral-700 dark:text-neutral-300">
-                                    {invoice.weight || 0}{' '}
-                                </TableCell>
-
-                                <TableCell className="text-right font-mono font-semibold">
-                                    {formatCurrency(invoice.amount)}
-                                </TableCell>
-
-                                <TableCell
-                                    className="text-right"
-                                    onClick={(event) => {
-                                        event.stopPropagation();
+                    <TableBody>
+                        {invoices.length > 0 ? (
+                            invoices.map((invoice) => (
+                                <TableRow
+                                    key={invoice.id}
+                                    onClick={() => {
+                                        handleRowClick(invoice.id);
                                     }}
+                                    className="group cursor-pointer border-b border-slate-100 transition-colors last:border-0 hover:bg-blue-50/50 dark:border-neutral-800/70 dark:hover:bg-blue-950/20"
                                 >
-                                    {invoiceContext ? (
-                                        <div className="flex items-center justify-end gap-1">
-                                            {invoiceContext.type ===
-                                                'purchase' &&
-                                                canAddInvoice &&
-                                                (invoice.items?.length ?? 0) >
-                                                    0 && (
-                                                    <SellWholeInvoiceDialog
-                                                        invoice={invoice}
-                                                        customers={
-                                                            invoiceContext.sellCustomers
-                                                        }
-                                                        allCustomers={
-                                                            invoiceContext.allCustomers
-                                                        }
-                                                        formatCurrency={
-                                                            formatCurrency
-                                                        }
-                                                        sessionId={
-                                                            invoiceContext.sessionId
-                                                        }
-                                                        sessionDate={
-                                                            invoiceContext.sessionDate
-                                                        }
-                                                        disabled={
-                                                            !computeInvoiceRemainingTotals(
-                                                                invoice,
-                                                            ).hasRemaining
-                                                        }
-                                                    />
-                                                )}
+                                    <TableCell className="py-4">
+                                        <span className="inline-flex items-center gap-2 font-mono text-xs font-bold text-slate-700 dark:text-neutral-200">
+                                            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 ring-1 ring-blue-100 transition-colors group-hover:bg-blue-100 dark:bg-blue-950/50 dark:text-blue-300 dark:ring-blue-900/50 dark:group-hover:bg-blue-900/50">
+                                                <FileText className="h-4 w-4" />
+                                            </span>
+                                            #
+                                            {invoice.invoice_number ||
+                                                invoice.id}
+                                        </span>
+                                    </TableCell>
 
-                                            <EditInvoiceDialog
-                                                invoice={invoice}
-                                                billables={
-                                                    invoiceContext.billables
-                                                }
-                                                sessionZones={
-                                                    invoiceContext.sessionZones
-                                                }
-                                                cautions={
-                                                    invoiceContext.cautions
-                                                }
-                                                officeRooms={
-                                                    invoiceContext.officeRooms
-                                                }
-                                            />
+                                    <TableCell className="font-semibold text-slate-800 dark:text-neutral-200">
+                                        {invoice.billable?.name || '—'}
+                                    </TableCell>
 
-                                            <DeleteInvoiceDialog
-                                                invoiceId={invoice.id}
-                                                invoiceNumber={
-                                                    invoice.invoice_number
-                                                }
-                                                amount={invoice.amount}
-                                            />
-                                        </div>
-                                    ) : null}
-                                </TableCell>
-                            </TableRow>
-                        ))
-                    ) : (
-                        <SessionEmptyRow colSpan={7}>
-                            {emptyMessage}
-                        </SessionEmptyRow>
-                    )}
-                </TableBody>
-            </Table>
+                                    <TableCell>
+                                        {invoice.caution ? (
+                                            <div className="flex w-fit items-center gap-1.5 rounded-md border border-indigo-100 bg-indigo-50/50 px-2 py-0.5 text-xs font-bold text-indigo-700 dark:border-indigo-900/50 dark:bg-indigo-950/40 dark:text-indigo-400">
+                                                <ShieldCheck className="h-3 w-3 text-indigo-500 dark:text-indigo-400" />
+
+                                                <span className="max-w-30 truncate">
+                                                    {invoice.caution.name}
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            <span className="text-xs text-slate-400 dark:text-neutral-500">
+                                                Aucune
+                                            </span>
+                                        )}
+                                    </TableCell>
+
+                                    <TableCell className="text-center">
+                                        <span className="inline-flex min-w-9 justify-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 tabular-nums dark:bg-neutral-800 dark:text-neutral-300">
+                                            {invoice.boxes || 0}
+                                        </span>
+                                    </TableCell>
+
+                                    <TableCell className="text-center">
+                                        <span className="text-sm font-semibold text-slate-700 tabular-nums dark:text-neutral-300">
+                                            {invoice.weight || 0}
+                                            <span className="ml-1 text-[10px] font-medium text-slate-400">
+                                                kg
+                                            </span>
+                                        </span>
+                                    </TableCell>
+
+                                    <TableCell className="text-right font-mono text-sm font-bold text-slate-900 tabular-nums dark:text-neutral-100">
+                                        {formatCurrency(invoice.amount)}
+                                    </TableCell>
+
+                                    <TableCell
+                                        className="text-right"
+                                        onClick={(event) => {
+                                            event.stopPropagation();
+                                        }}
+                                    >
+                                        {invoiceContext ? (
+                                            <div className="flex items-center justify-end gap-1">
+                                                {invoiceContext.type ===
+                                                    'purchase' &&
+                                                    canAddInvoice &&
+                                                    (invoice.items?.length ??
+                                                        0) > 0 && (
+                                                        <SellWholeInvoiceDialog
+                                                            invoice={invoice}
+                                                            customers={
+                                                                invoiceContext.sellCustomers
+                                                            }
+                                                            allCustomers={
+                                                                invoiceContext.allCustomers
+                                                            }
+                                                            formatCurrency={
+                                                                formatCurrency
+                                                            }
+                                                            sessionId={
+                                                                invoiceContext.sessionId
+                                                            }
+                                                            sessionDate={
+                                                                invoiceContext.sessionDate
+                                                            }
+                                                            disabled={
+                                                                !computeInvoiceRemainingTotals(
+                                                                    invoice,
+                                                                ).hasRemaining
+                                                            }
+                                                        />
+                                                    )}
+
+                                                <EditInvoiceDialog
+                                                    invoice={invoice}
+                                                    billables={
+                                                        invoiceContext.billables
+                                                    }
+                                                    sessionZones={
+                                                        invoiceContext.sessionZones
+                                                    }
+                                                    cautions={
+                                                        invoiceContext.cautions
+                                                    }
+                                                    officeRooms={
+                                                        invoiceContext.officeRooms
+                                                    }
+                                                />
+
+                                                <DeleteInvoiceDialog
+                                                    invoiceId={invoice.id}
+                                                    invoiceNumber={
+                                                        invoice.invoice_number
+                                                    }
+                                                    amount={invoice.amount}
+                                                />
+                                            </div>
+                                        ) : null}
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        ) : (
+                            <SessionEmptyRow colSpan={7}>
+                                {emptyMessage}
+                            </SessionEmptyRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
         </SessionTableShell>
     );
 }

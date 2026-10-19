@@ -55,71 +55,81 @@ export function SessionDifferencesTable({
 
     return (
         <SessionTableShell>
-            <Table>
-                <TableHeader className={sessionTableHeaderClass}>
-                    <TableRow>
-                        <TableHead>Date Facture</TableHead>
-                        <TableHead>Client</TableHead>
-                        <TableHead className="text-center">Bateau</TableHead>
+            <div className="overflow-x-auto">
+                <Table className="min-w-[680px]">
+                    <TableHeader
+                        className={`${sessionTableHeaderClass} [&_th]:h-12 [&_th]:bg-slate-50/80 [&_th]:text-[10px] [&_th]:tracking-[0.12em] dark:[&_th]:bg-neutral-950/70`}
+                    >
+                        <TableRow>
+                            <TableHead>Date Facture</TableHead>
+                            <TableHead>Client</TableHead>
+                            <TableHead className="text-center">
+                                Bateau
+                            </TableHead>
 
-                        <TableHead className="text-right">
-                            Total Écart
-                        </TableHead>
-                    </TableRow>
-                </TableHeader>
+                            <TableHead className="text-right">
+                                Total Écart
+                            </TableHead>
+                        </TableRow>
+                    </TableHeader>
 
-                <TableBody>
-                    {reports.length > 0 ? (
-                        reports.map((item) => (
-                            <TableRow
-                                key={item.key}
-                                title={`${item.itemsCount} ligne(s) d'écart`}
-                                onClick={() => {
-                                    openReport(item);
-                                }}
-                                className="cursor-pointer transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/60"
-                            >
-                                <TableCell className="text-sm font-semibold text-neutral-600 dark:text-neutral-300">
-                                    <div className="flex items-center gap-2">
-                                        <CalendarDays className="h-4 w-4 text-neutral-400 dark:text-neutral-500" />
-                                        {formatDateDisplay(item.invoiceDate)}
-                                    </div>
-                                </TableCell>
+                    <TableBody>
+                        {reports.length > 0 ? (
+                            reports.map((item) => (
+                                <TableRow
+                                    key={item.key}
+                                    title={`${item.itemsCount} ligne(s) d'écart`}
+                                    onClick={() => {
+                                        openReport(item);
+                                    }}
+                                    className="group cursor-pointer border-b border-slate-100 transition-colors last:border-0 hover:bg-blue-50/50 dark:border-neutral-800/70 dark:hover:bg-blue-950/20"
+                                >
+                                    <TableCell className="py-4 text-sm font-semibold text-slate-700 dark:text-neutral-300">
+                                        <div className="flex items-center gap-2">
+                                            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 ring-1 ring-blue-100 dark:bg-blue-950/50 dark:text-blue-300 dark:ring-blue-900/50">
+                                                <CalendarDays className="h-4 w-4" />
+                                            </span>
+                                            {formatDateDisplay(
+                                                item.invoiceDate,
+                                            )}
+                                        </div>
+                                    </TableCell>
 
-                                <TableCell className="font-semibold text-neutral-900 capitalize dark:text-neutral-100">
-                                    {item.customerName}
-                                </TableCell>
+                                    <TableCell className="font-semibold text-slate-800 capitalize dark:text-neutral-200">
+                                        {item.customerName}
+                                    </TableCell>
 
-                                <TableCell className="text-center">
-                                    <div className="flex justify-center">
-                                        <span className="inline-flex items-center gap-1 rounded-md border border-neutral-200 bg-neutral-50 px-2.5 py-0.5 text-xs font-bold tracking-wider text-neutral-600 uppercase dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
-                                            <Ship className="h-3 w-3 text-neutral-500 dark:text-neutral-400" />
-                                            {item.boatName}
+                                    <TableCell className="text-center">
+                                        <div className="flex justify-center">
+                                            <span className="inline-flex items-center gap-1 rounded-md border border-neutral-200 bg-neutral-50 px-2.5 py-0.5 text-xs font-bold tracking-wider text-neutral-600 uppercase dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
+                                                <Ship className="h-3 w-3 text-neutral-500 dark:text-neutral-400" />
+                                                {item.boatName}
+                                            </span>
+                                        </div>
+                                    </TableCell>
+
+                                    <TableCell className="text-right">
+                                        <span
+                                            className={`text-base font-black tabular-nums ${
+                                                item.totalDiff >= 0
+                                                    ? 'text-neutral-900 dark:text-neutral-100'
+                                                    : 'text-rose-600 dark:text-rose-400'
+                                            }`}
+                                        >
+                                            {item.totalDiff > 0 ? '+' : ''}
+                                            {formatCurrency(item.totalDiff)}
                                         </span>
-                                    </div>
-                                </TableCell>
-
-                                <TableCell className="text-right">
-                                    <span
-                                        className={`text-base font-black tabular-nums ${
-                                            item.totalDiff >= 0
-                                                ? 'text-neutral-900 dark:text-neutral-100'
-                                                : 'text-rose-600 dark:text-rose-400'
-                                        }`}
-                                    >
-                                        {item.totalDiff > 0 ? '+' : ''}
-                                        {formatCurrency(item.totalDiff)}
-                                    </span>
-                                </TableCell>
-                            </TableRow>
-                        ))
-                    ) : (
-                        <SessionEmptyRow colSpan={4}>
-                            {emptyMessage}
-                        </SessionEmptyRow>
-                    )}
-                </TableBody>
-            </Table>
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        ) : (
+                            <SessionEmptyRow colSpan={4}>
+                                {emptyMessage}
+                            </SessionEmptyRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
         </SessionTableShell>
     );
 }
