@@ -204,7 +204,7 @@ export function InvoiceCategoryBreakdownDialog({
                                 className={cn(
                                     'rounded-lg border bg-white p-2.5 shadow-sm transition-colors duration-300 dark:bg-neutral-900',
                                     isOutOfStock
-                                        ? 'border-red-300 dark:border-red-900'
+                                        ? 'animate-pulse border-red-300 motion-reduce:animate-none dark:border-red-900'
                                         : 'border-slate-200 dark:border-neutral-800',
                                 )}
                             >
