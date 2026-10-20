@@ -308,17 +308,6 @@ export default function InvoiceItemRow({
                 </Select>
             </TableCell>
 
-            {/* <TableCell className="w-24 border-r bg-slate-50/20 p-0">
-                <Input
-                    type="number"
-                    disabled={isSavingNewItem}
-                    value={weight}
-                    readOnly
-                    className={cn(inputBaseClass, 'text-center text-slate-400 italic')}
-                />
-            </TableCell> */}
-
-            {/* 7. POIDS (Editable) */}
             <TableCell
                 className={cn(
                     'w-24 border-r border-slate-100 p-0 dark:border-neutral-800',
@@ -424,7 +413,7 @@ export default function InvoiceItemRow({
                 </button>
             </TableCell>
 
-            {/* VENTE : ouvre le dialogue de vente, l'infobulle rappelle le reste */}
+            {/* VENTE : ouvre le dialogue de vente */}
             <TableCell className="w-12 border-l border-slate-100 p-0 text-center dark:border-neutral-800 print:hidden">
                 <div className="flex h-10 w-full items-center justify-center">
                     <InvoiceItemSaleButton
