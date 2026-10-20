@@ -218,8 +218,16 @@ export default function InvoiceItemRow({
                     }}
                     onSelect={(id) => {
                         {
+                            const selectedCategory = categories.find(
+                                (category) => String(category.id) === String(id),
+                            );
+                            const isPoulpeCategory =
+                                selectedCategory?.name.trim().toLowerCase() ===
+                                'poulpe';
+
                             handleDataChange({
                                 category_id: id,
+                                unit: isPoulpeCategory ? 'kg' : 'caisse',
                             });
 
                             setOpenItem(false);
@@ -291,16 +299,19 @@ export default function InvoiceItemRow({
                     >
                         <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
+                    <SelectContent
+                        position="item-aligned"
+                        className="dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100"
+                    >
                         <SelectItem
                             value="caisse"
-                            className="text-[10px] uppercase dark:focus:bg-neutral-800"
+                            className="py-2 text-xs uppercase dark:focus:bg-neutral-800"
                         >
                             Caisse
                         </SelectItem>
                         <SelectItem
                             value="kg"
-                            className="text-[10px] uppercase dark:focus:bg-neutral-800"
+                            className="py-2 text-xs uppercase dark:focus:bg-neutral-800"
                         >
                             Kg
                         </SelectItem>
