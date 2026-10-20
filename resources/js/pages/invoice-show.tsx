@@ -414,7 +414,10 @@ export default function InvoiceShow({
 
             {/* Header & Stats */}
             <InvoiceHeader invoice={invoice} />
-            <InvoiceStatsGrid stats={stats} />
+            <InvoiceStatsGrid
+                stats={stats}
+                availableStockByCategory={availableStockByCategory}
+            />
 
             <div className="flex justify-end gap-4 print:hidden">
                 <Button

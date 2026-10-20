@@ -4,7 +4,13 @@ import { formatNumber } from '@/lib/utils';
 import { Stats } from '@/types/stats';
 import { Banknote, Diff, Package, Scale, Wallet } from 'lucide-react';
 
-export function InvoiceStatsGrid({ stats }: { stats: Stats }) {
+export function InvoiceStatsGrid({
+    stats,
+    availableStockByCategory,
+}: {
+    stats: Stats;
+    availableStockByCategory: Record<number, number>;
+}) {
     return (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 print:hidden">
             <Card className="group overflow-hidden border-slate-200/80 bg-linear-to-br from-white to-slate-50 py-2 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md lg:order-5 dark:border-neutral-800 dark:from-neutral-900 dark:to-neutral-950">
@@ -92,6 +98,7 @@ export function InvoiceStatsGrid({ stats }: { stats: Stats }) {
 
             <InvoiceCategoryBreakdownDialog
                 categories={stats.categoryBreakdown}
+                availableStockByCategory={availableStockByCategory}
             />
 
             {stats.formattedTotalDifference !== undefined && (
