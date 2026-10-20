@@ -415,6 +415,7 @@ export default function InvoiceShow({
 
             {/* Header & Stats */}
             <InvoiceHeader invoice={invoice} />
+
             <InvoiceStatsGrid
                 stats={stats}
                 availableStockByCategory={availableStockByCategory}

@@ -25,7 +25,13 @@ import { Sale } from '@/types/sale';
 import type { Item as CatalogItem } from '@/types/item';
 import { router } from '@inertiajs/react';
 import { ShoppingCart, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import type {
+    Dispatch,
+    KeyboardEvent,
+    MouseEvent,
+    SetStateAction,
+} from 'react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 const formatSaleNumber = (value: number): string =>
@@ -43,6 +49,14 @@ interface Props {
     availableStockByCategory?: Record<number, number>;
 }
 
+type FillableColumn = 'client' | 'salePrice' | 'article';
+
+interface CellRange {
+    column: FillableColumn;
+    startRow: number;
+    endRow: number;
+}
+
 export function SaleDialog({ open, onOpenChange, items, sales, catalogItems, availableStockByCategory = {} }: Props) {
     const [saleIds, setSaleIds] = useState<Record<string, string>>({});
     const [counts, setCounts] = useState<Record<string, string>>({});
@@ -52,6 +66,11 @@ export function SaleDialog({ open, onOpenChange, items, sales, catalogItems, ava
     const [openSaleIds, setOpenSaleIds] = useState<Record<string, boolean>>({});
     const [itemIds, setItemIds] = useState<Record<string, string>>({});
     const [openItemIds, setOpenItemIds] = useState<Record<string, boolean>>({});
+    const [cellRange, setCellRange] = useState<CellRange | null>(null);
+    const rangeAnchor = useRef<{
+        column: FillableColumn;
+        row: number;
+    } | null>(null);
 
     const saleOptions = sales.map((sale) => ({
         id: sale.id,
@@ -69,6 +88,115 @@ export function SaleDialog({ open, onOpenChange, items, sales, catalogItems, ava
                 ),
         );
 
+    const defaultRealPrice = (item: InvoiceItem): number =>
+        Number(item.differences?.[0]?.real_price ?? item.unit_price);
+
+    const defaultSalePrice = (item: InvoiceItem): number =>
+        item.differences?.length
+            ? defaultRealPrice(item)
+            : Number(item.unit_price);
+
+    const sellableItems = items.filter((item) => remaining(item) > 0);
+
+    const selectCellRange = (
+        event: MouseEvent<HTMLTableCellElement>,
+        column: FillableColumn,
+        row: number,
+    ): void => {
+        if (event.shiftKey && rangeAnchor.current?.column === column) {
+            setCellRange({
+                column,
+                startRow: rangeAnchor.current.row,
+                endRow: row,
+            });
+
+            return;
+        }
+
+        rangeAnchor.current = { column, row };
+        setCellRange(null);
+    };
+
+    const isCellInRange = (
+        column: FillableColumn,
+        row: number,
+    ): boolean => {
+        if (cellRange?.column !== column) {
+            return false;
+        }
+
+        return (
+            row >= Math.min(cellRange.startRow, cellRange.endRow) &&
+            row <= Math.max(cellRange.startRow, cellRange.endRow)
+        );
+    };
+
+    const fillSelectedCells = (
+        event: KeyboardEvent<HTMLElement>,
+        column: FillableColumn,
+        rowIndex: number,
+        setValues: Dispatch<SetStateAction<Record<string, string>>>,
+        getValue: (item: InvoiceItem) => string,
+        isTargetAllowed: (
+            item: InvoiceItem,
+            sourceItem: InvoiceItem,
+        ) => boolean = () => true,
+    ): void => {
+        if (
+            !(event.ctrlKey || event.metaKey) ||
+            event.key.toLowerCase() !== 'd'
+        ) {
+            return;
+        }
+
+        const range =
+            cellRange?.column === column &&
+            rowIndex >= Math.min(cellRange.startRow, cellRange.endRow) &&
+            rowIndex <= Math.max(cellRange.startRow, cellRange.endRow)
+                ? {
+                      start: Math.min(
+                          cellRange.startRow,
+                          cellRange.endRow,
+                      ),
+                      end: Math.max(cellRange.startRow, cellRange.endRow),
+                  }
+                : event.shiftKey
+                  ? { start: rowIndex, end: sellableItems.length - 1 }
+                  : null;
+
+        if (!range) {
+            return;
+        }
+
+        event.preventDefault();
+        const sourceItem = sellableItems[range.start];
+        const value = sourceItem ? getValue(sourceItem) : '';
+
+        if (!value) {
+            toast.error('Choisissez d’abord une valeur à recopier.');
+
+            return;
+        }
+
+        const targetItems = sellableItems
+            .slice(range.start + 1, range.end + 1)
+            .filter((targetItem) =>
+                sourceItem ? isTargetAllowed(targetItem, sourceItem) : false,
+            );
+
+        if (targetItems.length > 0) {
+            setValues((current) => ({
+                ...current,
+                ...Object.fromEntries(
+                    targetItems.map((item) => [`item-${item.id}`, value]),
+                ),
+            }));
+        }
+
+        setCellRange(null);
+        rangeAnchor.current = null;
+    };
+
     const save = (
         item: InvoiceItem,
         line?: SaleItem,
@@ -81,11 +209,10 @@ export function SaleDialog({ open, onOpenChange, items, sales, catalogItems, ava
             ? remaining(item)
             : categoryAvailable + (line ? Math.abs(Number(line.unit_count)) : 0);
         const count = Number(counts[key] ?? (line ? Math.abs(Number(line.unit_count)) : Math.min(remaining(item), maxCount)));
-        const salePrice = Number(prices[key] ?? line?.sale_price ?? item.unit_price);
+        const salePrice = Number(prices[key] ?? line?.sale_price ?? defaultSalePrice(item));
         const realPrice = Number(
             realPrices[key] ?? line?.real_price ??
-                item.differences?.[0]?.real_price ??
-                item.unit_price,
+                defaultRealPrice(item),
         );
 
         const saleId = selectedSaleId ?? Number(saleIds[key] ?? line?.sale_id);
@@ -167,8 +294,44 @@ router.post('/sale-items', payload, options);
 }
     };
 
+    const handleOpenChange = (nextOpen: boolean): void => {
+        if (!nextOpen) {
+            sellableItems.forEach((item) => {
+                const key = `item-${item.id}`;
+                const count =
+                    counts[key] ??
+                    String(
+                        Math.min(
+                            remaining(item),
+                            availableStockByCategory[item.category_id] ??
+                                remaining(item),
+                        ),
+                    );
+                const salePrice = prices[key] ?? String(defaultSalePrice(item));
+                const realPrice =
+                    realPrices[key] ??
+                    String(defaultRealPrice(item));
+                const hasCompleteValues =
+                    Boolean(saleIds[key] && itemIds[key]) &&
+                    count.trim() !== '' &&
+                    salePrice.trim() !== '' &&
+                    realPrice.trim() !== '' &&
+                    Number.isFinite(Number(count)) &&
+                    Number(count) > 0 &&
+                    Number.isFinite(Number(salePrice)) &&
+                    Number.isFinite(Number(realPrice));
+
+                if (hasCompleteValues) {
+                    save(item);
+                }
+            });
+        }
+
+        onOpenChange(nextOpen);
+    };
+
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
+        <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogContent className="flex max-h-[88vh] w-[calc(100vw-2rem)] max-w-5xl flex-col gap-0 overflow-hidden rounded-2xl border border-amber-100 p-0 shadow-2xl sm:max-w-5xl dark:border-amber-950 dark:bg-neutral-950 dark:text-neutral-100">
                 <DialogHeader className="shrink-0 border-b border-amber-100 bg-linear-to-br from-amber-50 via-white to-orange-50 p-4 pr-12 text-left dark:border-amber-950 dark:from-amber-950/50 dark:via-neutral-950 dark:to-orange-950/30">
                     <DialogTitle className="flex items-center gap-2 text-xl font-bold text-slate-900 dark:text-neutral-100">
@@ -211,7 +374,36 @@ router.post('/sale-items', payload, options);
                                     Taxe 3%
                                 </TableHead>
                                 <TableHead className="w-20 py-4 text-center text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
-                                    Avec taxe
+                                    <div className="flex items-center justify-center gap-2">
+                                        <span>Avec taxe</span>
+                                        <Checkbox
+                                            checked={
+                                                sellableItems.length > 0 &&
+                                                sellableItems.every(
+                                                    (item) =>
+                                                        taxFlags[
+                                                            `item-${item.id}`
+                                                        ] ?? false,
+                                                )
+                                            }
+                                            onCheckedChange={(checked) => {
+                                                const isWithTax =
+                                                    checked === true;
+                                                setTaxFlags((current) => ({
+                                                    ...current,
+                                                    ...Object.fromEntries(
+                                                        sellableItems.map(
+                                                            (item) => [
+                                                                `item-${item.id}`,
+                                                                isWithTax,
+                                                            ],
+                                                        ),
+                                                    ),
+                                                }));
+                                            }}
+                                            aria-label="Appliquer la taxe à tous les articles"
+                                        />
+                                    </div>
                                 </TableHead>
                                 <TableHead className="w-28 py-4 text-center text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
                                     Total diff
@@ -220,22 +412,17 @@ router.post('/sale-items', payload, options);
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {items.map((item) => {
-                                if (remaining(item) <= 0) {
-return null;
-}
-
+                            {sellableItems.map((item, rowIndex) => {
                                 const key = `item-${item.id}`;
                                 const count = Number(
                                     Math.min(Number(counts[key] ?? remaining(item)), availableStockByCategory[item.category_id] ?? remaining(item)),
                                 );
                                 const realPrice = Number(
                                     realPrices[key] ??
-                                        item.differences?.[0]?.real_price ??
-                                        item.unit_price,
+                                        defaultRealPrice(item),
                                 );
                                 const salePrice = Number(
-                                    prices[key] ?? item.unit_price,
+                                    prices[key] ?? defaultSalePrice(item),
                                 );
                                 const amount = count * realPrice;
                                 const isWithTax = taxFlags[key] ?? false;
@@ -245,7 +432,20 @@ return null;
                                         key={item.id}
                                         className="group h-10 min-h-10 border-b border-slate-100 transition-colors hover:bg-slate-50/50 dark:border-neutral-800 dark:hover:bg-neutral-900/40"
                                     >
-                                        <TableCell className="min-w-40 border-r border-slate-100 p-0 pl-1 dark:border-neutral-800">
+                                        <TableCell
+                                            onMouseDown={(event) =>
+                                                selectCellRange(
+                                                    event,
+                                                    'client',
+                                                    rowIndex,
+                                                )
+                                            }
+                                            className={cn(
+                                                'min-w-40 border-r border-slate-100 p-0 pl-1 dark:border-neutral-800',
+                                                isCellInRange('client', rowIndex) &&
+                                                    'bg-amber-100/70 dark:bg-amber-900/30',
+                                            )}
+                                        >
                                             <SearchSelect
                                                 value={saleIds[key] ?? ''}
                                                 options={saleOptions}
@@ -267,6 +467,17 @@ return null;
                                                     if (openSaleIds[key]) {
                                                         return;
                                                     }
+
+                                                    fillSelectedCells(
+                                                        event,
+                                                        'client',
+                                                        rowIndex,
+                                                        setSaleIds,
+                                                        (sourceItem) =>
+                                                            saleIds[
+                                                                `item-${sourceItem.id}`
+                                                            ] ?? '',
+                                                    );
 
                                                     if (event.key === 'Enter') {
                                                         event.preventDefault();
@@ -293,25 +504,72 @@ return null;
                                                 {item.boat?.name ?? '\u2014'}
                                             </span>
                                         </TableCell>
-                                        <TableCell className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800">
+                                        <TableCell
+                                            onMouseDown={(event) =>
+                                                selectCellRange(
+                                                    event,
+                                                    'salePrice',
+                                                    rowIndex,
+                                                )
+                                            }
+                                            className={cn(
+                                                'w-28 border-r border-slate-100 p-0 dark:border-neutral-800',
+                                                isCellInRange(
+                                                    'salePrice',
+                                                    rowIndex,
+                                                ) &&
+                                                    'bg-amber-100/70 dark:bg-amber-900/30',
+                                            )}
+                                        >
                                             <Input
                                                 type="number"
                                                 step="any"
-                                                value={prices[key] ?? Number(item.unit_price)}
+                                            value={prices[key] ?? defaultSalePrice(item)}
                                                 onChange={(event) => setPrices((current) => ({ ...current, [key]: event.target.value }))}
                                                 onKeyDown={(event) => {
+                                                    fillSelectedCells(
+                                                        event,
+                                                        'salePrice',
+                                                        rowIndex,
+                                                        setPrices,
+                                                        (sourceItem) =>
+                                                            prices[
+                                                                `item-${sourceItem.id}`
+                                                            ] ??
+                                                            String(
+                                                                defaultSalePrice(
+                                                                    sourceItem,
+                                                                ),
+                                                            ),
+                                                    );
+
                                                     if (event.key === 'Enter') {
                                                         event.preventDefault();
                                                         save(item);
+
                                                         return;
                                                     }
+
                                                     navigateToAdjacentCell(event);
                                                 }}
                                                 className="h-10 border-none bg-transparent text-center text-slate-900 transition-all focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                                                 aria-label="Prix de vente"
                                             />
                                         </TableCell>
-                                        <TableCell className="min-w-32 border-r border-slate-100 p-0 dark:border-neutral-800">
+                                        <TableCell
+                                            onMouseDown={(event) =>
+                                                selectCellRange(
+                                                    event,
+                                                    'article',
+                                                    rowIndex,
+                                                )
+                                            }
+                                            className={cn(
+                                                'min-w-32 border-r border-slate-100 p-0 dark:border-neutral-800',
+                                                isCellInRange('article', rowIndex) &&
+                                                    'bg-amber-100/70 dark:bg-amber-900/30',
+                                            )}
+                                        >
                                             <SearchSelect
                                                 value={itemIds[key] ?? ''}
                                                 options={catalogItems
@@ -321,7 +579,45 @@ return null;
                                                 emptyMessage="Aucun article dans cette catégorie."
                                                 open={openItemIds[key] ?? false}
                                                 onOpenChange={(open) => setOpenItemIds((state) => ({ ...state, [key]: open }))}
-                                                onKeyDown={navigateToAdjacentCell}
+                                                onKeyDown={(event) => {
+                                                    if (openItemIds[key]) {
+                                                        return;
+                                                    }
+
+                                                    fillSelectedCells(
+                                                        event,
+                                                        'article',
+                                                        rowIndex,
+                                                        setItemIds,
+                                                        (sourceItem) =>
+                                                            itemIds[
+                                                                `item-${sourceItem.id}`
+                                                            ] ?? '',
+                                                        (targetItem, sourceItem) => {
+                                                            const sourceArticleId =
+                                                                itemIds[
+                                                                    `item-${sourceItem.id}`
+                                                                ];
+                                                            const sourceArticle =
+                                                                catalogItems.find(
+                                                                    (option) =>
+                                                                        String(
+                                                                            option.id,
+                                                                        ) ===
+                                                                        sourceArticleId,
+                                                                );
+
+                                                            return (
+                                                                targetItem.category_id ===
+                                                                sourceArticle?.category_id
+                                                            );
+                                                        },
+                                                    );
+
+                                                    navigateToAdjacentCell(
+                                                        event,
+                                                    );
+                                                }}
                                                 onSelect={(id) => setItemIds((state) => ({ ...state, [key]: String(id) }))}
                                                 className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 shadow-none capitalize focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800"
                                             />
