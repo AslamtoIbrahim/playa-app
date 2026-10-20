@@ -1,6 +1,5 @@
 import { InvoiceCategoryBreakdownDialog } from '@/components/invoice-category-breakdown-dialog';
 import { Card, CardContent } from '@/components/ui/card';
-import { formatNumber } from '@/lib/utils';
 import { Stats } from '@/types/stats';
 import { Banknote, Diff, Package, Scale, Wallet } from 'lucide-react';
 
@@ -20,7 +19,11 @@ export function InvoiceStatsGrid({
                             Total Caisses
                         </p>
                         <p className="mt-2 text-xl font-bold tracking-tight text-slate-800 dark:text-neutral-100">
-                            {formatNumber(stats.totalBoxes)}
+                            {new Intl.NumberFormat('en-US', {
+                                maximumFractionDigits: 0,
+                            })
+                                .format(stats.totalBoxes)
+                                .replaceAll(',', ' ')}
                         </p>
                     </div>
                     <div className="rounded-xl bg-amber-100 p-1.5 text-amber-700 transition-transform group-hover:scale-110 dark:bg-amber-400/10 dark:text-amber-300">
