@@ -439,18 +439,16 @@ export default function InvoiceShow({
                     <Printer className="h-3 w-3" />
                 </Button>
 
-                {sales.length > 0 && (
-                    <Button
-                        onClick={() => setIsGlobalSaleOpen(true)}
-                        variant="outline"
-                        size="sm"
-                        title="Ajouter un article à une vente"
-                        aria-label="Ajouter un article à une vente"
-                        className="h-9 border-amber-200 text-amber-700 shadow-sm hover:bg-amber-50 dark:border-amber-900 dark:bg-neutral-900 dark:text-amber-300 dark:hover:bg-amber-950/40"
-                    >
-                        <ShoppingCart className="h-4 w-4" />
-                    </Button>
-                )}
+                <Button
+                    onClick={() => setIsGlobalSaleOpen(true)}
+                    variant="outline"
+                    size="sm"
+                    title="Ajouter un article à une vente"
+                    aria-label="Ajouter un article à une vente"
+                    className="h-9 border-amber-200 text-amber-700 shadow-sm hover:bg-amber-50 dark:border-amber-900 dark:bg-neutral-900 dark:text-amber-300 dark:hover:bg-amber-950/40"
+                >
+                    <ShoppingCart className="h-4 w-4" />
+                </Button>
 
                 <ImportItemsDialog onImport={handleImport} />
 
