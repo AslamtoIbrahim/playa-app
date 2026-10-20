@@ -654,6 +654,9 @@ export default function InvoiceShow({
                 }}
                 onConfirm={confirmDelete}
                 count={deleteTarget?.ids.length ?? 0}
+                requireConfirmation={
+                    deleteTarget !== null && !deleteTarget.single
+                }
                 differenceCount={relatedDifferenceCount}
                 saleCount={relatedSaleCount}
             />

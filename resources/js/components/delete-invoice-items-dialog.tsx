@@ -18,6 +18,7 @@ interface Props {
     onOpenChange: (open: boolean) => void;
     onConfirm: () => void;
     count: number;
+    requireConfirmation: boolean;
     /**
      * Number of differences linked to the invoice lines being deleted.
      * When greater than zero, a warning with a confirmation checkbox is shown.
@@ -42,10 +43,12 @@ export function DeleteInvoiceItemsDialog({
     onOpenChange,
     onConfirm,
     count,
+    requireConfirmation,
     differenceCount,
     saleCount,
 }: Props) {
     const hasRelatedData = differenceCount > 0 || saleCount > 0;
+    const confirmationRequired = requireConfirmation || hasRelatedData;
     const [confirmed, setConfirmed] = useState(false);
 
     // The confirmation restarts each time the dialog is reopened.
@@ -58,7 +61,7 @@ export function DeleteInvoiceItemsDialog({
     };
 
     const handleConfirm = () => {
-        if (hasRelatedData && !confirmed) {
+        if (confirmationRequired && !confirmed) {
             return;
         }
 
@@ -72,7 +75,9 @@ export function DeleteInvoiceItemsDialog({
                     <AlertDialogTitle className="text-slate-900 dark:text-neutral-100">
                         {hasRelatedData
                             ? 'Supprimer avec les données liées ?'
-                            : 'Êtes-vous absolument sûr ?'}
+                            : confirmationRequired
+                              ? 'Confirmer la suppression de plusieurs lignes ?'
+                              : 'Êtes-vous absolument sûr ?'}
                     </AlertDialogTitle>
                     <AlertDialogDescription className="text-slate-600 dark:text-neutral-400">
                         Cette action est irréversible. Vous allez supprimer{' '}
@@ -104,29 +109,29 @@ export function DeleteInvoiceItemsDialog({
                                             </span>
                                         )}
                                     </p>
-
-                                    <label
-                                        htmlFor="confirm-delete-related"
-                                        className="flex cursor-pointer items-start gap-2 text-xs leading-relaxed text-amber-800 select-none dark:text-amber-300"
-                                    >
-                                        <Checkbox
-                                            id="confirm-delete-related"
-                                            checked={confirmed}
-                                            onCheckedChange={(checked) => {
-                                                setConfirmed(checked === true);
-                                            }}
-                                            className="mt-0.5 border-amber-400 data-[state=checked]:border-amber-600 data-[state=checked]:bg-amber-600 dark:border-amber-700"
-                                        />
-                                        <span>
-                                            Je comprends et j'accepte la
-                                            suppression de toutes les
-                                            différences et ventes liées à ces
-                                            lignes.
-                                        </span>
-                                    </label>
                                 </div>
                             </div>
                         </div>
+                    )}
+                    {confirmationRequired && (
+                        <label
+                            htmlFor="confirm-delete-related"
+                            className="flex cursor-pointer items-start gap-2 text-xs leading-relaxed text-amber-800 select-none dark:text-amber-300"
+                        >
+                            <Checkbox
+                                id="confirm-delete-related"
+                                checked={confirmed}
+                                onCheckedChange={(checked) => {
+                                    setConfirmed(checked === true);
+                                }}
+                                className="mt-0.5 border-amber-400 data-[state=checked]:border-amber-600 data-[state=checked]:bg-amber-600 dark:border-amber-700"
+                            />
+                            <span>
+                                {hasRelatedData
+                                    ? "Je comprends et j'accepte la suppression de toutes les différences et ventes liées à ces lignes."
+                                    : 'Je comprends que la suppression de ces lignes est définitive et irréversible.'}
+                            </span>
+                        </label>
                     )}
                 </AlertDialogHeader>
 
@@ -136,10 +141,10 @@ export function DeleteInvoiceItemsDialog({
                     </AlertDialogCancel>
                     <AlertDialogAction
                         onClick={handleConfirm}
-                        disabled={hasRelatedData && !confirmed}
+                        disabled={confirmationRequired && !confirmed}
                         className={cn(
                             'bg-red-600 text-white hover:bg-red-700 focus:ring-red-600',
-                            hasRelatedData &&
+                            confirmationRequired &&
                                 !confirmed &&
                                 'cursor-not-allowed opacity-50',
                         )}
