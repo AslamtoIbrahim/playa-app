@@ -60,6 +60,7 @@ function createSaleItemContext(string $date = '2026-06-01'): array
 
     $invoiceItem = InvoiceItem::create([
         'invoice_id' => $invoice->id,
+        'category_id' => $category->id,
         'item_id' => $item->id,
         'boat_id' => $boat->id,
         'unit' => 'caisse',
@@ -78,7 +79,7 @@ function createSaleItemContext(string $date = '2026-06-01'): array
         'created_by' => $user->id,
     ]);
 
-    return compact('user', 'client', 'item', 'session', 'invoice', 'invoiceItem', 'sale');
+    return compact('user', 'client', 'category', 'item', 'session', 'invoice', 'invoiceItem', 'sale');
 }
 
 function createSaleDifference(array $context, float $count = 4, float $price = 25): Difference
@@ -125,6 +126,23 @@ test('a sale uses the customer and values from its invoice difference row', func
             ->where('totals.sell', 106.4)
             ->where('saleData.total', 106.4)
         );
+});
+
+test('global sale lines calculate boxes and weight from session category totals', function () {
+    $context = createSaleItemContext();
+
+    SaleItem::create([
+        'sale_id' => $context['sale']->id,
+        'invoice_item_id' => null,
+        'item_id' => $context['item']->id,
+        'unit_count' => -4,
+        'sale_price' => 25,
+        'real_price' => 20,
+        'is_with_tax' => false,
+    ]);
+
+    expect((int) $context['sale']->fresh()->boxes)->toBe(-4)
+        ->and((float) $context['sale']->fresh()->weight)->toBe(-84.0);
 });
 
 test('a sale must belong to the same session as the invoice', function () {

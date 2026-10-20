@@ -23,7 +23,7 @@ export function SaleShowItemRow({ item }: { item: SaleItem }) {
                 {Math.abs(Number(item.amount)).toLocaleString('fr-FR')}
             </TableCell>
             <TableCell className="text-center">
-                {Number(item.tax).toLocaleString('fr-FR')}
+                {Math.abs(Number(item.tax)).toLocaleString('fr-FR')}
             </TableCell>
             <TableCell className="text-center">
                 {Number(item.total_diff).toLocaleString('fr-FR')}

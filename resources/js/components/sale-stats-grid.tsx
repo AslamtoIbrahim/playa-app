@@ -135,7 +135,7 @@ export function SaleStatsGrid({ stats }: { stats: SaleStats }) {
                             TVA (3%) + Caisses
                         </span>
                         <span className="text-xs font-medium text-white">
-                            {formatStatNumber(stats.taxAmount + stats.boxesFee)}
+                            {formatStatNumber(Math.abs(stats.taxAmount) + Math.abs(stats.boxesFee))}
                         </span>
                     </div>
                 </CardContent>

@@ -60,7 +60,8 @@ function SessionShow({
     };
 
     const totalSalesNetToPay = (saleData.sales ?? []).reduce(
-        (total, sale) => total + computeSaleNetToPayFromSale(sale),
+        (total, sale) =>
+            total + Math.abs(computeSaleNetToPayFromSale(sale)),
         0,
     );
 

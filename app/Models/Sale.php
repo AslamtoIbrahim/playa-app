@@ -81,7 +81,25 @@ class Sale extends Model
      */
     public function calculateTotals()
     {
-        $items = $this->items()->with('invoiceItem')->get();
+        $items = $this->items()->with(['invoiceItem', 'item'])->get();
+
+        // Global-sale lines are not linked to a specific invoice line. Their
+        // stock (and therefore boxes/weight) is tracked by category for the
+        // session, so use the category's average invoice-line ratios instead.
+        $categoryIds = $items
+            ->filter(fn ($item) => ! $item->invoice_item_id && $item->item)
+            ->pluck('item.category_id')
+            ->unique()
+            ->values();
+        $categoryTotals = $categoryIds->isEmpty()
+            ? collect()
+            : InvoiceItem::query()
+                ->whereHas('invoice.sessionZone', fn ($query) => $query->where('daily_session_id', $this->session_id))
+                ->whereIn('category_id', $categoryIds)
+                ->selectRaw('category_id, SUM(unit_count) as unit_count, SUM(weight) as weight, SUM(box) as box')
+                ->groupBy('category_id')
+                ->get()
+                ->keyBy('category_id');
 
         // 1. Somme des montants (unit_count * real_price)
         $totalHT = $items->sum(fn ($item) => (float) $item->amount);
@@ -96,25 +114,33 @@ class Sale extends Model
         $workersTotal = (float) $this->workers()->sum('amount');
 
         // 2. Somme des poids (au prorata de la ligne de facture)
-        $totalWeight = $items->sum(function ($item) {
+        $totalWeight = $items->sum(function ($item) use ($categoryTotals) {
             $invoiceItem = $item->invoiceItem;
 
-            if (! $invoiceItem || (float) $invoiceItem->unit_count <= 0) {
-                return 0;
+            if ($invoiceItem && (float) $invoiceItem->unit_count > 0) {
+                return (float) $invoiceItem->weight * ((float) $item->unit_count / (float) $invoiceItem->unit_count);
             }
 
-            return (float) $invoiceItem->weight * ((float) $item->unit_count / (float) $invoiceItem->unit_count);
+            $categoryTotal = $categoryTotals->get($item->item?->category_id);
+
+            return $categoryTotal && (float) $categoryTotal->unit_count > 0
+                ? (float) $categoryTotal->weight * ((float) $item->unit_count / (float) $categoryTotal->unit_count)
+                : 0;
         });
 
         // 3. Somme des boxes (au prorata de la ligne de facture)
-        $totalBoxes = $items->sum(function ($item) {
+        $totalBoxes = $items->sum(function ($item) use ($categoryTotals) {
             $invoiceItem = $item->invoiceItem;
 
-            if (! $invoiceItem || (float) $invoiceItem->unit_count <= 0) {
-                return 0;
+            if ($invoiceItem && (float) $invoiceItem->unit_count > 0) {
+                return (float) $invoiceItem->box * ((float) $item->unit_count / (float) $invoiceItem->unit_count);
             }
 
-            return (float) $invoiceItem->box * ((float) $item->unit_count / (float) $invoiceItem->unit_count);
+            $categoryTotal = $categoryTotals->get($item->item?->category_id);
+
+            return $categoryTotal && (float) $categoryTotal->unit_count > 0
+                ? (float) $categoryTotal->box * ((float) $item->unit_count / (float) $categoryTotal->unit_count)
+                : 0;
         });
 
         // 4. Net à Payer : la vente reste au HT (pas de TVA côté vente),
