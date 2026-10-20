@@ -27,6 +27,7 @@ import type { Customer } from '@/types/customer';
 import { Form } from '@inertiajs/react';
 import { Check, ChevronsUpDown, Plus } from 'lucide-react';
 import { useState } from 'react';
+import type { ReactNode } from 'react';
 import { toast } from 'sonner';
 import MissingCustomerCompanyPopup from './missing-customer-company-popup';
 
@@ -44,6 +45,7 @@ type MissingDialogSaleProps = {
      * match): pre-fills the customer search when the dialog opens.
      */
     initialCustomerName?: string;
+    trigger?: ReactNode;
 };
 
 /**
@@ -65,6 +67,7 @@ export default function MissingDialogSale({
     customers,
     initialCustomerName = '',
     initialCustomerId,
+    trigger,
 }: MissingDialogSaleProps) {
     const [open, setOpen] = useState(false);
     const [customerId, setCustomerId] = useState('');
@@ -101,14 +104,16 @@ export default function MissingDialogSale({
             }}
         >
             <DialogTrigger asChild>
-                <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    aria-label="Ajouter une vente"
-                >
-                    <Plus className="h-4 w-4" />
-                </Button>
+                {trigger ?? (
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        aria-label="Ajouter une vente"
+                    >
+                        <Plus className="h-4 w-4" />
+                    </Button>
+                )}
             </DialogTrigger>
 
             <DialogContent className="max-w-md overflow-hidden sm:max-w-md dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">

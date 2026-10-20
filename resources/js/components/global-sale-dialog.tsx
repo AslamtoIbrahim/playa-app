@@ -23,7 +23,10 @@ import { Badge } from '@/components/ui/badge';
 import type { Category } from '@/types/category';
 import type { Item } from '@/types/item';
 import type { Sale } from '@/types/sale';
-import { ShoppingCart, Trash2 } from 'lucide-react';
+import type { Customer } from '@/types/customer';
+import type { DailySession } from '@/types/daily-session';
+import { Plus, ShoppingCart, Trash2 } from 'lucide-react';
+import MissingDialogSale from '@/components/missing-dialog-sale';
 import { useGlobalSaleDialog } from '@/hooks/use-global-sale-dialog';
 import type { KeyboardEvent } from 'react';
 
@@ -38,6 +41,8 @@ interface Props {
     invoiceCategoryIds: number[];
     categoryUnitById: Record<number, string>;
     availableStockByCategory?: Record<number, number>;
+    customers?: Customer[];
+    session?: DailySession | null;
 }
 
 const categoryBadgeColors = [
@@ -81,6 +86,8 @@ export function GlobalSaleDialog({
     invoiceCategoryIds,
     categoryUnitById,
     availableStockByCategory = {},
+    customers = [],
+    session,
 }: Props) {
     const {
         amount,
@@ -219,6 +226,15 @@ export function GlobalSaleDialog({
                                             }))}
                                             placeholder="Client..."
                                             emptyMessage="Aucun client trouvé."
+                                            renderNoMatchAction={(search) => session ? (
+                                                <MissingDialogSale
+                                                    sessionId={session.id}
+                                                    sessionDate={session.session_date}
+                                                    customers={customers}
+                                                    initialCustomerName={search}
+                                                    trigger={<Button type="button" variant="outline" size="sm" aria-label="Créer un client et une vente"><Plus className="size-4" /></Button>}
+                                                />
+                                            ) : null}
                                             open={saleSelectOpen}
                                             onOpenChange={setSaleSelectOpen}
                                             onSelect={(id) => setSelectedSaleId(String(id))}

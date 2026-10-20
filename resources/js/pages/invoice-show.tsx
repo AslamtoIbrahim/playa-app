@@ -102,6 +102,7 @@ export default function InvoiceShow({
     customers,
     sales,
     availableStockByCategory,
+    session,
     backUrl,
 }: Props) {
     // --- State Management (Manual Synchronization) ---
@@ -693,6 +694,8 @@ export default function InvoiceShow({
                 invoiceCategoryIds={[...invoiceCategoryIds]}
                 categoryUnitById={categoryUnitById}
                 availableStockByCategory={availableStockByCategory}
+                customers={customers}
+                session={session}
             />
         </div>
     );
