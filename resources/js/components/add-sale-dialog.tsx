@@ -166,6 +166,13 @@ export default function AddSaleDialog({
                                 value={dateValue}
                             />
                             <input type="hidden" name="type" value={type} />
+                            {isSessionLocked && (
+                                <input
+                                    type="hidden"
+                                    name="redirect"
+                                    value="back"
+                                />
+                            )}
 
                             {isLockedContext && (
                                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-neutral-200 bg-neutral-50/70 px-3 py-2 dark:border-neutral-800 dark:bg-neutral-950/40">
