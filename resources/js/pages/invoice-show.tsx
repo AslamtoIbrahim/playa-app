@@ -685,6 +685,8 @@ export default function InvoiceShow({
                     sales={sales}
                     catalogItems={items}
                     availableStockByCategory={availableStockByCategory}
+                    customers={customers}
+                    session={session}
                 />
             )}
 

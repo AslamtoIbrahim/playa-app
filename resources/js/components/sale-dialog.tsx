@@ -29,12 +29,15 @@ import {
 import { cn } from '@/lib/utils';
 import { navigateToAdjacentCell } from '@/lib/table-navigation';
 import { SearchSelect } from '@/components/search-select';
+import MissingDialogSale from '@/components/missing-dialog-sale';
 import { useSaleDialog } from '@/hooks/use-sale-dialog';
 import type { InvoiceItem } from '@/types/invoice-item';
 import type { Sale } from '@/types/sale';
 import type { Item as CatalogItem } from '@/types/item';
+import type { Customer } from '@/types/customer';
+import type { DailySession } from '@/types/daily-session';
 import { router } from '@inertiajs/react';
-import { ShoppingCart, Trash2 } from 'lucide-react';
+import { Plus, ShoppingCart, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const formatSaleNumber = (value: number): string =>
@@ -50,6 +53,8 @@ interface Props {
     sales: Sale[];
     catalogItems: CatalogItem[];
     availableStockByCategory?: Record<number, number>;
+    customers?: Customer[];
+    session?: DailySession | null;
 }
 
 export function SaleDialog({
@@ -59,6 +64,8 @@ export function SaleDialog({
     sales,
     catalogItems,
     availableStockByCategory = {},
+    customers = [],
+    session,
 }: Props) {
     const {
         counts,
@@ -286,7 +293,16 @@ export function SaleDialog({
                                                     value={saleIds[key] ?? ''}
                                                     options={saleOptions}
                                                     placeholder="Client..."
-                                                    emptyMessage="Aucun client trouve."
+                                                    emptyMessage="Aucun client trouvé."
+                                                    renderNoMatchAction={(search) => session ? (
+                                                        <MissingDialogSale
+                                                            sessionId={session.id}
+                                                            sessionDate={session.session_date}
+                                                            customers={customers}
+                                                            initialCustomerName={search}
+                                                            trigger={<Button type="button" variant="outline" size="sm" aria-label="Créer un client et une vente"><Plus className="size-4" /></Button>}
+                                                        />
+                                                    ) : null}
                                                     open={
                                                         openSaleIds[key] ??
                                                         false
@@ -811,6 +827,15 @@ export function SaleDialog({
                                                         options={saleOptions}
                                                         placeholder="Client..."
                                                         emptyMessage="Aucun client trouvé."
+                                                        renderNoMatchAction={(search) => session ? (
+                                                            <MissingDialogSale
+                                                                sessionId={session.id}
+                                                                sessionDate={session.session_date}
+                                                                customers={customers}
+                                                                initialCustomerName={search}
+                                                                trigger={<Button type="button" variant="outline" size="sm" aria-label="Créer un client et une vente"><Plus className="size-4" /></Button>}
+                                                            />
+                                                        ) : null}
                                                         open={
                                                             openSaleIds[key] ??
                                                             false
