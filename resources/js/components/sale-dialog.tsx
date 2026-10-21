@@ -19,19 +19,14 @@ import {
 import { cn } from '@/lib/utils';
 import { navigateToAdjacentCell } from '@/lib/table-navigation';
 import { SearchSelect } from '@/components/search-select';
-import { InvoiceItem } from '@/types/invoice-item';
-import { SaleItem } from '@/types/sale-item';
-import { Sale } from '@/types/sale';
+import { useSaleCellSelection } from '@/hooks/use-sale-cell-selection';
+import type { InvoiceItem } from '@/types/invoice-item';
+import type { SaleItem } from '@/types/sale-item';
+import type { Sale } from '@/types/sale';
 import type { Item as CatalogItem } from '@/types/item';
 import { router } from '@inertiajs/react';
 import { ShoppingCart, Trash2 } from 'lucide-react';
-import type {
-    Dispatch,
-    KeyboardEvent,
-    MouseEvent,
-    SetStateAction,
-} from 'react';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
 const formatSaleNumber = (value: number): string =>
@@ -49,14 +44,6 @@ interface Props {
     availableStockByCategory?: Record<number, number>;
 }
 
-type FillableColumn = 'client' | 'salePrice' | 'article';
-
-interface CellRange {
-    column: FillableColumn;
-    startRow: number;
-    endRow: number;
-}
-
 export function SaleDialog({ open, onOpenChange, items, sales, catalogItems, availableStockByCategory = {} }: Props) {
     const [saleIds, setSaleIds] = useState<Record<string, string>>({});
     const [counts, setCounts] = useState<Record<string, string>>({});
@@ -66,12 +53,6 @@ export function SaleDialog({ open, onOpenChange, items, sales, catalogItems, ava
     const [openSaleIds, setOpenSaleIds] = useState<Record<string, boolean>>({});
     const [itemIds, setItemIds] = useState<Record<string, string>>({});
     const [openItemIds, setOpenItemIds] = useState<Record<string, boolean>>({});
-    const [cellRange, setCellRange] = useState<CellRange | null>(null);
-    const rangeAnchor = useRef<{
-        column: FillableColumn;
-        row: number;
-    } | null>(null);
-
     const saleOptions = sales.map((sale) => ({
         id: sale.id,
         name: sale.customer?.name ?? `Vente #${sale.id}`,
@@ -97,105 +78,12 @@ export function SaleDialog({ open, onOpenChange, items, sales, catalogItems, ava
             : Number(item.unit_price);
 
     const sellableItems = items.filter((item) => remaining(item) > 0);
-
-    const selectCellRange = (
-        event: MouseEvent<HTMLTableCellElement>,
-        column: FillableColumn,
-        row: number,
-    ): void => {
-        if (event.shiftKey && rangeAnchor.current?.column === column) {
-            setCellRange({
-                column,
-                startRow: rangeAnchor.current.row,
-                endRow: row,
-            });
-
-            return;
-        }
-
-        rangeAnchor.current = { column, row };
-        setCellRange(null);
-    };
-
-    const isCellInRange = (
-        column: FillableColumn,
-        row: number,
-    ): boolean => {
-        if (cellRange?.column !== column) {
-            return false;
-        }
-
-        return (
-            row >= Math.min(cellRange.startRow, cellRange.endRow) &&
-            row <= Math.max(cellRange.startRow, cellRange.endRow)
-        );
-    };
-
-    const fillSelectedCells = (
-        event: KeyboardEvent<HTMLElement>,
-        column: FillableColumn,
-        rowIndex: number,
-        setValues: Dispatch<SetStateAction<Record<string, string>>>,
-        getValue: (item: InvoiceItem) => string,
-        isTargetAllowed: (
-            item: InvoiceItem,
-            sourceItem: InvoiceItem,
-        ) => boolean = () => true,
-    ): void => {
-        if (
-            !(event.ctrlKey || event.metaKey) ||
-            event.key.toLowerCase() !== 'd'
-        ) {
-            return;
-        }
-
-        const range =
-            cellRange?.column === column &&
-            rowIndex >= Math.min(cellRange.startRow, cellRange.endRow) &&
-            rowIndex <= Math.max(cellRange.startRow, cellRange.endRow)
-                ? {
-                      start: Math.min(
-                          cellRange.startRow,
-                          cellRange.endRow,
-                      ),
-                      end: Math.max(cellRange.startRow, cellRange.endRow),
-                  }
-                : event.shiftKey
-                  ? { start: rowIndex, end: sellableItems.length - 1 }
-                  : null;
-
-        if (!range) {
-            return;
-        }
-
-        event.preventDefault();
-        const sourceItem = sellableItems[range.start];
-        const value = sourceItem ? getValue(sourceItem) : '';
-
-        if (!value) {
-            toast.error('Choisissez d’abord une valeur à recopier.');
-
-            return;
-        }
-
-        const targetItems = sellableItems
-            .slice(range.start + 1, range.end + 1)
-            .filter((targetItem) =>
-                sourceItem ? isTargetAllowed(targetItem, sourceItem) : false,
-            );
-
-        if (targetItems.length > 0) {
-            setValues((current) => ({
-                ...current,
-                ...Object.fromEntries(
-                    targetItems.map((item) => [`item-${item.id}`, value]),
-                ),
-            }));
-        }
-
-        setCellRange(null);
-        rangeAnchor.current = null;
-    };
+    const {
+        fillSelectedCells,
+        isCellInRange,
+        selectCellRange,
+        suppressCellClick,
+    } = useSaleCellSelection(sellableItems);
 
     const save = (
         item: InvoiceItem,
@@ -433,6 +321,7 @@ router.post('/sale-items', payload, options);
                                         className="group h-10 min-h-10 border-b border-slate-100 transition-colors hover:bg-slate-50/50 dark:border-neutral-800 dark:hover:bg-neutral-900/40"
                                     >
                                         <TableCell
+                                            tabIndex={-1}
                                             onMouseDown={(event) =>
                                                 selectCellRange(
                                                     event,
@@ -440,10 +329,30 @@ router.post('/sale-items', payload, options);
                                                     rowIndex,
                                                 )
                                             }
+                                            onClickCapture={suppressCellClick}
+                                            onKeyDown={(event) => {
+                                                if (
+                                                    event.target !==
+                                                    event.currentTarget
+                                                ) {
+                                                    return;
+                                                }
+
+                                                fillSelectedCells(
+                                                    event,
+                                                    'client',
+                                                    rowIndex,
+                                                    setSaleIds,
+                                                    (sourceItem) =>
+                                                        saleIds[
+                                                            `item-${sourceItem.id}`
+                                                        ] ?? '',
+                                                );
+                                            }}
                                             className={cn(
                                                 'min-w-40 border-r border-slate-100 p-0 pl-1 dark:border-neutral-800',
                                                 isCellInRange('client', rowIndex) &&
-                                                    'bg-amber-100/70 dark:bg-amber-900/30',
+                                                    'bg-sky-100/90 dark:bg-sky-900/50',
                                             )}
                                         >
                                             <SearchSelect
@@ -505,6 +414,7 @@ router.post('/sale-items', payload, options);
                                             </span>
                                         </TableCell>
                                         <TableCell
+                                            tabIndex={-1}
                                             onMouseDown={(event) =>
                                                 selectCellRange(
                                                     event,
@@ -512,13 +422,38 @@ router.post('/sale-items', payload, options);
                                                     rowIndex,
                                                 )
                                             }
+                                            onClickCapture={suppressCellClick}
+                                            onKeyDown={(event) => {
+                                                if (
+                                                    event.target !==
+                                                    event.currentTarget
+                                                ) {
+                                                    return;
+                                                }
+
+                                                fillSelectedCells(
+                                                    event,
+                                                    'salePrice',
+                                                    rowIndex,
+                                                    setPrices,
+                                                    (sourceItem) =>
+                                                        prices[
+                                                            `item-${sourceItem.id}`
+                                                        ] ??
+                                                        String(
+                                                            defaultSalePrice(
+                                                                sourceItem,
+                                                            ),
+                                                        ),
+                                                );
+                                            }}
                                             className={cn(
                                                 'w-28 border-r border-slate-100 p-0 dark:border-neutral-800',
                                                 isCellInRange(
                                                     'salePrice',
                                                     rowIndex,
                                                 ) &&
-                                                    'bg-amber-100/70 dark:bg-amber-900/30',
+                                                    'bg-sky-100/90 dark:bg-sky-900/50',
                                             )}
                                         >
                                             <Input
@@ -557,6 +492,7 @@ router.post('/sale-items', payload, options);
                                             />
                                         </TableCell>
                                         <TableCell
+                                            tabIndex={-1}
                                             onMouseDown={(event) =>
                                                 selectCellRange(
                                                     event,
@@ -564,10 +500,47 @@ router.post('/sale-items', payload, options);
                                                     rowIndex,
                                                 )
                                             }
+                                            onClickCapture={suppressCellClick}
+                                            onKeyDown={(event) => {
+                                                if (
+                                                    event.target !==
+                                                    event.currentTarget
+                                                ) {
+                                                    return;
+                                                }
+
+                                                fillSelectedCells(
+                                                    event,
+                                                    'article',
+                                                    rowIndex,
+                                                    setItemIds,
+                                                    (sourceItem) =>
+                                                        itemIds[
+                                                            `item-${sourceItem.id}`
+                                                        ] ?? '',
+                                                    (targetItem, sourceItem) => {
+                                                        const sourceArticle =
+                                                            catalogItems.find(
+                                                                (option) =>
+                                                                    String(
+                                                                        option.id,
+                                                                    ) ===
+                                                                    itemIds[
+                                                                        `item-${sourceItem.id}`
+                                                                    ],
+                                                            );
+
+                                                        return (
+                                                            targetItem.category_id ===
+                                                            sourceArticle?.category_id
+                                                        );
+                                                    },
+                                                );
+                                            }}
                                             className={cn(
                                                 'min-w-32 border-r border-slate-100 p-0 dark:border-neutral-800',
                                                 isCellInRange('article', rowIndex) &&
-                                                    'bg-amber-100/70 dark:bg-amber-900/30',
+                                                    'bg-sky-100/90 dark:bg-sky-900/50',
                                             )}
                                         >
                                             <SearchSelect
