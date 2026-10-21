@@ -204,6 +204,17 @@ export function SaleDialog({
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
+                                {sellableItems.length === 0 &&
+                                    savedSaleRows.length === 0 && (
+                                    <TableRow>
+                                        <TableCell
+                                            colSpan={11}
+                                            className="h-24 text-center text-sm text-slate-500 dark:text-neutral-400"
+                                        >
+                                            Tous les articles ont été vendus.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
                                 {sellableItems.map((item, rowIndex) => {
                                     const key = `item-${item.id}`;
                                     const count = Number(
