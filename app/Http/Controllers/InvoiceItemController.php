@@ -5,12 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\Difference;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
+use App\Models\Item;
 use App\Models\Receipt;
 use App\Models\ReceiptItem;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class InvoiceItemController extends Controller
 {
@@ -98,6 +100,11 @@ class InvoiceItemController extends Controller
         $rowAmount = $unitCount * $unitPrice;
 
         DB::transaction(function () use ($item, $invoice, $validated, $rowAmount) {
+            $previousCategoryId = (int) $item->category_id;
+            $nextCategoryId = isset($validated['category_id'])
+                ? (int) $validated['category_id']
+                : $previousCategoryId;
+
             $item->update([
                 'category_id' => $validated['category_id'] ?? $item->category_id,
                 'boat_id' => $validated['boat_id'] ?? $item->boat_id,
@@ -110,12 +117,164 @@ class InvoiceItemController extends Controller
                 'position' => $validated['position'] ?? $item->position,
             ]);
 
+            if ($previousCategoryId !== $nextCategoryId) {
+                $this->syncRelatedArticles($item, $nextCategoryId);
+            }
+
+            $sessionId = $invoice->sessionZone?->daily_session_id;
+
+            if ($sessionId && $previousCategoryId !== (int) $item->category_id) {
+                $this->moveGlobalSalesToCategory(
+                    $sessionId,
+                    $previousCategoryId,
+                    (int) $item->category_id,
+                    abs((float) $item->unit_count),
+                );
+            }
+
+            if ($sessionId && $previousCategoryId === (int) $item->category_id) {
+                $this->trimGlobalSalesToCategoryStock($sessionId, $previousCategoryId);
+            }
+
             $invoice->refresh();
 
             $invoice->calculateTotals();
         });
 
         return back();
+    }
+
+    /** Keep invoice-linked sales and differences on an article from the row category. */
+    private function syncRelatedArticles(InvoiceItem $invoiceItem, int $categoryId): void
+    {
+        if (! $invoiceItem->saleItems()->exists() && ! $invoiceItem->differences()->exists()) {
+            return;
+        }
+
+        $targetItem = Item::query()
+            ->where('category_id', $categoryId)
+            ->orderBy('id')
+            ->first();
+
+        if (! $targetItem) {
+            throw ValidationException::withMessages([
+                'category_id' => 'Aucun article disponible dans cette catégorie.',
+            ]);
+        }
+
+        $invoiceItem->saleItems()->get()->each(function (SaleItem $saleItem) use ($targetItem) {
+            $saleItem->update(['item_id' => $targetItem->id]);
+        });
+
+        $invoiceItem->differences()->get()->each(function (Difference $difference) use ($targetItem) {
+            $difference->update(['item_id' => $targetItem->id]);
+        });
+    }
+
+    /** Move global sale quantities with the category of an edited invoice row. */
+    private function moveGlobalSalesToCategory(int $sessionId, int $fromCategoryId, int $toCategoryId, float $quantity): void
+    {
+        $sourceLines = SaleItem::query()
+            ->whereNull('invoice_item_id')
+            ->whereNull('boat_id')
+            ->whereHas('sale', fn ($query) => $query->where('session_id', $sessionId))
+            ->whereHas('item', fn ($query) => $query->where('category_id', $fromCategoryId))
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get();
+
+        $targetItem = Item::query()
+            ->where('category_id', $toCategoryId)
+            ->orderBy('id')
+            ->first();
+
+        $purchased = (float) InvoiceItem::query()
+            ->where('category_id', $toCategoryId)
+            ->whereHas('invoice.sessionZone', fn ($query) => $query->where('daily_session_id', $sessionId))
+            ->sum('unit_count');
+        $sold = (float) SaleItem::query()
+            ->whereHas('item', fn ($query) => $query->where('category_id', $toCategoryId))
+            ->whereHas('sale', fn ($query) => $query->where('session_id', $sessionId))
+            ->sum(DB::raw('ABS(unit_count)'));
+        $remainingTargetStock = max(0, $purchased - $sold);
+        $quantityToMove = min($quantity, $remainingTargetStock);
+
+        if ($targetItem) {
+            foreach ($sourceLines as $sourceLine) {
+                if ($quantityToMove <= 0) {
+                    break;
+                }
+
+                $lineQuantity = abs((float) $sourceLine->unit_count);
+                $movedQuantity = min($lineQuantity, $quantityToMove);
+                $sign = (float) $sourceLine->unit_count < 0 ? -1 : 1;
+                $movedLine = $sourceLine->replicate();
+                $movedLine->item_id = $targetItem->id;
+                $movedLine->unit_count = $sign * $movedQuantity;
+                $movedLine->save();
+
+                $remainingLineQuantity = $lineQuantity - $movedQuantity;
+                if ($remainingLineQuantity <= 0.00001) {
+                    $sourceLine->delete();
+                } else {
+                    $sourceLine->unit_count = $sign * $remainingLineQuantity;
+                    $sourceLine->save();
+                }
+
+                $quantityToMove -= $movedQuantity;
+            }
+        }
+
+        // Any quantity that could not move has no longer-purchased stock behind it.
+        $this->trimGlobalSalesToCategoryStock($sessionId, $fromCategoryId);
+    }
+
+    /** Reduce global sale rows when an invoice edit makes category sales exceed purchases. */
+    private function trimGlobalSalesToCategoryStock(int $sessionId, int $categoryId): void
+    {
+        $purchased = (float) InvoiceItem::query()
+            ->where('category_id', $categoryId)
+            ->whereHas('invoice.sessionZone', fn ($query) => $query->where('daily_session_id', $sessionId))
+            ->sum('unit_count');
+        $sold = (float) SaleItem::query()
+            ->whereHas('item', fn ($query) => $query->where('category_id', $categoryId))
+            ->whereHas('sale', fn ($query) => $query->where('session_id', $sessionId))
+            ->sum(DB::raw('ABS(unit_count)'));
+        $excess = max(0, $sold - $purchased);
+
+        if ($excess <= 0.00001) {
+            return;
+        }
+
+        $globalLines = SaleItem::query()
+            ->whereNull('invoice_item_id')
+            ->whereNull('boat_id')
+            ->whereHas('sale', fn ($query) => $query->where('session_id', $sessionId))
+            ->whereHas('item', fn ($query) => $query->where('category_id', $categoryId))
+            ->orderByDesc('id')
+            ->lockForUpdate()
+            ->get();
+
+        foreach ($globalLines as $line) {
+            if ($excess <= 0.00001) {
+                break;
+            }
+
+            $lineQuantity = abs((float) $line->unit_count);
+            $reducedQuantity = min($lineQuantity, $excess);
+            $remainingQuantity = $lineQuantity - $reducedQuantity;
+
+            if ($remainingQuantity <= 0.00001) {
+                $line->delete();
+            } else {
+                $line->unit_count = (float) $line->unit_count < 0
+                    ? -$remainingQuantity
+                    : $remainingQuantity;
+                $line->save();
+            }
+
+            $excess -= $reducedQuantity;
+        }
     }
 
     /**
