@@ -191,6 +191,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // --- Sale Items (Distribution d'une ligne de facture vers une vente) ---
     Route::post('sale-items', [SaleItemController::class, 'store'])->name('sale-items.store');
     Route::patch('sale-items/{saleItem}', [SaleItemController::class, 'update'])->name('sale-items.update');
+    Route::delete('sale-items', [SaleItemController::class, 'destroyMany'])->name('sale-items.destroy-many');
     Route::delete('sale-items/{saleItem}', [SaleItemController::class, 'destroy'])->name('sale-items.destroy');
 
     // --- Sale Charges (Imputation d'un bon de réception vers une vente) ---

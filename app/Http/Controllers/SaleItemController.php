@@ -100,6 +100,20 @@ class SaleItemController extends Controller
         return back()->with('success', 'Ligne supprimée.');
     }
 
+    public function destroyMany(Request $request)
+    {
+        $data = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'required|integer|distinct|exists:sale_items,id',
+        ]);
+
+        return DB::transaction(function () use ($data) {
+            SaleItem::whereIn('id', $data['ids'])->get()->each->delete();
+
+            return back()->with('success', 'Lignes supprimées.');
+        });
+    }
+
     private function assertStockAvailable(Sale $sale, int $itemId, float $requested, ?int $exceptId = null): void
     {
         $item = \App\Models\Item::findOrFail($itemId);

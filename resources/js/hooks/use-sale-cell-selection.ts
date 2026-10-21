@@ -74,11 +74,16 @@ export function useSaleCellSelection(items: InvoiceItem[]) {
         column: FillableColumn,
         rowIndex: number,
         setValues: Dispatch<SetStateAction<Record<string, string>>>,
-        getValue: (item: InvoiceItem) => string,
+        getValue: (item: InvoiceItem, index: number) => string,
         isTargetAllowed: (
             item: InvoiceItem,
             sourceItem: InvoiceItem,
+            targetIndex: number,
+            sourceIndex: number,
         ) => boolean = () => true,
+        getKey: (item: InvoiceItem, index: number) => string = (item) =>
+            `item-${item.id}`,
+        onFilled?: (targetIndexes: number[], value: string) => void,
     ): void => {
         if (
             !(event.ctrlKey || event.metaKey) ||
@@ -103,7 +108,7 @@ export function useSaleCellSelection(items: InvoiceItem[]) {
 
         event.preventDefault();
         const sourceItem = items[range.start];
-        const value = sourceItem ? getValue(sourceItem) : '';
+        const value = sourceItem ? getValue(sourceItem, range.start) : '';
 
         if (!value) {
             toast.error('Choisissez d’abord une valeur à recopier.');
@@ -111,19 +116,32 @@ export function useSaleCellSelection(items: InvoiceItem[]) {
             return;
         }
 
-        const targetItems = items
+        const targetIndexes = items
+            .map((targetItem, index) => ({ targetItem, index }))
             .slice(range.start + 1, range.end + 1)
-            .filter((targetItem) =>
-                sourceItem ? isTargetAllowed(targetItem, sourceItem) : false,
-            );
+            .filter(({ targetItem, index }) =>
+                sourceItem
+                    ? isTargetAllowed(
+                          targetItem,
+                          sourceItem,
+                          index,
+                          range.start,
+                      )
+                    : false,
+            )
+            .map(({ index }) => index);
 
-        if (targetItems.length > 0) {
+        if (targetIndexes.length > 0) {
             setValues((current) => ({
                 ...current,
                 ...Object.fromEntries(
-                    targetItems.map((item) => [`item-${item.id}`, value]),
+                    targetIndexes.map((index) => [
+                        getKey(items[index], index),
+                        value,
+                    ]),
                 ),
             }));
+            onFilled?.(targetIndexes, value);
         }
 
         setCellRange(null);

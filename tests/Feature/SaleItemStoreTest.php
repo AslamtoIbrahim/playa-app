@@ -321,6 +321,34 @@ test('deleting a sale assignment makes the difference available to sell again', 
     expect(SaleItem::count())->toBe(1);
 });
 
+test('bulk deleting selected sale assignments removes only those assignments', function () {
+    $context = createSaleItemContext();
+
+    foreach ([1, 2] as $unitCount) {
+        SaleItem::create([
+            'sale_id' => $context['sale']->id,
+            'invoice_item_id' => null,
+            'item_id' => $context['item']->id,
+            'unit_count' => -$unitCount,
+            'sale_price' => 25,
+            'real_price' => 20,
+            'is_with_tax' => false,
+        ]);
+    }
+
+    $saleItems = SaleItem::orderBy('id')->get();
+
+    $this->actingAs($context['user'])
+        ->delete(route('sale-items.destroy-many'), [
+            'ids' => [$saleItems[0]->id],
+        ])
+        ->assertSessionHasNoErrors()
+        ->assertSessionHas('success');
+
+    expect(SaleItem::count())->toBe(1)
+        ->and(SaleItem::firstOrFail()->id)->toBe($saleItems[1]->id);
+});
+
 test('bulk deleting a difference removes its linked sale assignment', function () {
     $context = createSaleItemContext();
     $difference = createSaleDifference($context);
