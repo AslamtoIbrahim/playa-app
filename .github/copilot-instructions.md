@@ -41,6 +41,16 @@
 - Before introducing new files or restructuring components, inspect the existing implementation and choose the smallest maintainable solution.
 - Preserve existing component boundaries and architecture unless a change provides a clear, practical benefit.
 
+## Custom Hooks and Logic Separation
+
+- **Extract Complex Component Logic:** Move complex React state management, event handlers, effects, and UI-related workflows into custom hooks when doing so improves readability and maintainability.
+- **Keep Components Focused on Presentation:** Components should primarily compose UI elements, pass data, and connect user interactions to the appropriate handlers.
+- **Keep Business Logic in the Right Place:** Move reusable business rules, calculations, and data transformations into dedicated utility functions or domain modules when appropriate. Do not put all logic into custom hooks by default.
+- **Avoid Unnecessary Hooks:** Do not create custom hooks for trivial logic, simple state, or code that is clearer and easier to maintain inside the component.
+- **Keep Hooks Cohesive:** Each custom hook must have a clear responsibility. Avoid creating oversized hooks that simply move the original component's complexity into another file.
+- **Preserve Behavior:** Extract logic without changing existing functionality, validation, API interactions, state transitions, or UI behavior unless explicitly requested.
+
+
 ## Laravel, Inertia, Wayfinder & Forms
 
 - Follow Laravel 13 conventions and the installed versions of Inertia.js and Wayfinder.
