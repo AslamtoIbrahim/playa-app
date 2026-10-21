@@ -403,6 +403,7 @@ class InvoiceItemController extends Controller
     {
         try {
             DB::transaction(function () use ($invoice, $item) {
+                $categoryIds = [$item->category_id];
 
                 // 1. كنقلبو على الـ ReceiptItems اللي مرتبطين بهاد السطر قبل ما نمسحوهم
                 $receiptItemIds = ReceiptItem::where('invoice_item_id', $item->id)->pluck('receipt_id');
@@ -451,6 +452,8 @@ class InvoiceItemController extends Controller
                 Sale::whereIn('id', $affectedSaleIds)->get()->each(function ($sale) {
                     $sale->calculateTotals();
                 });
+
+                $this->reconcileGlobalSaleItems($invoice, $categoryIds);
             });
 
             return back()->with('success', 'Suppression réussie et nettoyage effectué. ✅');
@@ -472,6 +475,10 @@ class InvoiceItemController extends Controller
         try {
             DB::transaction(function () use ($invoice, $validated) {
                 $ids = $validated['ids'];
+                $categoryIds = InvoiceItem::whereIn('id', $ids)
+                    ->pluck('category_id')
+                    ->unique()
+                    ->all();
 
                 // نجيبو كاع الـ Receipts اللي يقدروا يتأثروا
                 $receiptIds = ReceiptItem::whereIn('invoice_item_id', $ids)->pluck('receipt_id')->unique();
@@ -508,11 +515,69 @@ class InvoiceItemController extends Controller
                 Sale::whereIn('id', $affectedSaleIds)->get()->each(function ($sale) {
                     $sale->calculateTotals();
                 });
+
+                $this->reconcileGlobalSaleItems($invoice, $categoryIds);
             });
 
             return back()->with('success', count($validated['ids']).' supprimés avec nettoyage. ✅');
         } catch (\Exception $e) {
             return back()->with('error', 'Erreur suppression groupée.');
+        }
+    }
+
+    /**
+     * Keep global (invoice-independent) sale lines within the stock still
+     * available for their categories after invoice items are removed.
+     *
+     * @param  array<int, int|null>  $categoryIds
+     */
+    private function reconcileGlobalSaleItems(Invoice $invoice, array $categoryIds): void
+    {
+        $sessionId = $invoice->sessionZone()->value('daily_session_id');
+
+        if (! $sessionId) {
+            return;
+        }
+
+        foreach (array_filter(array_unique($categoryIds)) as $categoryId) {
+            $purchased = InvoiceItem::query()
+                ->where('category_id', $categoryId)
+                ->whereHas('invoice.sessionZone', fn ($query) => $query->where('daily_session_id', $sessionId))
+                ->sum('unit_count');
+
+            $directlySold = SaleItem::query()
+                ->whereNotNull('invoice_item_id')
+                ->whereHas('item', fn ($query) => $query->where('category_id', $categoryId))
+                ->whereHas('sale', fn ($query) => $query->where('session_id', $sessionId))
+                ->sum(DB::raw('ABS(unit_count)'));
+
+            $remaining = max(0, (float) $purchased - (float) $directlySold);
+            $globalSaleItems = SaleItem::query()
+                ->whereNull('invoice_item_id')
+                ->whereHas('item', fn ($query) => $query->where('category_id', $categoryId))
+                ->whereHas('sale', fn ($query) => $query->where('session_id', $sessionId))
+                ->orderBy('id')
+                ->get();
+
+            foreach ($globalSaleItems as $saleItem) {
+                $currentCount = abs((float) $saleItem->unit_count);
+                $adjustedCount = min($currentCount, $remaining);
+
+                if ($adjustedCount <= 0) {
+                    $saleItem->delete();
+
+                    continue;
+                }
+
+                if ($adjustedCount < $currentCount) {
+                    $saleItem->unit_count = $saleItem->unit_count < 0
+                        ? -$adjustedCount
+                        : $adjustedCount;
+                    $saleItem->save();
+                }
+
+                $remaining -= $adjustedCount;
+            }
         }
     }
 }

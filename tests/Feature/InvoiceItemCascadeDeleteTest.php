@@ -68,6 +68,7 @@ function createCascadeDeleteContext(string $date = '2026-06-01'): array
     $firstItem = InvoiceItem::create([
         'invoice_id' => $invoice->id,
         'item_id' => $item->id,
+        'category_id' => $category->id,
         'boat_id' => $boat->id,
         'unit' => 'kg',
         'unit_count' => 100,
@@ -79,6 +80,7 @@ function createCascadeDeleteContext(string $date = '2026-06-01'): array
     $secondItem = InvoiceItem::create([
         'invoice_id' => $invoice->id,
         'item_id' => $item->id,
+        'category_id' => $category->id,
         'boat_id' => $boat->id,
         'unit' => 'kg',
         'unit_count' => 50,
@@ -168,6 +170,25 @@ test('deleting one invoice item also deletes its differences and sales', functio
 
     expect((float) $context['sale']->amount)->toBe(52.0)
         ->and((int) $context['sale']->boxes)->toBe(0);
+});
+
+test('deleting invoice stock reduces global sale quantities to the remaining stock', function () {
+    $context = createCascadeDeleteContext();
+    expect($context['firstItem']->category_id)->not->toBeNull()
+        ->and($context['invoice']->sessionZone->daily_session_id)->not->toBeNull();
+
+    $globalSaleItem = SaleItem::create([
+        'sale_id' => $context['sale']->id,
+        'item_id' => $context['firstItem']->item_id,
+        'unit_count' => -60,
+        'real_price' => 25,
+    ]);
+
+    $this->actingAs($context['user'])
+        ->delete(route('invoices.items.destroy', [$context['invoice'], $context['firstItem']]))
+        ->assertRedirect();
+
+    expect((float) $globalSaleItem->fresh()->unit_count)->toBe(-48.0);
 });
 
 test('the sales fiche no longer exposes data of a deleted invoice item', function () {
