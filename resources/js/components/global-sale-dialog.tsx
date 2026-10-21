@@ -126,6 +126,10 @@ export function GlobalSaleDialog({
         availableStockByCategory,
     });
 
+    const hasRemainingInvoiceStock =
+        invoiceCategoryStock.length === 0 ||
+        invoiceCategoryStock.some((category) => category.remaining > 0);
+
     return (
         <Dialog open={open} onOpenChange={handleDialogOpenChange}>
             <DialogContent className="flex max-h-[88vh] w-11/12 max-w-5xl flex-col gap-0 overflow-hidden rounded-2xl border border-amber-100 p-0 shadow-2xl sm:max-w-5xl dark:border-amber-950 dark:bg-neutral-950 dark:text-neutral-100">
@@ -211,7 +215,10 @@ export function GlobalSaleDialog({
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            <TableRow className="group h-10 min-h-10 border-b border-amber-200 bg-amber-50/70 transition-colors hover:bg-amber-100/70 dark:border-amber-900 dark:bg-amber-950/30 dark:hover:bg-amber-950/50">
+                            <TableRow
+                                hidden={!hasRemainingInvoiceStock}
+                                className="group h-10 min-h-10 border-b border-amber-200 bg-amber-50/70 transition-colors hover:bg-amber-100/70 dark:border-amber-900 dark:bg-amber-950/30 dark:hover:bg-amber-950/50"
+                            >
                                 <TableCell className="min-w-40 border-r border-slate-100 p-0 dark:border-neutral-800">
                                     {sale ? (
                                         <span className="block truncate px-3 font-medium text-slate-900 dark:text-neutral-100">
