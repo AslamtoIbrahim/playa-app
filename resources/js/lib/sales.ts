@@ -41,7 +41,7 @@ export function computeInvoiceItemSoldCount(
     }
 
     return (item.sale_items ?? []).reduce((sum, saleItem) => {
-        return sum + (Number(saleItem.unit_count) || 0);
+        return sum + Math.abs(Number(saleItem.unit_count) || 0);
     }, 0);
 }
 

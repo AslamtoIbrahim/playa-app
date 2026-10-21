@@ -166,6 +166,7 @@ class InvoiceController extends Controller
             : Sale::whereRaw('1 = 0')->get();
 
         $availableStockByCategory = [];
+        $globalSoldCountByInvoiceItem = [];
 
         if ($session) {
             foreach (Category::query()->pluck('id') as $categoryId) {
@@ -177,6 +178,33 @@ class InvoiceController extends Controller
                     ->sum(DB::raw('ABS(unit_count)'));
 
                 $availableStockByCategory[$categoryId] = max(0, (float) $purchased - (float) $sold);
+            }
+
+            $globalSoldByCategory = SaleItem::query()
+                ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
+                ->join('items', 'items.id', '=', 'sale_items.item_id')
+                ->where('sales.session_id', $session->id)
+                ->whereNull('sale_items.invoice_item_id')
+                ->select('items.category_id')
+                ->selectRaw('SUM(ABS(sale_items.unit_count)) as sold_count')
+                ->groupBy('items.category_id')
+                ->pluck('sold_count', 'items.category_id');
+
+            $sessionInvoiceItems = InvoiceItem::query()
+                ->whereHas('invoice.sessionZone', fn ($query) => $query->where('daily_session_id', $session->id))
+                ->with('saleItems:id,invoice_item_id,unit_count')
+                ->orderBy('id')
+                ->get(['id', 'category_id', 'unit_count']);
+
+            foreach ($sessionInvoiceItems as $sessionInvoiceItem) {
+                $categoryId = $sessionInvoiceItem->category_id;
+                $globalRemaining = (float) ($globalSoldByCategory[$categoryId] ?? 0);
+                $directSold = $sessionInvoiceItem->saleItems->sum(fn ($saleItem) => abs((float) $saleItem->unit_count));
+                $availableForGlobalSale = max(0, (float) $sessionInvoiceItem->unit_count - $directSold);
+                $allocatedGlobalSale = min($globalRemaining, $availableForGlobalSale);
+
+                $globalSoldCountByInvoiceItem[$sessionInvoiceItem->id] = $allocatedGlobalSale;
+                $globalSoldByCategory[$categoryId] = max(0, $globalRemaining - $allocatedGlobalSale);
             }
         }
 
@@ -197,6 +225,7 @@ class InvoiceController extends Controller
             'customers' => Customer::all(['id', 'name']),
             'sales' => $sales,
             'availableStockByCategory' => $availableStockByCategory,
+            'globalSoldCountByInvoiceItem' => $globalSoldCountByInvoiceItem,
             'session' => $session,
             'backUrl' => $backUrl,
         ]);

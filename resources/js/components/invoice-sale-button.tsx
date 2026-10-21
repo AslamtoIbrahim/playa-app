@@ -7,14 +7,20 @@ import { ShoppingCart } from 'lucide-react';
 interface Props {
     /** Purchase invoice line to sell. Absent on the "new row" placeholder. */
     item?: InvoiceItem;
+    globalSoldCount?: number;
     onOpenSale: (item: InvoiceItem) => void;
 }
 
 /** Sell action of an invoice line. */
-export function InvoiceItemSaleButton({ item, onOpenSale }: Props) {
-    const remaining = computeInvoiceItemRemainingCount(item);
+export function InvoiceItemSaleButton({
+    item,
+    globalSoldCount = 0,
+    onOpenSale,
+}: Props) {
+    const remaining = computeInvoiceItemRemainingCount(item) - globalSoldCount;
 
     const isSold = remaining <= 0;
+    const isPartiallySold = Boolean(item) && !isSold && remaining < Number(item?.unit_count);
 
     return (
         <Button
@@ -40,7 +46,11 @@ export function InvoiceItemSaleButton({ item, onOpenSale }: Props) {
                     isSold &&
                     'text-emerald-600 dark:text-emerald-400',
                 item &&
+                    isPartiallySold &&
+                    'text-orange-600 hover:bg-orange-50 dark:text-orange-400 dark:hover:bg-orange-950/40',
+                item &&
                     !isSold &&
+                    !isPartiallySold &&
                     'text-slate-300 hover:text-emerald-600 dark:text-neutral-600 dark:hover:text-emerald-400',
             )}
         >

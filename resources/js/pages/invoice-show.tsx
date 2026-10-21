@@ -87,6 +87,7 @@ interface Props {
     /** Ventes de la même journée : seules cibles possibles pour une vente. */
     sales: Sale[];
     availableStockByCategory: Record<number, number>;
+    globalSoldCountByInvoiceItem: Record<number, number>;
     /** Session courante (via sa zone) pour créer la vente manquante. */
     session: DailySession | null;
     /** URL de retour explicite fournie par le backend (journée liée ou liste). */
@@ -102,6 +103,7 @@ export default function InvoiceShow({
     customers,
     sales,
     availableStockByCategory,
+    globalSoldCountByInvoiceItem,
     session,
     backUrl,
 }: Props) {
@@ -600,6 +602,7 @@ export default function InvoiceShow({
                                         items={items}
                                         owners={owners}
                                         categories={categories}
+                                        globalSoldCount={globalSoldCountByInvoiceItem[row.id] ?? 0}
                                         selected={selectedIds.includes(row.id)}
                                         onSelectChange={(checked) => {
                                             setSelectedIds((prev) =>

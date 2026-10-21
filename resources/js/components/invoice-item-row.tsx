@@ -47,6 +47,7 @@ interface Props {
     onDelete?: (item: InvoiceItem) => void;
     owners: Owner[];
     categories: Category[];
+    globalSoldCount?: number;
 }
 
 export default function InvoiceItemRow({
@@ -61,6 +62,7 @@ export default function InvoiceItemRow({
     onDelete,
     owners,
     categories,
+    globalSoldCount = 0,
 }: Props) {
     const {
         data,
@@ -429,6 +431,7 @@ export default function InvoiceItemRow({
                 <div className="flex h-10 w-full items-center justify-center">
                     <InvoiceItemSaleButton
                         item={item}
+                        globalSoldCount={globalSoldCount}
                         onOpenSale={onOpenSale}
                     />
                 </div>
