@@ -155,7 +155,8 @@ test('deleting one invoice item also deletes its differences and sales', functio
 
     $this->actingAs($context['user'])
         ->delete(route('invoices.items.destroy', [$context['invoice'], $context['firstItem']]))
-        ->assertRedirect();
+        ->assertRedirect()
+        ->assertSessionHas('success');
 
     // The invoice line is soft-deleted, its differences hard-deleted and its
     // sale distributions soft-deleted.
@@ -172,11 +173,8 @@ test('deleting one invoice item also deletes its differences and sales', functio
         ->and((int) $context['sale']->boxes)->toBe(0);
 });
 
-test('deleting invoice stock reduces global sale quantities to the remaining stock', function () {
+test('deleting invoice stock reduces global sale quantities to remaining stock', function () {
     $context = createCascadeDeleteContext();
-    expect($context['firstItem']->category_id)->not->toBeNull()
-        ->and($context['invoice']->sessionZone->daily_session_id)->not->toBeNull();
-
     $globalSaleItem = SaleItem::create([
         'sale_id' => $context['sale']->id,
         'item_id' => $context['firstItem']->item_id,
@@ -186,7 +184,8 @@ test('deleting invoice stock reduces global sale quantities to the remaining sto
 
     $this->actingAs($context['user'])
         ->delete(route('invoices.items.destroy', [$context['invoice'], $context['firstItem']]))
-        ->assertRedirect();
+        ->assertRedirect()
+        ->assertSessionHas('success');
 
     expect((float) $globalSaleItem->fresh()->unit_count)->toBe(-48.0);
 });

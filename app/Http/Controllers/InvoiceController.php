@@ -193,8 +193,9 @@ class InvoiceController extends Controller
             $sessionInvoiceItems = InvoiceItem::query()
                 ->whereHas('invoice.sessionZone', fn ($query) => $query->where('daily_session_id', $session->id))
                 ->with('saleItems:id,invoice_item_id,unit_count')
+                ->orderByRaw('CASE WHEN invoice_id = ? THEN 0 ELSE 1 END', [$invoice->id])
                 ->orderBy('id')
-                ->get(['id', 'category_id', 'unit_count']);
+                ->get(['id', 'invoice_id', 'category_id', 'unit_count']);
 
             foreach ($sessionInvoiceItems as $sessionInvoiceItem) {
                 $categoryId = $sessionInvoiceItem->category_id;

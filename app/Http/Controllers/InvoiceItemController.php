@@ -403,7 +403,7 @@ class InvoiceItemController extends Controller
     {
         try {
             DB::transaction(function () use ($invoice, $item) {
-                $categoryIds = [$item->category_id];
+                $categoryId = $item->category_id ?? Item::whereKey($item->item_id)->value('category_id');
 
                 // 1. كنقلبو على الـ ReceiptItems اللي مرتبطين بهاد السطر قبل ما نمسحوهم
                 $receiptItemIds = ReceiptItem::where('invoice_item_id', $item->id)->pluck('receipt_id');
@@ -453,7 +453,8 @@ class InvoiceItemController extends Controller
                     $sale->calculateTotals();
                 });
 
-                $this->reconcileGlobalSaleItems($invoice, $categoryIds);
+                $this->reconcileGlobalSaleItems($invoice, array_filter([$categoryId]));
+
             });
 
             return back()->with('success', 'Suppression réussie et nettoyage effectué. ✅');
@@ -475,11 +476,14 @@ class InvoiceItemController extends Controller
         try {
             DB::transaction(function () use ($invoice, $validated) {
                 $ids = $validated['ids'];
-                $categoryIds = InvoiceItem::whereIn('id', $ids)
-                    ->pluck('category_id')
+                $categoryIds = InvoiceItem::query()
+                    ->whereIn('id', $ids)
+                    ->get(['category_id', 'item_id'])
+                    ->map(fn ($item) => $item->category_id ?? Item::whereKey($item->item_id)->value('category_id'))
+                    ->filter()
                     ->unique()
+                    ->values()
                     ->all();
-
                 // نجيبو كاع الـ Receipts اللي يقدروا يتأثروا
                 $receiptIds = ReceiptItem::whereIn('invoice_item_id', $ids)->pluck('receipt_id')->unique();
 
@@ -517,6 +521,7 @@ class InvoiceItemController extends Controller
                 });
 
                 $this->reconcileGlobalSaleItems($invoice, $categoryIds);
+
             });
 
             return back()->with('success', count($validated['ids']).' supprimés avec nettoyage. ✅');
@@ -526,10 +531,10 @@ class InvoiceItemController extends Controller
     }
 
     /**
-     * Keep global (invoice-independent) sale lines within the stock still
-     * available for their categories after invoice items are removed.
+     * Reduce or remove global sale lines when invoice stock in their category
+     * is deleted.
      *
-     * @param  array<int, int|null>  $categoryIds
+     * @param  array<int, int>  $categoryIds
      */
     private function reconcileGlobalSaleItems(Invoice $invoice, array $categoryIds): void
     {
@@ -539,29 +544,33 @@ class InvoiceItemController extends Controller
             return;
         }
 
-        foreach (array_filter(array_unique($categoryIds)) as $categoryId) {
-            $purchased = InvoiceItem::query()
+        foreach ($categoryIds as $categoryId) {
+            $categoryItemIds = Item::query()
                 ->where('category_id', $categoryId)
+                ->pluck('id');
+            $purchased = InvoiceItem::query()
+                ->where(function ($query) use ($categoryId, $categoryItemIds) {
+                    $query->where('category_id', $categoryId)
+                        ->orWhereIn('item_id', $categoryItemIds);
+                })
                 ->whereHas('invoice.sessionZone', fn ($query) => $query->where('daily_session_id', $sessionId))
                 ->sum('unit_count');
-
             $directlySold = SaleItem::query()
                 ->whereNotNull('invoice_item_id')
-                ->whereHas('item', fn ($query) => $query->where('category_id', $categoryId))
-                ->whereHas('sale', fn ($query) => $query->where('session_id', $sessionId))
+                ->whereIn('item_id', $categoryItemIds)
+                ->whereIn('sale_id', Sale::query()->where('session_id', $sessionId)->select('id'))
                 ->sum(DB::raw('ABS(unit_count)'));
-
             $remaining = max(0, (float) $purchased - (float) $directlySold);
             $globalSaleItems = SaleItem::query()
                 ->whereNull('invoice_item_id')
-                ->whereHas('item', fn ($query) => $query->where('category_id', $categoryId))
-                ->whereHas('sale', fn ($query) => $query->where('session_id', $sessionId))
+                ->whereIn('item_id', $categoryItemIds)
+                ->whereIn('sale_id', Sale::query()->where('session_id', $sessionId)->select('id'))
                 ->orderBy('id')
                 ->get();
 
             foreach ($globalSaleItems as $saleItem) {
-                $currentCount = abs((float) $saleItem->unit_count);
-                $adjustedCount = min($currentCount, $remaining);
+                $count = abs((float) $saleItem->unit_count);
+                $adjustedCount = min($count, $remaining);
 
                 if ($adjustedCount <= 0) {
                     $saleItem->delete();
@@ -569,7 +578,7 @@ class InvoiceItemController extends Controller
                     continue;
                 }
 
-                if ($adjustedCount < $currentCount) {
+                if ($adjustedCount < $count) {
                     $saleItem->unit_count = $saleItem->unit_count < 0
                         ? -$adjustedCount
                         : $adjustedCount;

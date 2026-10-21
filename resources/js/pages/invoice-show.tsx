@@ -202,10 +202,25 @@ export default function InvoiceShow({
         0,
     );
 
-    const relatedSaleCount = deleteTargetItems.reduce(
+    const linkedSaleCount = deleteTargetItems.reduce(
         (sum, item) => sum + (item.sale_items?.length ?? 0),
         0,
     );
+    const deletedCategoryIds = new Set(
+        deleteTargetItems.map((item) => item.category_id),
+    );
+    const relatedGlobalSaleCount = sales.reduce(
+        (sum, currentSale) =>
+            sum +
+            (currentSale.items ?? []).filter(
+                (saleItem) =>
+                    !saleItem.deleted_at &&
+                    !saleItem.invoice_item_id &&
+                    deletedCategoryIds.has(saleItem.item?.category_id ?? -1),
+            ).length,
+        0,
+    );
+    const relatedSaleCount = linkedSaleCount + relatedGlobalSaleCount;
 
     const closeDeleteDialog = () => {
         setDeleteTarget(null);
