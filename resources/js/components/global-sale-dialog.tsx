@@ -602,40 +602,64 @@ export function GlobalSaleDialog({
                     return;
                 }
 
+                let saved = true;
+
                 if (targetField === 'sale_id') {
                     const saleId = Number(value);
                     setClientIds((current) => ({
                         ...current,
                         [targetRowId]: textValue,
                     }));
-                    await updateSaleItem(line, { sale_id: saleId });
+                    saved = await updateSaleItem(line, { sale_id: saleId });
+
+                    if (!saved) {
+                        setClientIds((current) => {
+                            const next = { ...current };
+                            delete next[targetRowId];
+
+                            return next;
+                        });
+                    }
                 } else if (targetField === 'item_id') {
                     const itemId = Number(value);
                     setArticleIds((current) => ({
                         ...current,
                         [targetRowId]: textValue,
                     }));
-                    await updateSaleItem(line, { item_id: itemId });
+                    saved = await updateSaleItem(line, { item_id: itemId });
+
+                    if (!saved) {
+                        setArticleIds((current) => {
+                            const next = { ...current };
+                            delete next[targetRowId];
+
+                            return next;
+                        });
+                    }
                 } else if (targetField === 'sale_price') {
                     if (Number(value) > 0) {
-                        await updateSaleItem(line, {
+                        saved = await updateSaleItem(line, {
                             sale_price: Number(value),
                         });
                     }
                 } else if (targetField === 'unit_count') {
                     if (Number(value) > 0) {
-                        await updateSaleItem(line, {
+                        saved = await updateSaleItem(line, {
                             unit_count: -Number(value),
                         });
                     }
                 } else if (targetField === 'real_price') {
-                    await updateSaleItem(line, {
+                    saved = await updateSaleItem(line, {
                         real_price: Number(value),
                     });
                 } else {
-                    await updateSaleItem(line, {
+                    saved = await updateSaleItem(line, {
                         is_with_tax: value === true,
                     });
+                }
+
+                if (!saved) {
+                    return;
                 }
 
                 const targetCell = table.querySelector<HTMLElement>(
@@ -1073,9 +1097,18 @@ export function GlobalSaleDialog({
                                 <TableRow data-sale-row={line.id} key={line.id} className="group h-10 border-b border-slate-100 dark:border-neutral-800">
                                     <TableCell {...cellProps(String(line.id), 'sale_id')} className="min-w-40 border-r border-slate-100 p-0 dark:border-neutral-800">
                                         {cellDecorations(String(line.id), 'sale_id')}
-                                        <SearchSelect value={clientIds[String(line.id)] ?? String(line.sale_id)} options={sales.map((option) => ({ id: option.id, name: option.customer?.name ?? `Vente #${option.id}` }))} placeholder="Client..." emptyMessage="Aucun client trouvé." open={openClientIds[String(line.id)] ?? false} onOpenChange={(open) => setOpenClientIds((state) => ({ ...state, [String(line.id)]: open }))} onKeyDown={(event) => handleCellKeyDown(event, () => setClientIds((state) => ({ ...state, [String(line.id)]: '' })))} onSelect={(id) => {
+                                        <SearchSelect value={clientIds[String(line.id)] ?? String(line.sale_id)} options={sales.map((option) => ({ id: option.id, name: option.customer?.name ?? `Vente #${option.id}` }))} placeholder="Client..." emptyMessage="Aucun client trouvé." open={openClientIds[String(line.id)] ?? false} onOpenChange={(open) => setOpenClientIds((state) => ({ ...state, [String(line.id)]: open }))} onKeyDown={(event) => handleCellKeyDown(event, () => setClientIds((state) => ({ ...state, [String(line.id)]: '' })))} onSelect={async (id) => {
                                             setClientIds((state) => ({ ...state, [String(line.id)]: String(id) }));
-                                            updateSaleItem(line, { sale_id: Number(id) });
+                                            const saved = await updateSaleItem(line, { sale_id: Number(id) });
+
+                                            if (!saved) {
+                                                setClientIds((state) => {
+                                                    const next = { ...state };
+                                                    delete next[String(line.id)];
+
+                                                    return next;
+                                                });
+                                            }
                                         }} className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 shadow-none capitalize focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800" />
                                     </TableCell>
                                     <TableCell {...cellProps(String(line.id), 'sale_price')} className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800">
@@ -1116,10 +1149,19 @@ export function GlobalSaleDialog({
                                                     })),
                                                 )
                                             }
-                                            onSelect={(id) => {
+                                            onSelect={async (id) => {
                                                 const itemId = Number(id);
                                                 setArticleIds((state) => ({ ...state, [String(line.id)]: String(itemId) }));
-                                                updateSaleItem(line, { item_id: itemId });
+                                                const saved = await updateSaleItem(line, { item_id: itemId });
+
+                                                if (!saved) {
+                                                    setArticleIds((state) => {
+                                                        const next = { ...state };
+                                                        delete next[String(line.id)];
+
+                                                        return next;
+                                                    });
+                                                }
                                             }}
                                             className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 shadow-none capitalize focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800"
                                         />
@@ -1131,13 +1173,19 @@ export function GlobalSaleDialog({
                                             min="0"
                                             step="any"
                                             defaultValue={numberInputValue(Math.abs(Number(line.unit_count)))}
-                                            onBlur={(event) => {
+                                            onBlur={async (event) => {
                                                 const count = Number(event.target.value);
 
                                                 if (count > 0) {
-                                                    updateSaleItem(line, {
+                                                    const saved = await updateSaleItem(line, {
                                                         unit_count: -count,
                                                     });
+
+                                                    if (!saved) {
+                                                        event.target.value = numberInputValue(
+                                                            Math.abs(Number(line.unit_count)),
+                                                        );
+                                                    }
                                                 }
                                             }}
                                             onKeyDown={handleSavedRowKeyDown}

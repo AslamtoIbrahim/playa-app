@@ -122,14 +122,75 @@ export function useGlobalSaleDialog({
         onOpenChange(nextOpen);
     };
 
+    /**
+     * Resolve the stock error for a saved line update, if any.
+     *
+     * The current quantity of the line is already counted as sold, so it is
+     * added back to the category stock as long as the line stays in the same
+     * category.
+     */
+    const stockErrorMessage = (
+        itemId: number,
+        count: number,
+        line: SaleItem,
+    ): string | null => {
+        const item = items.find((candidate) => candidate.id === itemId);
+
+        if (!item) {
+            return null;
+        }
+
+        const available = availableStockByCategory[item.category_id];
+
+        if (available === undefined) {
+            return null;
+        }
+
+        const lineItem = items.find(
+            (candidate) => candidate.id === line.item_id,
+        );
+        const currentCount =
+            lineItem?.category_id === item.category_id
+                ? Math.abs(Number(line.unit_count))
+                : 0;
+        const allowedCount = Math.max(0, available + currentCount);
+
+        if (Math.abs(count) > allowedCount + 0.00001) {
+            return `Stock insuffisant pour ${item.name} : ${allowedCount} unité(s) disponible(s).`;
+        }
+
+        return null;
+    };
+
     const updateSaleItem = (
         line: SaleItem,
         updates: SaleItemUpdate,
-    ): Promise<void> =>
+    ): Promise<boolean> =>
         new Promise((resolve) => {
+            if (
+                updates.item_id !== undefined ||
+                updates.unit_count !== undefined
+            ) {
+                const message = stockErrorMessage(
+                    updates.item_id ?? line.item_id,
+                    Number(updates.unit_count ?? line.unit_count),
+                    line,
+                );
+
+                if (message) {
+                    toast.error(message, { duration: 6000 });
+                    resolve(false);
+
+                    return;
+                }
+            }
+
+            let succeeded = false;
+
             router.patch(updateSaleItemRoute(line.id), updates, {
                 preserveScroll: true,
                 onSuccess: () => {
+                    succeeded = true;
                     toast.success('Ligne de vente mise à jour.');
                 },
                 onError: (errors) => {
@@ -138,7 +199,7 @@ export function useGlobalSaleDialog({
                             'Impossible de mettre à jour cette ligne.',
                     );
                 },
-                onFinish: () => resolve(),
+                onFinish: () => resolve(succeeded),
             });
         });
 
