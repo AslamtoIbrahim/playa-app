@@ -28,7 +28,25 @@ import type { DailySession } from '@/types/daily-session';
 import { Plus, ShoppingCart, Trash2 } from 'lucide-react';
 import MissingDialogSale from '@/components/missing-dialog-sale';
 import { useGlobalSaleDialog } from '@/hooks/use-global-sale-dialog';
-import type { KeyboardEvent } from 'react';
+import type { KeyboardEvent, MouseEvent } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+
+const selectableFields = [
+    'sale_id',
+    'sale_price',
+    'item_id',
+    'unit_count',
+    'real_price',
+    'is_with_tax',
+] as const;
+
+type SelectableField = (typeof selectableFields)[number];
+
+interface CellSelection {
+    rowId: string;
+    field: SelectableField;
+    anchorId: string;
+}
 
 interface Props {
     open: boolean;
@@ -128,12 +146,425 @@ export function GlobalSaleDialog({
         availableStockByCategory,
     });
 
+    const [cellSelection, setCellSelection] = useState<CellSelection | null>(
+        null,
+    );
     const hasRemainingInvoiceStock =
         invoiceCategoryStock.length === 0 ||
         invoiceCategoryStock.some((category) => category.remaining > 0);
+    const rowIds = useMemo(
+        () => [
+            ...(hasRemainingInvoiceStock ? ['draft'] : []),
+            ...boatlessSaleItems.map((line) => String(line.id)),
+        ],
+        [boatlessSaleItems, hasRemainingInvoiceStock],
+    );
+
+    const cellProps = (rowId: string, field: SelectableField) => {
+        const anchorIndex = cellSelection
+            ? rowIds.indexOf(cellSelection.anchorId)
+            : -1;
+        const selectedIndex = cellSelection
+            ? rowIds.indexOf(cellSelection.rowId)
+            : -1;
+        const rowIndex = rowIds.indexOf(rowId);
+        const isSelected =
+            cellSelection?.field === field &&
+            anchorIndex >= 0 &&
+            selectedIndex >= 0 &&
+            rowIndex >= Math.min(anchorIndex, selectedIndex) &&
+            rowIndex <= Math.max(anchorIndex, selectedIndex);
+
+        return {
+            'data-sale-cell': field,
+            'data-sale-row': rowId,
+            onMouseDownCapture: (event: MouseEvent<HTMLTableCellElement>) => {
+                if (event.shiftKey) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+
+                setCellSelection((current) => ({
+                    rowId,
+                    field,
+                    anchorId:
+                        event.shiftKey && current?.field === field
+                            ? current.anchorId
+                            : rowId,
+                }));
+            },
+            onClickCapture: (event: MouseEvent<HTMLTableCellElement>) => {
+                if (event.shiftKey) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+            },
+            onFocusCapture: () => {
+                setCellSelection((current) =>
+                    current?.rowId === rowId && current.field === field
+                        ? current
+                        : { rowId, field, anchorId: rowId },
+                );
+            },
+            style: isSelected
+                ? {
+                      position: 'relative' as const,
+                      backgroundColor: 'rgb(59 130 246 / 12%)',
+                      boxShadow:
+                          'inset 0 1px rgb(59 130 246), inset 0 -1px rgb(59 130 246)',
+                  }
+                : undefined,
+        };
+    };
+
+    const handleOpenChange = (nextOpen: boolean) => {
+        if (!nextOpen) {
+            setCellSelection(null);
+        }
+
+        handleDialogOpenChange(nextOpen);
+    };
+
+    useEffect(() => {
+        const clearSelectionOutsideCells = (event: PointerEvent) => {
+            if (
+                event.target instanceof Element &&
+                !event.target.closest('[data-sale-cell]')
+            ) {
+                setCellSelection(null);
+            }
+        };
+
+        document.addEventListener('pointerdown', clearSelectionOutsideCells);
+
+        return () => {
+            document.removeEventListener(
+                'pointerdown',
+                clearSelectionOutsideCells,
+            );
+        };
+    }, []);
+
+    useEffect(() => {
+        const handleGridKeyDown = (event: globalThis.KeyboardEvent) => {
+            const target = event.target;
+            const cell =
+                target instanceof Element
+                    ? target.closest<HTMLElement>('[data-sale-cell]')
+                    : null;
+            const table = document.querySelector('[data-global-sale-table]');
+            const row = cell?.closest<HTMLTableRowElement>('tr[data-sale-row]');
+
+            if (!cell || !table || !row) {
+                return;
+            }
+
+            const rowId = row.dataset.saleRow;
+            const field = cell.dataset.saleCell as SelectableField | undefined;
+
+            if (!rowId || !field) {
+                return;
+            }
+
+            const readValue = (
+                sourceRowId: string,
+                sourceField: SelectableField,
+            ) => {
+                if (sourceRowId === 'draft') {
+                    if (sourceField === 'sale_id') {
+                        return selectedSaleId;
+                    }
+
+                    if (sourceField === 'sale_price') {
+                        return draft.salePrice;
+                    }
+
+                    if (sourceField === 'item_id') {
+                        return draft.itemId;
+                    }
+
+                    if (sourceField === 'unit_count') {
+                        return draft.unitCount;
+                    }
+
+                    if (sourceField === 'real_price') {
+                        return draft.realPrice;
+                    }
+
+                    return draft.isWithTax;
+                }
+
+                const line = boatlessSaleItems.find(
+                    (item) => String(item.id) === sourceRowId,
+                );
+
+                if (!line) {
+                    return '';
+                }
+
+                if (sourceField === 'sale_id') {
+                    return clientIds[sourceRowId] ?? String(line.sale_id);
+                }
+
+                if (sourceField === 'item_id') {
+                    return articleIds[sourceRowId] ?? String(line.item_id);
+                }
+
+                const sourceCell = table.querySelector<HTMLElement>(
+                    'tr[data-sale-row="' +
+                        sourceRowId +
+                        '"] [data-sale-cell="' +
+                        sourceField +
+                        '"]',
+                );
+
+                if (sourceField === 'is_with_tax') {
+                    return (
+                        sourceCell
+                            ?.querySelector('[role="checkbox"]')
+                            ?.getAttribute('data-state') === 'checked'
+                    );
+                }
+
+                const input =
+                    sourceCell?.querySelector<HTMLInputElement>('input');
+
+                if (input) {
+                    return input.value;
+                }
+
+                if (sourceField === 'sale_price') {
+                    return String(line.sale_price);
+                }
+
+                if (sourceField === 'unit_count') {
+                    return String(Math.abs(Number(line.unit_count)));
+                }
+
+                return String(line.real_price);
+            };
+
+            const applyValue = async (
+                targetRowId: string,
+                targetField: SelectableField,
+                value: string | boolean,
+            ) => {
+                const textValue = String(value);
+
+                if (targetRowId === 'draft') {
+                    if (targetField === 'sale_id') {
+                        setSelectedSaleId(textValue);
+                    } else if (targetField === 'sale_price') {
+                        updateDraft({ salePrice: textValue });
+                    } else if (targetField === 'item_id') {
+                        updateDraft({ itemId: textValue });
+                    } else if (targetField === 'unit_count') {
+                        updateDraft({ unitCount: textValue });
+                    } else if (targetField === 'real_price') {
+                        updateDraft({ realPrice: textValue });
+                    } else {
+                        updateDraft({ isWithTax: value === true });
+                    }
+
+                    return;
+                }
+
+                const line = boatlessSaleItems.find(
+                    (item) => String(item.id) === targetRowId,
+                );
+
+                if (!line) {
+                    return;
+                }
+
+                if (targetField === 'sale_id') {
+                    const saleId = Number(value);
+                    setClientIds((current) => ({
+                        ...current,
+                        [targetRowId]: textValue,
+                    }));
+                    await updateSaleItem(line, { sale_id: saleId });
+                } else if (targetField === 'item_id') {
+                    const itemId = Number(value);
+                    setArticleIds((current) => ({
+                        ...current,
+                        [targetRowId]: textValue,
+                    }));
+                    await updateSaleItem(line, { item_id: itemId });
+                } else if (targetField === 'sale_price') {
+                    if (Number(value) > 0) {
+                        await updateSaleItem(line, {
+                            sale_price: Number(value),
+                        });
+                    }
+                } else if (targetField === 'unit_count') {
+                    if (Number(value) > 0) {
+                        await updateSaleItem(line, {
+                            unit_count: -Number(value),
+                        });
+                    }
+                } else if (targetField === 'real_price') {
+                    await updateSaleItem(line, {
+                        real_price: Number(value),
+                    });
+                } else {
+                    await updateSaleItem(line, {
+                        is_with_tax: value === true,
+                    });
+                }
+
+                const targetCell = table.querySelector<HTMLElement>(
+                    'tr[data-sale-row="' +
+                        targetRowId +
+                        '"] [data-sale-cell="' +
+                        targetField +
+                        '"]',
+                );
+                const targetInput =
+                    targetCell?.querySelector<HTMLInputElement>('input');
+
+                if (targetInput) {
+                    targetInput.value =
+                        targetField === 'unit_count'
+                            ? String(Math.abs(Number(value)))
+                            : textValue;
+                }
+            };
+
+            if (
+                (event.ctrlKey || event.metaKey) &&
+                event.key.toLowerCase() === 'd' &&
+                cellSelection
+            ) {
+                event.preventDefault();
+                event.stopPropagation();
+
+                const anchorIndex = rowIds.indexOf(cellSelection.anchorId);
+                const endIndex = rowIds.indexOf(cellSelection.rowId);
+
+                if (anchorIndex < 0 || endIndex < 0) {
+                    return;
+                }
+
+                const firstIndex = Math.min(anchorIndex, endIndex);
+                const lastIndex = Math.max(anchorIndex, endIndex);
+                const value = readValue(
+                    rowIds[firstIndex],
+                    cellSelection.field,
+                );
+
+                const fillSelectedRows = async () => {
+                    for (const targetRowId of rowIds.slice(
+                        firstIndex + 1,
+                        lastIndex + 1,
+                    )) {
+                        await applyValue(
+                            targetRowId,
+                            cellSelection.field,
+                            value,
+                        );
+                    }
+                };
+
+                void fillSelectedRows();
+
+                return;
+            }
+
+            if (
+                !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(
+                    event.key,
+                )
+            ) {
+                return;
+            }
+
+            let nextRowIndex = rowIds.indexOf(rowId);
+            let nextFieldIndex = selectableFields.indexOf(field);
+
+            if (event.key === 'ArrowUp') {
+                nextRowIndex -= 1;
+            } else if (event.key === 'ArrowDown') {
+                nextRowIndex += 1;
+            } else if (event.key === 'ArrowLeft') {
+                nextFieldIndex -= 1;
+            } else {
+                nextFieldIndex += 1;
+            }
+
+            while (
+                rowIds[nextRowIndex] &&
+                nextFieldIndex >= 0 &&
+                nextFieldIndex < selectableFields.length
+            ) {
+                const nextRowId = rowIds[nextRowIndex];
+                const nextField = selectableFields[nextFieldIndex];
+                const nextCell = table.querySelector<HTMLElement>(
+                    'tr[data-sale-row="' +
+                        nextRowId +
+                        '"] [data-sale-cell="' +
+                        nextField +
+                        '"]',
+                );
+
+                if (nextCell) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setCellSelection((current) => ({
+                        rowId: nextRowId,
+                        field: nextField,
+                        anchorId: event.shiftKey
+                            ? current?.field === nextField
+                                ? current.anchorId
+                                : rowId
+                            : nextRowId,
+                    }));
+                    const nextControl = nextCell.querySelector<
+                        HTMLInputElement | HTMLButtonElement
+                    >('input, button, [role="combobox"], [role="checkbox"]');
+
+                    nextControl?.focus();
+
+                    if (nextControl instanceof HTMLInputElement) {
+                        nextControl.select();
+                    }
+
+                    return;
+                }
+
+                if (event.key === 'ArrowUp') {
+                    nextRowIndex -= 1;
+                } else if (event.key === 'ArrowDown') {
+                    nextRowIndex += 1;
+                } else if (event.key === 'ArrowLeft') {
+                    nextFieldIndex -= 1;
+                } else {
+                    nextFieldIndex += 1;
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleGridKeyDown, true);
+
+        return () =>
+            window.removeEventListener('keydown', handleGridKeyDown, true);
+    }, [
+        articleIds,
+        boatlessSaleItems,
+        cellSelection,
+        clientIds,
+        draft,
+        rowIds,
+        selectedSaleId,
+        setArticleIds,
+        setClientIds,
+        setSelectedSaleId,
+        updateDraft,
+        updateSaleItem,
+    ]);
 
     return (
-        <Dialog open={open} onOpenChange={handleDialogOpenChange}>
+        <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogContent className="flex max-h-[88vh] w-11/12 max-w-5xl flex-col gap-0 overflow-hidden rounded-2xl border border-amber-100 p-0 shadow-2xl sm:max-w-5xl dark:border-amber-950 dark:bg-neutral-950 dark:text-neutral-100">
                 <DialogHeader className="shrink-0 border-b border-amber-200 bg-linear-to-br from-amber-50 via-white to-yellow-50 p-3 pr-12 text-left dark:border-amber-950 dark:from-amber-950/50 dark:via-neutral-950 dark:to-yellow-950/30">
                     <div className="mb-1 flex min-w-0 items-start justify-between gap-2">
@@ -183,7 +614,10 @@ export function GlobalSaleDialog({
                 </DialogHeader>
 
                 <div className="min-h-0 flex-1 overflow-auto bg-slate-50/60 p-3 dark:bg-neutral-950">
-                    <Table className="w-auto min-w-212.5 border-collapse">
+                    <Table
+                        data-global-sale-table
+                        className="w-auto min-w-212.5 border-collapse"
+                    >
                         <TableHeader className="sticky top-0 z-20 bg-slate-50/80 shadow-sm backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-900/90">
                             <TableRow className="border-b border-slate-100 hover:bg-transparent dark:border-neutral-800">
                                 <TableHead className="min-w-40 py-4 text-center text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
@@ -218,10 +652,14 @@ export function GlobalSaleDialog({
                         </TableHeader>
                         <TableBody>
                             <TableRow
+                                data-sale-row="draft"
                                 hidden={!hasRemainingInvoiceStock}
                                 className="group h-10 min-h-10 border-b border-amber-200 bg-amber-50/70 transition-colors hover:bg-amber-100/70 dark:border-amber-900 dark:bg-amber-950/30 dark:hover:bg-amber-950/50"
                             >
-                                <TableCell className="min-w-40 border-r border-slate-100 p-0 dark:border-neutral-800">
+                                <TableCell
+                                    {...(!sale ? cellProps('draft', 'sale_id') : {})}
+                                    className="min-w-40 border-r border-slate-100 p-0 dark:border-neutral-800"
+                                >
                                     {sale ? (
                                         <span className="block truncate px-3 font-medium text-slate-900 dark:text-neutral-100">
                                             {sale.customer?.name ?? `Vente #${sale.id}`}
@@ -256,7 +694,7 @@ export function GlobalSaleDialog({
                                         />
                                     )}
                                 </TableCell>
-                                <TableCell className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800">
+                                <TableCell {...cellProps('draft', 'sale_price')} className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800">
                                     <Input
                                         type="number"
                                         min="0.01"
@@ -269,7 +707,7 @@ export function GlobalSaleDialog({
                                         aria-label="Prix de vente"
                                     />
                                 </TableCell>
-                                <TableCell className="min-w-40 border-r border-slate-100 p-0 dark:border-neutral-800">
+                                <TableCell {...cellProps('draft', 'item_id')} className="min-w-40 border-r border-slate-100 p-0 dark:border-neutral-800">
                                     <SearchSelect
                                         value={draft.itemId}
                                         options={invoiceCatalogItems.map((item) => ({
@@ -293,7 +731,7 @@ export function GlobalSaleDialog({
                                         className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 shadow-none capitalize focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800"
                                     />
                                 </TableCell>
-                                <TableCell className="w-20 border-r border-slate-100 p-0 dark:border-neutral-800">
+                                <TableCell {...cellProps('draft', 'unit_count')} className="w-20 border-r border-slate-100 p-0 dark:border-neutral-800">
                                     <Input
                                         type="number"
                                         min="0"
@@ -311,7 +749,7 @@ export function GlobalSaleDialog({
                                         aria-label="Quantit\u00e9 vendue"
                                     />
                                 </TableCell>
-                                <TableCell className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800">
+                                <TableCell {...cellProps('draft', 'real_price')} className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800">
                                     <Input
                                         type="number"
                                         step="any"
@@ -333,7 +771,7 @@ export function GlobalSaleDialog({
                                 <TableCell className="w-20 border-r border-slate-100 px-3 py-0 text-right text-xs tabular-nums text-slate-600 dark:border-neutral-800 dark:text-neutral-400">
                                     {tax.toLocaleString('fr-FR')}
                                 </TableCell>
-                                <TableCell className="w-20 border-r border-slate-100 text-center dark:border-neutral-800">
+                                <TableCell {...cellProps('draft', 'is_with_tax')} className="w-20 border-r border-slate-100 text-center dark:border-neutral-800">
                                     <Checkbox
                                         checked={draft.isWithTax}
                                         onCheckedChange={(checked) =>
@@ -368,11 +806,14 @@ export function GlobalSaleDialog({
                                 <TableCell className="w-12" />
                             </TableRow>
                             {boatlessSaleItems.map((line) => (
-                                <TableRow key={line.id} className="group h-10 border-b border-slate-100 dark:border-neutral-800">
-                                    <TableCell className="min-w-40 border-r border-slate-100 p-0 dark:border-neutral-800">
-                                        <SearchSelect value={clientIds[String(line.id)] ?? String(line.sale_id)} options={sales.map((option) => ({ id: option.id, name: option.customer?.name ?? `Vente #${option.id}` }))} placeholder="Client..." emptyMessage="Aucun client trouvé." open={openClientIds[String(line.id)] ?? false} onOpenChange={(open) => setOpenClientIds((state) => ({ ...state, [String(line.id)]: open }))} onKeyDown={(event) => handleCellKeyDown(event, () => setClientIds((state) => ({ ...state, [String(line.id)]: '' })))} onSelect={(id) => { setClientIds((state) => ({ ...state, [String(line.id)]: String(id) })); updateSaleItem(line, { sale_id: Number(id) }); }} className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 shadow-none capitalize focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800" />
+                                <TableRow data-sale-row={line.id} key={line.id} className="group h-10 border-b border-slate-100 dark:border-neutral-800">
+                                    <TableCell {...cellProps(String(line.id), 'sale_id')} className="min-w-40 border-r border-slate-100 p-0 dark:border-neutral-800">
+                                        <SearchSelect value={clientIds[String(line.id)] ?? String(line.sale_id)} options={sales.map((option) => ({ id: option.id, name: option.customer?.name ?? `Vente #${option.id}` }))} placeholder="Client..." emptyMessage="Aucun client trouvé." open={openClientIds[String(line.id)] ?? false} onOpenChange={(open) => setOpenClientIds((state) => ({ ...state, [String(line.id)]: open }))} onKeyDown={(event) => handleCellKeyDown(event, () => setClientIds((state) => ({ ...state, [String(line.id)]: '' })))} onSelect={(id) => {
+                                            setClientIds((state) => ({ ...state, [String(line.id)]: String(id) }));
+                                            updateSaleItem(line, { sale_id: Number(id) });
+                                        }} className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 shadow-none capitalize focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800" />
                                     </TableCell>
-                                    <TableCell className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800">
+                                    <TableCell {...cellProps(String(line.id), 'sale_price')} className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800">
                                         <Input
                                             type="number"
                                             min="0.01"
@@ -392,7 +833,7 @@ export function GlobalSaleDialog({
                                             aria-label="Prix de vente"
                                         />
                                     </TableCell>
-                                    <TableCell className="min-w-40 border-r border-slate-100 p-0 dark:border-neutral-800">
+                                    <TableCell {...cellProps(String(line.id), 'item_id')} className="min-w-40 border-r border-slate-100 p-0 dark:border-neutral-800">
                                         <SearchSelect
                                             value={articleIds[String(line.id)] ?? String(line.item_id)}
                                             options={items.map((item) => ({ id: item.id, name: item.name }))}
@@ -416,7 +857,7 @@ export function GlobalSaleDialog({
                                             className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 shadow-none capitalize focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800"
                                         />
                                     </TableCell>
-                                    <TableCell className="w-20 border-r border-slate-100 p-0 dark:border-neutral-800">
+                                    <TableCell {...cellProps(String(line.id), 'unit_count')} className="w-20 border-r border-slate-100 p-0 dark:border-neutral-800">
                                         <Input
                                             type="number"
                                             min="0"
@@ -436,7 +877,7 @@ export function GlobalSaleDialog({
                                             aria-label="Quantité vendue"
                                         />
                                     </TableCell>
-                                    <TableCell className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800">
+                                    <TableCell {...cellProps(String(line.id), 'real_price')} className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800">
                                         <Input
                                             type="number"
                                             min="0"
@@ -458,7 +899,7 @@ export function GlobalSaleDialog({
                                     <TableCell className="w-20 border-r border-slate-100 px-3 text-right dark:border-neutral-800">
                                         {Math.abs(Number(line.tax)).toLocaleString('fr-FR')}
                                     </TableCell>
-                                    <TableCell className="w-20 border-r border-slate-100 text-center dark:border-neutral-800">
+                                    <TableCell {...cellProps(String(line.id), 'is_with_tax')} className="w-20 border-r border-slate-100 text-center dark:border-neutral-800">
                                         <Checkbox
                                             checked={line.is_with_tax}
                                             onCheckedChange={(checked) => {

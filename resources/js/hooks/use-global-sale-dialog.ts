@@ -122,20 +122,25 @@ export function useGlobalSaleDialog({
         onOpenChange(nextOpen);
     };
 
-    const updateSaleItem = (line: SaleItem, updates: SaleItemUpdate): void => {
-        router.patch(updateSaleItemRoute(line.id), updates, {
-            preserveScroll: true,
-            onSuccess: () => {
-                toast.success('Ligne de vente mise à jour.');
-            },
-            onError: (errors) => {
-                toast.error(
-                    Object.values(errors)[0] ??
-                        'Impossible de mettre à jour cette ligne.',
-                );
-            },
+    const updateSaleItem = (
+        line: SaleItem,
+        updates: SaleItemUpdate,
+    ): Promise<void> =>
+        new Promise((resolve) => {
+            router.patch(updateSaleItemRoute(line.id), updates, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    toast.success('Ligne de vente mise à jour.');
+                },
+                onError: (errors) => {
+                    toast.error(
+                        Object.values(errors)[0] ??
+                            'Impossible de mettre à jour cette ligne.',
+                    );
+                },
+                onFinish: () => resolve(),
+            });
         });
-    };
 
     const deleteSaleItem = (line: SaleItem): void => {
         router.delete(destroySaleItem(line.id), {
