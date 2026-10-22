@@ -179,6 +179,22 @@ export default function InvoiceShow({
     const [cellSelection, setCellSelection] = useState<{ rowId: number; field: string; value: string; anchorId: number } | null>(null);
     const fillDrag = useRef<{ rowId: number; field: string; value: string; targetId: number } | null>(null);
 
+    useEffect(() => {
+        const clearCellSelectionOutsideTable = (event: PointerEvent) => {
+            const target = event.target;
+
+            if (target instanceof Element && !target.closest('[data-invoice-cell]')) {
+                setCellSelection(null);
+            }
+        };
+
+        document.addEventListener('pointerdown', clearCellSelectionOutsideTable);
+
+        return () => {
+            document.removeEventListener('pointerdown', clearCellSelectionOutsideTable);
+        };
+    }, []);
+
     const handleFillStart = (rowId: number, field: string, value: string) => {
         fillDrag.current = { rowId, field, value, targetId: rowId };
     };
