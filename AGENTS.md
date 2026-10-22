@@ -16,6 +16,7 @@
 - Use strict TypeScript types; avoid `any`.
 - Always use curly braces for conditional and loop blocks, including single-line statements.
 - Leave an empty line before `if` and `return` statements, following project conventions.
+- Expected blank line before this statement.
 - Remove unused imports, variables, and code introduced by your changes.
 - Edit files directly using file-editing tools. Do not use terminal `echo` or `cat` to modify files unless explicitly requested.
 

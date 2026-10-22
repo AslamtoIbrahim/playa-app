@@ -15,6 +15,7 @@ import {
 } from '@/lib/differences';
 import { Check, Loader2, GripVertical } from 'lucide-react';
 import { useMemo } from 'react';
+import { useEffect } from 'react';
 
 // Drag & Drop
 import { useSortable } from '@dnd-kit/sortable';
@@ -48,6 +49,9 @@ interface Props {
     owners: Owner[];
     categories: Category[];
     globalSoldCount?: number;
+    onCellSelect?: (rowId: number, field: string, value: string, shift: boolean) => void;
+    selectedCell?: string | null;
+    onFillStart?: (rowId: number, field: string, value: string) => void;
 }
 
 export default function InvoiceItemRow({
@@ -63,6 +67,9 @@ export default function InvoiceItemRow({
     owners,
     categories,
     globalSoldCount = 0,
+    onCellSelect,
+    selectedCell,
+    onFillStart,
 }: Props) {
     const {
         data,
@@ -81,6 +88,89 @@ export default function InvoiceItemRow({
         handleBlur,
         handleRowBlur,
     } = useInvoiceItem({ invoiceId, item, isNew });
+
+    useEffect(() => {
+        if (!item) {
+            return;
+        }
+
+        const applyFill = (event: Event) => {
+            const detail = (event as CustomEvent<{ rowId: number; field: string; value: string }>).detail;
+
+            if (detail.rowId !== item.id) {
+                return;
+            }
+
+            if (detail.field === 'boat_id') {
+                handleDataChange({ boat_id: detail.value });
+            } else if (detail.field === 'category_id') {
+                const category = categories.find((entry) => String(entry.id) === detail.value);
+                handleDataChange({ category_id: detail.value, unit: category?.name.trim().toLowerCase() === 'poulpe' ? 'kg' : 'caisse' });
+            } else if (['unit_count', 'unit_price', 'unit', 'weight', 'box'].includes(detail.field)) {
+                handleDataChange({ [detail.field]: detail.value });
+            }
+        };
+
+        window.addEventListener('invoice-cell-fill', applyFill);
+
+        return () => window.removeEventListener('invoice-cell-fill', applyFill);
+    }, [item, categories, handleDataChange]);
+
+    const cellProps = (field: string, value: string | number) => ({
+        'data-invoice-cell': field,
+        'data-invoice-row': item?.id,
+        onMouseDownCapture: (event: React.MouseEvent) => {
+            if (event.shiftKey) {
+                event.preventDefault();
+                event.stopPropagation();
+                if (item) {
+                    onCellSelect?.(item.id, field, String(value), true);
+                }
+            }
+        },
+        onClickCapture: (event: React.MouseEvent) => {
+            if (event.shiftKey) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+        },
+        onMouseDown: (event: React.MouseEvent) => {
+            if (item && !event.shiftKey) {
+                onCellSelect?.(item.id, field, String(value), event.shiftKey);
+            }
+        },
+        onClick: (event: React.MouseEvent) => {
+            if (event.shiftKey) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+        },
+        style: selectedCell?.includes(`|${item?.id}:${field}|`)
+            ? {
+                  position: 'relative' as const,
+                  backgroundColor: 'rgb(59 130 246 / 12%)',
+                  boxShadow: 'inset 0 1px rgb(59 130 246), inset 0 -1px rgb(59 130 246)',
+              }
+            : undefined,
+    });
+
+    const isFillHandle = (field: string) =>
+        selectedCell?.endsWith(`|${item?.id}:${field}|`) ?? false;
+
+    const fillHandle = (field: string, value: string | number) =>
+        item && isFillHandle(field) ? (
+            <button
+                type="button"
+                aria-label="Recopier la valeur vers les lignes suivantes"
+                className="absolute -right-1.25 -bottom-1.25 z-20 size-2.5 cursor-crosshair rounded-full border border-white bg-blue-500 p-0 hover:cursor-crosshair dark:border-neutral-900"
+                onPointerDown={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    onFillStart?.(item.id, field, String(value));
+                }}
+                onClick={(event) => event.stopPropagation()}
+            />
+        ) : null;
 
     const {
         attributes,
@@ -113,8 +203,7 @@ export default function InvoiceItemRow({
 
     const hasDifferences = (item?.differences?.length ?? 0) > 0;
 
-    const cellFocusClass =
-        'focus-within:ring-1 focus-within:ring-inset focus-within:ring-slate-300 focus-within:bg-slate-100/50 dark:focus-within:ring-neutral-700 dark:focus-within:bg-neutral-800/50 transition-all';
+    const cellFocusClass = 'transition-colors';
 
     const inputBaseClass =
         'border-none rounded-none h-10 text-xs shadow-none bg-transparent focus-visible:ring-0 w-full font-normal [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none text-slate-900 dark:text-neutral-100';
@@ -165,6 +254,7 @@ export default function InvoiceItemRow({
             </TableCell>
 
             <TableCell
+                {...cellProps('boat_id', data.boat_id)}
                 className={cn(
                     'w-45 border-r border-slate-100 p-0 dark:border-neutral-800',
                     cellFocusClass,
@@ -195,9 +285,11 @@ export default function InvoiceItemRow({
                         }
                     }}
                 />
+                {fillHandle('boat_id', data.boat_id)}
             </TableCell>
 
             <TableCell
+                {...cellProps('category_id', data.category_id)}
                 className={cn(
                     'w-45 border-r border-slate-100 p-0 dark:border-neutral-800',
                     cellFocusClass,
@@ -236,9 +328,11 @@ export default function InvoiceItemRow({
                         }
                     }}
                 />
+                {fillHandle('category_id', data.category_id)}
             </TableCell>
 
             <TableCell
+                {...cellProps('unit_count', data.unit_count)}
                 className={cn(
                     'w-24 border-r border-slate-100 p-0 dark:border-neutral-800',
                     cellFocusClass,
@@ -257,9 +351,11 @@ export default function InvoiceItemRow({
                     onBlur={handleBlur}
                     className={cn(inputBaseClass, 'text-center')}
                 />
+                {fillHandle('unit_count', data.unit_count)}
             </TableCell>
 
             <TableCell
+                {...cellProps('unit_price', data.unit_price)}
                 className={cn(
                     'w-28 border-r border-slate-100 p-0 dark:border-neutral-800',
                     cellFocusClass,
@@ -278,9 +374,11 @@ export default function InvoiceItemRow({
                     onBlur={handleBlur}
                     className={cn(inputBaseClass, 'pr-4 text-right')}
                 />
+                {fillHandle('unit_price', data.unit_price)}
             </TableCell>
 
             <TableCell
+                {...cellProps('unit', data.unit)}
                 className={cn(
                     'w-28 border-r border-slate-100 p-0 dark:border-neutral-800',
                     cellFocusClass,
@@ -319,9 +417,11 @@ export default function InvoiceItemRow({
                         </SelectItem>
                     </SelectContent>
                 </Select>
+                {fillHandle('unit', data.unit)}
             </TableCell>
 
             <TableCell
+                {...cellProps('weight', weight)}
                 className={cn(
                     'w-24 border-r border-slate-100 p-0 dark:border-neutral-800',
                     cellFocusClass,
@@ -347,10 +447,12 @@ export default function InvoiceItemRow({
                             : 'text-slate-500 dark:text-neutral-400',
                     )}
                 />
+                {fillHandle('weight', weight)}
             </TableCell>
 
             {/* BOX - الحقل الجديد */}
             <TableCell
+                {...cellProps('box', displayBox)}
                 className={cn(
                     'w-20 border-r border-slate-100 p-0 dark:border-neutral-800',
                     cellFocusClass,
@@ -375,6 +477,7 @@ export default function InvoiceItemRow({
                             'font-normal text-slate-500 dark:text-neutral-400',
                     )}
                 />
+                {fillHandle('box', displayBox)}
             </TableCell>
 
             <TableCell className="w-32 bg-slate-50/10 px-6 text-right text-xs font-normal text-slate-900 dark:bg-neutral-900/20 dark:text-neutral-100">

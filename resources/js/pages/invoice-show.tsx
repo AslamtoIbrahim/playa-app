@@ -27,7 +27,7 @@ import {
     Trash2,
     X,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 // UI Components
 import { DeleteInvoiceItemsDialog } from '@/components/delete-invoice-items-dialog';
@@ -176,6 +176,98 @@ export default function InvoiceShow({
         single: boolean;
     } | null>(null);
     const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
+    const [cellSelection, setCellSelection] = useState<{ rowId: number; field: string; value: string; anchorId: number } | null>(null);
+    const fillDrag = useRef<{ rowId: number; field: string; value: string; targetId: number } | null>(null);
+
+    const handleFillStart = (rowId: number, field: string, value: string) => {
+        fillDrag.current = { rowId, field, value, targetId: rowId };
+    };
+
+    useEffect(() => {
+        const handlePointerMove = (event: PointerEvent) => {
+            if (!fillDrag.current) {
+                return;
+            }
+
+            const target = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-invoice-cell][data-invoice-row]');
+            
+            if (target?.dataset.invoiceCell === fillDrag.current.field && target.dataset.invoiceRow) {
+                fillDrag.current.targetId = Number(target.dataset.invoiceRow);
+                setCellSelection({ rowId: fillDrag.current.targetId, anchorId: fillDrag.current.rowId, field: fillDrag.current.field, value: fillDrag.current.value });
+            }
+        };
+
+        const handlePointerUp = () => {
+            const drag = fillDrag.current;
+            fillDrag.current = null;
+
+            if (!drag) {
+                return;
+            }
+
+            const sourceIndex = localItems.findIndex((row) => row.id === drag.rowId);
+            const targetIndex = localItems.findIndex((row) => row.id === drag.targetId);
+            
+            if (sourceIndex < 0 || targetIndex < 0) {
+                return;
+            }
+
+            const direction = targetIndex >= sourceIndex ? 1 : -1;
+            
+            for (let index = sourceIndex + direction; direction > 0 ? index <= targetIndex : index >= targetIndex; index += direction) {
+                const row = localItems[index];
+                window.dispatchEvent(new CustomEvent('invoice-cell-fill', { detail: { rowId: row.id, field: drag.field, value: drag.value } }));
+            }
+        };
+
+        window.addEventListener('pointermove', handlePointerMove);
+        window.addEventListener('pointerup', handlePointerUp);
+        
+        return () => {
+            window.removeEventListener('pointermove', handlePointerMove);
+            window.removeEventListener('pointerup', handlePointerUp);
+        };
+    }, [localItems]);
+
+    useEffect(() => {
+        const fillDown = (event: KeyboardEvent) => {
+            if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'd' || !cellSelection) {
+                return;
+            }
+
+            event.preventDefault();
+            const anchorIndex = localItems.findIndex((row) => row.id === cellSelection.anchorId);
+            const endIndex = localItems.findIndex((row) => row.id === cellSelection.rowId);
+            
+            if (anchorIndex < 0 || endIndex < 0) {
+                return;
+            }
+
+            const first = Math.min(anchorIndex, endIndex);
+            const last = Math.max(anchorIndex, endIndex);
+            const sourceRow = localItems[first];
+            const sourceCell = document.querySelector<HTMLElement>(`[data-invoice-row="${sourceRow.id}"][data-invoice-cell="${cellSelection.field}"]`);
+            const sourceControl = sourceCell?.querySelector<HTMLInputElement>('input');
+            const value = sourceControl?.value ?? cellSelection.value;
+
+            localItems.slice(first + 1, last + 1).forEach((row) => {
+                window.dispatchEvent(new CustomEvent('invoice-cell-fill', { detail: { rowId: row.id, field: cellSelection.field, value } }));
+            });
+        };
+
+        window.addEventListener('keydown', fillDown);
+        
+        return () => window.removeEventListener('keydown', fillDown);
+    }, [cellSelection, localItems]);
+
+    const handleCellSelect = (rowId: number, field: string, value: string, shift: boolean) => {
+        setCellSelection((current) => ({
+            rowId,
+            field,
+            value: shift && current?.field === field ? current.value : value,
+            anchorId: shift && current?.field === field ? current.anchorId : rowId,
+        }));
+    };
 
     // الحسابات
     const stats = useInvoiceCalculations(invoice);
@@ -618,6 +710,9 @@ export default function InvoiceShow({
                                         owners={owners}
                                         categories={categories}
                                         globalSoldCount={globalSoldCountByInvoiceItem[row.id] ?? 0}
+                                        onCellSelect={handleCellSelect}
+                                        onFillStart={handleFillStart}
+                                        selectedCell={cellSelection && localItems.findIndex((entry) => entry.id === row.id) >= Math.min(localItems.findIndex((entry) => entry.id === cellSelection.anchorId), localItems.findIndex((entry) => entry.id === cellSelection.rowId)) && localItems.findIndex((entry) => entry.id === row.id) <= Math.max(localItems.findIndex((entry) => entry.id === cellSelection.anchorId), localItems.findIndex((entry) => entry.id === cellSelection.rowId)) ? `|${localItems.slice(Math.min(localItems.findIndex((entry) => entry.id === cellSelection.anchorId), localItems.findIndex((entry) => entry.id === cellSelection.rowId)), Math.max(localItems.findIndex((entry) => entry.id === cellSelection.anchorId), localItems.findIndex((entry) => entry.id === cellSelection.rowId)) + 1).map((entry) => `${entry.id}:${cellSelection.field}`).join('|')}|` : null}
                                         selected={selectedIds.includes(row.id)}
                                         onSelectChange={(checked) => {
                                             setSelectedIds((prev) =>
