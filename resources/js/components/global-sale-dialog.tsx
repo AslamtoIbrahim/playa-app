@@ -221,7 +221,7 @@ export function GlobalSaleDialog({
         );
     };
 
-    const cellProps = (rowId: string, field: SelectableField) => {
+    const getSelectionGeometry = (rowId: string, field: SelectableField) => {
         const anchorIndex = cellSelection
             ? rowIds.indexOf(cellSelection.anchorId)
             : -1;
@@ -243,6 +243,11 @@ export function GlobalSaleDialog({
             rowIndex <= Math.max(anchorIndex, selectedIndex) &&
             fieldIndex >= Math.min(anchorFieldIndex, selectedFieldIndex) &&
             fieldIndex <= Math.max(anchorFieldIndex, selectedFieldIndex);
+
+        if (!isSelected) {
+            return { isSelected, boxShadow: '' };
+        }
+
         const isFirstSelectedRow =
             rowIndex === Math.min(anchorIndex, selectedIndex);
         const isLastSelectedRow =
@@ -251,12 +256,43 @@ export function GlobalSaleDialog({
             fieldIndex === Math.min(anchorFieldIndex, selectedFieldIndex);
         const isLastSelectedField =
             fieldIndex === Math.max(anchorFieldIndex, selectedFieldIndex);
-        const selectionShadows = [
+        const boxShadow = [
             isFirstSelectedRow ? 'inset 0 2px rgb(59 130 246)' : '',
             isLastSelectedRow ? 'inset 0 -2px rgb(59 130 246)' : '',
             isFirstSelectedField ? 'inset 2px 0 rgb(59 130 246)' : '',
             isLastSelectedField ? 'inset -2px 0 rgb(59 130 246)' : '',
-        ].filter(Boolean);
+        ]
+            .filter(Boolean)
+            .join(', ');
+
+        return { isSelected, boxShadow };
+    };
+
+    const selectionFrame = (rowId: string, field: SelectableField) => {
+        const { isSelected, boxShadow } = getSelectionGeometry(rowId, field);
+
+        if (!isSelected) {
+            return null;
+        }
+
+        return (
+            <span
+                aria-hidden
+                className="pointer-events-none absolute inset-0 z-20"
+                style={{ boxShadow }}
+            />
+        );
+    };
+
+    const cellDecorations = (rowId: string, field: SelectableField) => (
+        <>
+            {selectionFrame(rowId, field)}
+            {fillHandle(rowId, field)}
+        </>
+    );
+
+    const cellProps = (rowId: string, field: SelectableField) => {
+        const { isSelected } = getSelectionGeometry(rowId, field);
 
         return {
             'data-sale-cell': field,
@@ -310,7 +346,6 @@ export function GlobalSaleDialog({
                       position: 'relative' as const,
                       zIndex: 10,
                       backgroundColor: 'rgb(59 130 246 / 12%)',
-                      boxShadow: selectionShadows.join(', '),
                   }
                 : undefined,
         };
@@ -887,7 +922,7 @@ export function GlobalSaleDialog({
                                         </span>
                                     ) : (
                                         <>
-                                            {fillHandle('draft', 'sale_id')}
+                                            {cellDecorations('draft', 'sale_id')}
                                             <SearchSelect
                                                 value={selectedSaleId}
                                                 options={sales.map((option) => ({
@@ -919,7 +954,7 @@ export function GlobalSaleDialog({
                                     )}
                                 </TableCell>
                                 <TableCell {...cellProps('draft', 'sale_price')} className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800">
-                                    {fillHandle('draft', 'sale_price')}
+                                    {cellDecorations('draft', 'sale_price')}
                                     <Input
                                         type="number"
                                         min="0.01"
@@ -933,7 +968,7 @@ export function GlobalSaleDialog({
                                     />
                                 </TableCell>
                                 <TableCell {...cellProps('draft', 'item_id')} className="min-w-40 border-r border-slate-100 p-0 dark:border-neutral-800">
-                                    {fillHandle('draft', 'item_id')}
+                                    {cellDecorations('draft', 'item_id')}
                                     <SearchSelect
                                         value={draft.itemId}
                                         options={invoiceCatalogItems.map((item) => ({
@@ -958,7 +993,7 @@ export function GlobalSaleDialog({
                                     />
                                 </TableCell>
                                 <TableCell {...cellProps('draft', 'unit_count')} className="w-20 border-r border-slate-100 p-0 dark:border-neutral-800">
-                                    {fillHandle('draft', 'unit_count')}
+                                    {cellDecorations('draft', 'unit_count')}
                                     <Input
                                         type="number"
                                         min="0"
@@ -977,7 +1012,7 @@ export function GlobalSaleDialog({
                                     />
                                 </TableCell>
                                 <TableCell {...cellProps('draft', 'real_price')} className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800">
-                                    {fillHandle('draft', 'real_price')}
+                                    {cellDecorations('draft', 'real_price')}
                                     <Input
                                         type="number"
                                         step="any"
@@ -1000,7 +1035,7 @@ export function GlobalSaleDialog({
                                     {tax.toLocaleString('fr-FR')}
                                 </TableCell>
                                 <TableCell {...cellProps('draft', 'is_with_tax')} className="w-20 border-r border-slate-100 text-center dark:border-neutral-800">
-                                    {fillHandle('draft', 'is_with_tax')}
+                                    {cellDecorations('draft', 'is_with_tax')}
                                     <Checkbox
                                         checked={draft.isWithTax}
                                         onCheckedChange={(checked) =>
@@ -1037,14 +1072,14 @@ export function GlobalSaleDialog({
                             {boatlessSaleItems.map((line) => (
                                 <TableRow data-sale-row={line.id} key={line.id} className="group h-10 border-b border-slate-100 dark:border-neutral-800">
                                     <TableCell {...cellProps(String(line.id), 'sale_id')} className="min-w-40 border-r border-slate-100 p-0 dark:border-neutral-800">
-                                        {fillHandle(String(line.id), 'sale_id')}
+                                        {cellDecorations(String(line.id), 'sale_id')}
                                         <SearchSelect value={clientIds[String(line.id)] ?? String(line.sale_id)} options={sales.map((option) => ({ id: option.id, name: option.customer?.name ?? `Vente #${option.id}` }))} placeholder="Client..." emptyMessage="Aucun client trouvé." open={openClientIds[String(line.id)] ?? false} onOpenChange={(open) => setOpenClientIds((state) => ({ ...state, [String(line.id)]: open }))} onKeyDown={(event) => handleCellKeyDown(event, () => setClientIds((state) => ({ ...state, [String(line.id)]: '' })))} onSelect={(id) => {
                                             setClientIds((state) => ({ ...state, [String(line.id)]: String(id) }));
                                             updateSaleItem(line, { sale_id: Number(id) });
                                         }} className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 shadow-none capitalize focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800" />
                                     </TableCell>
                                     <TableCell {...cellProps(String(line.id), 'sale_price')} className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800">
-                                        {fillHandle(String(line.id), 'sale_price')}
+                                        {cellDecorations(String(line.id), 'sale_price')}
                                         <Input
                                             type="number"
                                             min="0.01"
@@ -1065,7 +1100,7 @@ export function GlobalSaleDialog({
                                         />
                                     </TableCell>
                                     <TableCell {...cellProps(String(line.id), 'item_id')} className="min-w-40 border-r border-slate-100 p-0 dark:border-neutral-800">
-                                        {fillHandle(String(line.id), 'item_id')}
+                                        {cellDecorations(String(line.id), 'item_id')}
                                         <SearchSelect
                                             value={articleIds[String(line.id)] ?? String(line.item_id)}
                                             options={items.map((item) => ({ id: item.id, name: item.name }))}
@@ -1090,7 +1125,7 @@ export function GlobalSaleDialog({
                                         />
                                     </TableCell>
                                     <TableCell {...cellProps(String(line.id), 'unit_count')} className="w-20 border-r border-slate-100 p-0 dark:border-neutral-800">
-                                        {fillHandle(String(line.id), 'unit_count')}
+                                        {cellDecorations(String(line.id), 'unit_count')}
                                         <Input
                                             type="number"
                                             min="0"
@@ -1111,7 +1146,7 @@ export function GlobalSaleDialog({
                                         />
                                     </TableCell>
                                     <TableCell {...cellProps(String(line.id), 'real_price')} className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800">
-                                        {fillHandle(String(line.id), 'real_price')}
+                                        {cellDecorations(String(line.id), 'real_price')}
                                         <Input
                                             type="number"
                                             min="0"
@@ -1134,7 +1169,7 @@ export function GlobalSaleDialog({
                                         {Math.abs(Number(line.tax)).toLocaleString('fr-FR')}
                                     </TableCell>
                                     <TableCell {...cellProps(String(line.id), 'is_with_tax')} className="w-20 border-r border-slate-100 text-center dark:border-neutral-800">
-                                        {fillHandle(String(line.id), 'is_with_tax')}
+                                        {cellDecorations(String(line.id), 'is_with_tax')}
                                         <Checkbox
                                             checked={line.is_with_tax}
                                             onCheckedChange={(checked) => {
