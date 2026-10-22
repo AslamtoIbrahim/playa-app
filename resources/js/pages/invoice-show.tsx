@@ -231,6 +231,39 @@ export default function InvoiceShow({
 
     useEffect(() => {
         const fillDown = (event: KeyboardEvent) => {
+            const cell = (event.target as HTMLElement).closest<HTMLElement>('[data-invoice-cell][data-invoice-row]');
+
+            if (cell && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) {
+                const fields = ['boat_id', 'category_id', 'unit_count', 'unit_price', 'unit', 'weight', 'box'];
+                const rowIndex = localItems.findIndex((row) => row.id === Number(cell.dataset.invoiceRow));
+                const columnIndex = fields.indexOf(cell.dataset.invoiceCell ?? '');
+                let nextRow = rowIndex;
+                let nextColumn = columnIndex;
+
+                if (event.key === 'ArrowUp') {
+                    nextRow -= 1;
+                } else if (event.key === 'ArrowDown') {
+                    nextRow += 1;
+                } else if (event.key === 'ArrowLeft') {
+                    nextColumn -= 1;
+                } else {
+                    nextColumn += 1;
+                }
+
+                const targetRow = localItems[nextRow];
+                const targetField = fields[nextColumn];
+                
+                if (targetRow && targetField) {
+                    const value = String(targetRow[targetField as keyof InvoiceItem] ?? '');
+                    setCellSelection((current) => ({
+                        rowId: targetRow.id,
+                        field: targetField,
+                        value,
+                        anchorId: event.shiftKey && current ? current.anchorId : targetRow.id,
+                    }));
+                }
+            }
+
             if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'd' || !cellSelection) {
                 return;
             }

@@ -204,6 +204,8 @@ export default function InvoiceItemRow({
     const hasDifferences = (item?.differences?.length ?? 0) > 0;
 
     const cellFocusClass = 'transition-colors';
+    const searchSelectClass =
+        'h-10 w-full border-none bg-transparent px-3 text-left text-xs shadow-none focus-visible:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none';
 
     const inputBaseClass =
         'border-none rounded-none h-10 text-xs shadow-none bg-transparent focus-visible:ring-0 w-full font-normal [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none text-slate-900 dark:text-neutral-100';
@@ -273,6 +275,7 @@ export default function InvoiceItemRow({
                     open={openBoat}
                     onOpenChange={setOpenBoat}
                     disabled={isSavingNewItem}
+                    className={searchSelectClass}
                     onKeyDown={(e) => {
                         {
                             handleKeyDown(e, 'boat');
@@ -305,6 +308,7 @@ export default function InvoiceItemRow({
                     open={openItem}
                     onOpenChange={setOpenItem}
                     disabled={isSavingNewItem}
+                    className={searchSelectClass}
                     onKeyDown={(e) => {
                         {
                             handleKeyDown(e, 'item');
