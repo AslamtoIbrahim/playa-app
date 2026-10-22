@@ -104,6 +104,40 @@ const handleSavedRowKeyDown = (event: KeyboardEvent<HTMLInputElement>): void => 
     navigateToAdjacentCell(event);
 };
 
+const itemHasAvailableStock = (
+    item: Item,
+    availableStockByCategory: Record<number, number>,
+): boolean => {
+    const available = availableStockByCategory[item.category_id];
+
+    return available === undefined || available > 0;
+};
+
+/**
+ * Build the article suggestions restricted to categories with remaining
+ * stock. The current selection is always kept so the cell still displays its
+ * value even when its category is sold out.
+ */
+const buildArticleOptions = (
+    catalog: Item[],
+    selectedItemId: string | number | undefined,
+    allItems: Item[],
+    availableStockByCategory: Record<number, number>,
+): { id: number; name: string }[] => {
+    const options = catalog.filter((item) =>
+        itemHasAvailableStock(item, availableStockByCategory),
+    );
+    const selectedItem = allItems.find(
+        (item) => String(item.id) === String(selectedItemId ?? ''),
+    );
+
+    if (selectedItem && !options.some((item) => item.id === selectedItem.id)) {
+        options.push(selectedItem);
+    }
+
+    return options.map((item) => ({ id: item.id, name: item.name }));
+};
+
 export function GlobalSaleDialog({
     open,
     onOpenChange,
@@ -995,10 +1029,12 @@ export function GlobalSaleDialog({
                                     {cellDecorations('draft', 'item_id')}
                                     <SearchSelect
                                         value={draft.itemId}
-                                        options={invoiceCatalogItems.map((item) => ({
-                                            id: item.id,
-                                            name: item.name,
-                                        }))}
+                                        options={buildArticleOptions(
+                                            invoiceCatalogItems,
+                                            draft.itemId,
+                                            items,
+                                            availableStockByCategory,
+                                        )}
                                         placeholder="Article…"
                                         emptyMessage="Aucun article trouvé."
                                         open={itemSelectOpen}
@@ -1136,7 +1172,12 @@ export function GlobalSaleDialog({
                                         {cellDecorations(String(line.id), 'item_id')}
                                         <SearchSelect
                                             value={articleIds[String(line.id)] ?? String(line.item_id)}
-                                            options={items.map((item) => ({ id: item.id, name: item.name }))}
+                                            options={buildArticleOptions(
+                                                items,
+                                                articleIds[String(line.id)] ?? line.item_id,
+                                                items,
+                                                availableStockByCategory,
+                                            )}
                                             placeholder="Article..."
                                             emptyMessage="Aucun article trouvé."
                                             open={openArticleIds[String(line.id)] ?? false}
