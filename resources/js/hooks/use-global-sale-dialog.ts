@@ -69,6 +69,7 @@ export function useGlobalSaleDialog({
     );
     const [saleSelectOpen, setSaleSelectOpen] = useState(false);
     const [articleIds, setArticleIds] = useState<Record<string, string>>({});
+    const [clientIds, setClientIds] = useState<Record<string, string>>({});
     const [openArticleIds, setOpenArticleIds] = useState<
         Record<string, boolean>
     >({});
@@ -215,13 +216,26 @@ export function useGlobalSaleDialog({
         );
     };
 
-    const handleCellKeyDown = (event: KeyboardEvent<HTMLElement>): void => {
+    const handleCellKeyDown = (
+        event: KeyboardEvent<HTMLElement>,
+        onClear?: () => void,
+    ): void => {
         if (
             itemSelectOpen ||
             saleSelectOpen ||
             Object.values(openArticleIds).some(Boolean) ||
             Object.values(openClientIds).some(Boolean)
         ) {
+            return;
+        }
+
+        if (
+            onClear &&
+            (event.key === 'Delete' || event.key === 'Backspace')
+        ) {
+            event.preventDefault();
+            onClear();
+
             return;
         }
 
@@ -239,6 +253,7 @@ export function useGlobalSaleDialog({
         amount,
         articleIds,
         boatlessSaleItems,
+        clientIds,
         deleteSaleItem,
         draft,
         handleCellKeyDown,
@@ -252,6 +267,7 @@ export function useGlobalSaleDialog({
         selectedSale,
         selectedSaleId,
         setArticleIds,
+        setClientIds,
         setItemSelectOpen,
         setOpenArticleIds,
         setOpenClientIds,

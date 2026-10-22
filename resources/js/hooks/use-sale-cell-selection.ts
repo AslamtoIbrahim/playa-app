@@ -85,13 +85,6 @@ export function useSaleCellSelection(items: InvoiceItem[]) {
             `item-${item.id}`,
         onFilled?: (targetIndexes: number[], value: string) => void,
     ): void => {
-        if (
-            !(event.ctrlKey || event.metaKey) ||
-            event.key.toLowerCase() !== 'd'
-        ) {
-            return;
-        }
-
         const range =
             cellRange?.column === column &&
             rowIndex >= Math.min(cellRange.startRow, cellRange.endRow) &&
@@ -101,6 +94,36 @@ export function useSaleCellSelection(items: InvoiceItem[]) {
                       end: Math.max(cellRange.startRow, cellRange.endRow),
                   }
                 : null;
+
+        if (event.key === 'Delete' || event.key === 'Backspace') {
+            event.preventDefault();
+            const targetIndexes = range
+                ? Array.from(
+                      { length: range.end - range.start + 1 },
+                      (_, index) => range.start + index,
+                  )
+                : [rowIndex];
+            setValues((current) => ({
+                ...current,
+                ...Object.fromEntries(
+                    targetIndexes.map((index) => [
+                        getKey(items[index], index),
+                        '',
+                    ]),
+                ),
+            }));
+            setCellRange(null);
+            rangeAnchor.current = null;
+
+            return;
+        }
+
+        if (
+            !(event.ctrlKey || event.metaKey) ||
+            event.key.toLowerCase() !== 'd'
+        ) {
+            return;
+        }
 
         if (!range) {
             return;

@@ -93,6 +93,7 @@ export function GlobalSaleDialog({
         amount,
         articleIds,
         boatlessSaleItems,
+        clientIds,
         deleteSaleItem,
         draft,
         handleCellKeyDown,
@@ -106,6 +107,7 @@ export function GlobalSaleDialog({
         selectedSale,
         selectedSaleId,
         setArticleIds,
+        setClientIds,
         setItemSelectOpen,
         setOpenArticleIds,
         setOpenClientIds,
@@ -245,7 +247,11 @@ export function GlobalSaleDialog({
                                             open={saleSelectOpen}
                                             onOpenChange={setSaleSelectOpen}
                                             onSelect={(id) => setSelectedSaleId(String(id))}
-                                            onKeyDown={handleCellKeyDown}
+                                            onKeyDown={(event) =>
+                                                handleCellKeyDown(event, () =>
+                                                    setSelectedSaleId(''),
+                                                )
+                                            }
                                             className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 shadow-none capitalize focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800"
                                         />
                                     )}
@@ -279,7 +285,11 @@ export function GlobalSaleDialog({
                                                 itemId: String(id),
                                             })
                                         }
-                                        onKeyDown={handleCellKeyDown}
+                                        onKeyDown={(event) =>
+                                            handleCellKeyDown(event, () =>
+                                                updateDraft({ itemId: '' }),
+                                            )
+                                        }
                                         className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 shadow-none capitalize focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800"
                                     />
                                 </TableCell>
@@ -331,6 +341,16 @@ export function GlobalSaleDialog({
                                         }
                                         aria-label="Vendre avec taxe"
                                         onKeyDown={(event) => {
+                                            if (
+                                                event.key === 'Delete' ||
+                                                event.key === 'Backspace'
+                                            ) {
+                                                event.preventDefault();
+                                                updateDraft({ isWithTax: false });
+
+                                                return;
+                                            }
+
                                             if (event.key === 'Enter') {
                                                 event.preventDefault();
                                                 event.currentTarget.click();
@@ -350,7 +370,7 @@ export function GlobalSaleDialog({
                             {boatlessSaleItems.map((line) => (
                                 <TableRow key={line.id} className="group h-10 border-b border-slate-100 dark:border-neutral-800">
                                     <TableCell className="min-w-40 border-r border-slate-100 p-0 dark:border-neutral-800">
-                                        <SearchSelect value={String(line.sale_id)} options={sales.map((option) => ({ id: option.id, name: option.customer?.name ?? `Vente #${option.id}` }))} placeholder="Client..." emptyMessage="Aucun client trouvé." open={openClientIds[String(line.id)] ?? false} onOpenChange={(open) => setOpenClientIds((state) => ({ ...state, [String(line.id)]: open }))} onKeyDown={handleCellKeyDown} onSelect={(id) => updateSaleItem(line, { sale_id: Number(id) })} className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 shadow-none capitalize focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800" />
+                                        <SearchSelect value={clientIds[String(line.id)] ?? String(line.sale_id)} options={sales.map((option) => ({ id: option.id, name: option.customer?.name ?? `Vente #${option.id}` }))} placeholder="Client..." emptyMessage="Aucun client trouvé." open={openClientIds[String(line.id)] ?? false} onOpenChange={(open) => setOpenClientIds((state) => ({ ...state, [String(line.id)]: open }))} onKeyDown={(event) => handleCellKeyDown(event, () => setClientIds((state) => ({ ...state, [String(line.id)]: '' })))} onSelect={(id) => { setClientIds((state) => ({ ...state, [String(line.id)]: String(id) })); updateSaleItem(line, { sale_id: Number(id) }); }} className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 shadow-none capitalize focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800" />
                                     </TableCell>
                                     <TableCell className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800">
                                         <Input
@@ -380,7 +400,14 @@ export function GlobalSaleDialog({
                                             emptyMessage="Aucun article trouvé."
                                             open={openArticleIds[String(line.id)] ?? false}
                                             onOpenChange={(open) => setOpenArticleIds((state) => ({ ...state, [String(line.id)]: open }))}
-                                            onKeyDown={handleCellKeyDown}
+                                            onKeyDown={(event) =>
+                                                handleCellKeyDown(event, () =>
+                                                    setArticleIds((state) => ({
+                                                        ...state,
+                                                        [String(line.id)]: '',
+                                                    })),
+                                                )
+                                            }
                                             onSelect={(id) => {
                                                 const itemId = Number(id);
                                                 setArticleIds((state) => ({ ...state, [String(line.id)]: String(itemId) }));
@@ -440,6 +467,17 @@ export function GlobalSaleDialog({
                                                 });
                                             }}
                                             aria-label="Vendre avec taxe"
+                                            onKeyDown={(event) => {
+                                                if (
+                                                    event.key === 'Delete' ||
+                                                    event.key === 'Backspace'
+                                                ) {
+                                                    event.preventDefault();
+                                                    updateSaleItem(line, {
+                                                        is_with_tax: false,
+                                                    });
+                                                }
+                                            }}
                                         />
                                     </TableCell>
                                     <TableCell className="w-28 px-3 text-right">

@@ -807,6 +807,9 @@ export function SaleDialog({
                                                                         )
                                                                     );
                                                                 },
+                                                                undefined,
+                                                                (_item, index) =>
+                                                                    `sale-${savedSaleRows[index].line.id}`,
                                                             );
                                                         }
                                                     }}
@@ -982,6 +985,12 @@ export function SaleDialog({
                                                             save(item, line)
                                                         }
                                                         onKeyDown={(event) => {
+                                                            if (
+                                                                openItemIds[key]
+                                                            ) {
+                                                                return;
+                                                            }
+
                                                             fillSavedSelection(
                                                                 event,
                                                                 'salePrice',
@@ -1096,6 +1105,8 @@ export function SaleDialog({
                                                                                 .category_id
                                                                     );
                                                                 },
+                                                                (_item, index) =>
+                                                                    `sale-${savedSaleRows[index].line.id}`,
                                                             );
                                                         }
                                                     }}
