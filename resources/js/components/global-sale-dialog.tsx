@@ -238,7 +238,7 @@ export function GlobalSaleDialog({
             <button
                 type="button"
                 aria-label="Recopier la valeur vers les cellules voisines"
-                className="absolute right-0 bottom-0 z-30 size-2 cursor-crosshair rounded-full border border-white bg-blue-600 p-0 shadow-sm dark:border-neutral-900"
+                className="absolute -right-1 -bottom-1 z-30 size-2 cursor-crosshair rounded-full border border-white bg-blue-600 p-0 shadow-sm dark:border-neutral-900"
                 onPointerDown={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
@@ -291,10 +291,10 @@ export function GlobalSaleDialog({
         const isLastSelectedField =
             fieldIndex === Math.max(anchorFieldIndex, selectedFieldIndex);
         const boxShadow = [
-            isFirstSelectedRow ? 'inset 0 2px rgb(59 130 246)' : '',
-            isLastSelectedRow ? 'inset 0 -2px rgb(59 130 246)' : '',
-            isFirstSelectedField ? 'inset 2px 0 rgb(59 130 246)' : '',
-            isLastSelectedField ? 'inset -2px 0 rgb(59 130 246)' : '',
+            isFirstSelectedRow ? 'inset 0 1px rgb(59 130 246)' : '',
+            isLastSelectedRow ? 'inset 0 -1px rgb(59 130 246)' : '',
+            isFirstSelectedField ? 'inset 1px 0 rgb(59 130 246)' : '',
+            isLastSelectedField ? 'inset -1px 0 rgb(59 130 246)' : '',
         ]
             .filter(Boolean)
             .join(', ');
