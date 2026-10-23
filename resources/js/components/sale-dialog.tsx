@@ -138,8 +138,9 @@ export function SaleDialog({
         onOpenChange,
     });
 
-    const [cellSelection, setCellSelection] =
-        useState<CellSelection | null>(null);
+    const [cellSelection, setCellSelection] = useState<CellSelection | null>(
+        null,
+    );
     const fillDrag = useRef<FillDrag | null>(null);
     const gridKeyDownHandler = useRef<
         ((event: globalThis.KeyboardEvent) => void) | null
@@ -152,10 +153,7 @@ export function SaleDialog({
         [savedSaleRows, sellableItems],
     );
 
-    const getSelectionGeometry = (
-        rowId: string,
-        field: SelectableField,
-    ) => {
+    const getSelectionGeometry = (rowId: string, field: SelectableField) => {
         const anchorRowIndex = cellSelection
             ? rowIds.indexOf(cellSelection.anchorId)
             : -1;
@@ -258,7 +256,9 @@ export function SaleDialog({
         const anchorFieldIndex = selectableFields.indexOf(
             cellSelection.anchorField,
         );
-        const selectedFieldIndex = selectableFields.indexOf(cellSelection.field);
+        const selectedFieldIndex = selectableFields.indexOf(
+            cellSelection.field,
+        );
 
         if (
             rowIds.indexOf(rowId) !==
@@ -355,8 +355,7 @@ export function SaleDialog({
                 'real_price',
             ];
             const isVerticalFill =
-                targetField === drag.field &&
-                sourceRowIndex !== targetRowIndex;
+                targetField === drag.field && sourceRowIndex !== targetRowIndex;
             const isHorizontalFill =
                 targetRowId === drag.rowId &&
                 numericFields.includes(drag.field) &&
@@ -779,17 +778,25 @@ export function SaleDialog({
                                         Taxe 3%
                                     </TableHead>
                                     <TableHead className="w-20 py-4 text-center text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
-                                        <div className="flex items-center justify-center gap-2">
-                                            <span>Avec taxe</span>
+                                        <div className="flex flex-col items-center pb-6 justify-center gap-1">
                                             <Checkbox
                                                 checked={
-                                                    sellableItems.length > 0 &&
-                                                    sellableItems.every(
-                                                        (item) =>
-                                                            taxFlags[
-                                                                `item-${item.id}`
-                                                            ] ?? false,
-                                                    )
+                                                    rowIds.length > 0 &&
+                                                    rowIds.every((key) => {
+                                                        const savedRow =
+                                                            savedSaleRows.find(
+                                                                ({ line }) =>
+                                                                    `sale-${line.id}` ===
+                                                                    key,
+                                                            );
+
+                                                        return (
+                                                            taxFlags[key] ??
+                                                            savedRow?.line
+                                                                .is_with_tax ??
+                                                            false
+                                                        );
+                                                    })
                                                 }
                                                 onCheckedChange={(checked) => {
                                                     const isWithTax =
@@ -797,17 +804,38 @@ export function SaleDialog({
                                                     setTaxFlags((current) => ({
                                                         ...current,
                                                         ...Object.fromEntries(
-                                                            sellableItems.map(
-                                                                (item) => [
-                                                                    `item-${item.id}`,
+                                                            rowIds.map(
+                                                                (key) => [
+                                                                    key,
                                                                     isWithTax,
                                                                 ],
                                                             ),
                                                         ),
                                                     }));
+
+                                                    savedSaleRows.forEach(
+                                                        ({ item, line }) => {
+                                                            if (
+                                                                line.is_with_tax !==
+                                                                isWithTax
+                                                            ) {
+                                                                void save(
+                                                                    item,
+                                                                    line,
+                                                                    undefined,
+                                                                    undefined,
+                                                                    undefined,
+                                                                    undefined,
+                                                                    undefined,
+                                                                    isWithTax,
+                                                                );
+                                                            }
+                                                        },
+                                                    );
                                                 }}
                                                 aria-label="Appliquer la taxe à tous les articles"
                                             />
+                                            <span>Avec taxe</span>
                                         </div>
                                     </TableHead>
                                     <TableHead className="w-28 py-4 text-center text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
@@ -835,15 +863,16 @@ export function SaleDialog({
                             <TableBody>
                                 {sellableItems.length === 0 &&
                                     savedSaleRows.length === 0 && (
-                                    <TableRow>
-                                        <TableCell
-                                            colSpan={11}
-                                            className="h-24 text-center text-sm text-slate-500 dark:text-neutral-400"
-                                        >
-                                            Tous les articles ont été vendus.
-                                        </TableCell>
-                                    </TableRow>
-                                )}
+                                        <TableRow>
+                                            <TableCell
+                                                colSpan={11}
+                                                className="h-24 text-center text-sm text-slate-500 dark:text-neutral-400"
+                                            >
+                                                Tous les articles ont été
+                                                vendus.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
                                 {sellableItems.map((item, rowIndex) => {
                                     const key = `item-${item.id}`;
                                     const count = Number(
@@ -913,21 +942,45 @@ export function SaleDialog({
                                                         'bg-orange-100/90 dark:bg-orange-900/50',
                                                 )}
                                             >
-                                                {cellDecorations(key, 'sale_id')}
+                                                {cellDecorations(
+                                                    key,
+                                                    'sale_id',
+                                                )}
                                                 <SearchSelect
                                                     value={saleIds[key] ?? ''}
                                                     options={saleOptions}
                                                     placeholder="Client..."
                                                     emptyMessage="Aucun client trouvé."
-                                                    renderNoMatchAction={(search) => session ? (
-                                                        <MissingDialogSale
-                                                            sessionId={session.id}
-                                                            sessionDate={session.session_date}
-                                                            customers={customers}
-                                                            initialCustomerName={search}
-                                                            trigger={<Button type="button" variant="outline" size="sm" aria-label="Créer un client et une vente"><Plus className="size-4" /></Button>}
-                                                        />
-                                                    ) : null}
+                                                    renderNoMatchAction={(
+                                                        search,
+                                                    ) =>
+                                                        session ? (
+                                                            <MissingDialogSale
+                                                                sessionId={
+                                                                    session.id
+                                                                }
+                                                                sessionDate={
+                                                                    session.session_date
+                                                                }
+                                                                customers={
+                                                                    customers
+                                                                }
+                                                                initialCustomerName={
+                                                                    search
+                                                                }
+                                                                trigger={
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        aria-label="Créer un client et une vente"
+                                                                    >
+                                                                        <Plus className="size-4" />
+                                                                    </Button>
+                                                                }
+                                                            />
+                                                        ) : null
+                                                    }
                                                     open={
                                                         openSaleIds[key] ??
                                                         false
@@ -990,7 +1043,10 @@ export function SaleDialog({
                                                 </span>
                                             </TableCell>
                                             <TableCell
-                                                {...cellProps(key, 'sale_price')}
+                                                {...cellProps(
+                                                    key,
+                                                    'sale_price',
+                                                )}
                                                 tabIndex={-1}
                                                 onMouseDown={(event) =>
                                                     selectCellRange(
@@ -1035,7 +1091,10 @@ export function SaleDialog({
                                                         'bg-orange-100/90 dark:bg-orange-900/50',
                                                 )}
                                             >
-                                                {cellDecorations(key, 'sale_price')}
+                                                {cellDecorations(
+                                                    key,
+                                                    'sale_price',
+                                                )}
                                                 <Input
                                                     type="number"
                                                     step="any"
@@ -1149,7 +1208,10 @@ export function SaleDialog({
                                                         'bg-orange-100/90 dark:bg-orange-900/50',
                                                 )}
                                             >
-                                                {cellDecorations(key, 'item_id')}
+                                                {cellDecorations(
+                                                    key,
+                                                    'item_id',
+                                                )}
                                                 <SearchSelect
                                                     value={itemIds[key] ?? ''}
                                                     options={catalogItems
@@ -1230,10 +1292,16 @@ export function SaleDialog({
                                                 />
                                             </TableCell>
                                             <TableCell
-                                                {...cellProps(key, 'unit_count')}
+                                                {...cellProps(
+                                                    key,
+                                                    'unit_count',
+                                                )}
                                                 className="w-20 border-r border-slate-100 p-0 dark:border-neutral-800"
                                             >
-                                                {cellDecorations(key, 'unit_count')}
+                                                {cellDecorations(
+                                                    key,
+                                                    'unit_count',
+                                                )}
                                                 <Input
                                                     type="number"
                                                     step="any"
@@ -1276,10 +1344,16 @@ export function SaleDialog({
                                                 />
                                             </TableCell>
                                             <TableCell
-                                                {...cellProps(key, 'real_price')}
+                                                {...cellProps(
+                                                    key,
+                                                    'real_price',
+                                                )}
                                                 className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800"
                                             >
-                                                {cellDecorations(key, 'real_price')}
+                                                {cellDecorations(
+                                                    key,
+                                                    'real_price',
+                                                )}
                                                 <Input
                                                     type="number"
                                                     step="any"
@@ -1332,10 +1406,16 @@ export function SaleDialog({
                                                 )}
                                             </TableCell>
                                             <TableCell
-                                                {...cellProps(key, 'is_with_tax')}
+                                                {...cellProps(
+                                                    key,
+                                                    'is_with_tax',
+                                                )}
                                                 className="w-20 border-r border-slate-100 p-0 text-center dark:border-neutral-800"
                                             >
-                                                {cellDecorations(key, 'is_with_tax')}
+                                                {cellDecorations(
+                                                    key,
+                                                    'is_with_tax',
+                                                )}
                                                 <Checkbox
                                                     checked={isWithTax}
                                                     onKeyDown={(event) => {
@@ -1410,7 +1490,10 @@ export function SaleDialog({
                                                 className="group h-10 border-b border-slate-100 hover:bg-transparent dark:border-neutral-800"
                                             >
                                                 <TableCell
-                                                    {...cellProps(key, 'sale_id')}
+                                                    {...cellProps(
+                                                        key,
+                                                        'sale_id',
+                                                    )}
                                                     tabIndex={-1}
                                                     onMouseDown={(event) =>
                                                         selectSavedCellRange(
@@ -1462,7 +1545,10 @@ export function SaleDialog({
                                                             'bg-orange-100/90 dark:bg-orange-900/50',
                                                     )}
                                                 >
-                                                    {cellDecorations(key, 'sale_id')}
+                                                    {cellDecorations(
+                                                        key,
+                                                        'sale_id',
+                                                    )}
                                                     <SearchSelect
                                                         value={
                                                             saleIds[key] ??
@@ -1471,15 +1557,36 @@ export function SaleDialog({
                                                         options={saleOptions}
                                                         placeholder="Client..."
                                                         emptyMessage="Aucun client trouvé."
-                                                        renderNoMatchAction={(search) => session ? (
-                                                            <MissingDialogSale
-                                                                sessionId={session.id}
-                                                                sessionDate={session.session_date}
-                                                                customers={customers}
-                                                                initialCustomerName={search}
-                                                                trigger={<Button type="button" variant="outline" size="sm" aria-label="Créer un client et une vente"><Plus className="size-4" /></Button>}
-                                                            />
-                                                        ) : null}
+                                                        renderNoMatchAction={(
+                                                            search,
+                                                        ) =>
+                                                            session ? (
+                                                                <MissingDialogSale
+                                                                    sessionId={
+                                                                        session.id
+                                                                    }
+                                                                    sessionDate={
+                                                                        session.session_date
+                                                                    }
+                                                                    customers={
+                                                                        customers
+                                                                    }
+                                                                    initialCustomerName={
+                                                                        search
+                                                                    }
+                                                                    trigger={
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            aria-label="Créer un client et une vente"
+                                                                        >
+                                                                            <Plus className="size-4" />
+                                                                        </Button>
+                                                                    }
+                                                                />
+                                                            ) : null
+                                                        }
                                                         open={
                                                             openSaleIds[key] ??
                                                             false
@@ -1552,7 +1659,10 @@ export function SaleDialog({
                                                     {item.boat?.name ?? '—'}
                                                 </TableCell>
                                                 <TableCell
-                                                    {...cellProps(key, 'sale_price')}
+                                                    {...cellProps(
+                                                        key,
+                                                        'sale_price',
+                                                    )}
                                                     tabIndex={-1}
                                                     onMouseDown={(event) =>
                                                         selectSavedCellRange(
@@ -1604,7 +1714,10 @@ export function SaleDialog({
                                                             'bg-orange-100/90 dark:bg-orange-900/50',
                                                     )}
                                                 >
-                                                    {cellDecorations(key, 'sale_price')}
+                                                    {cellDecorations(
+                                                        key,
+                                                        'sale_price',
+                                                    )}
                                                     <Input
                                                         type="number"
                                                         step="any"
@@ -1667,7 +1780,10 @@ export function SaleDialog({
                                                     />
                                                 </TableCell>
                                                 <TableCell
-                                                    {...cellProps(key, 'item_id')}
+                                                    {...cellProps(
+                                                        key,
+                                                        'item_id',
+                                                    )}
                                                     tabIndex={-1}
                                                     onMouseDown={(event) =>
                                                         selectSavedCellRange(
@@ -1761,7 +1877,10 @@ export function SaleDialog({
                                                             'bg-orange-100/90 dark:bg-orange-900/50',
                                                     )}
                                                 >
-                                                    {cellDecorations(key, 'item_id')}
+                                                    {cellDecorations(
+                                                        key,
+                                                        'item_id',
+                                                    )}
                                                     <SearchSelect
                                                         value={
                                                             itemIds[key] ??
@@ -1884,10 +2003,16 @@ export function SaleDialog({
                                                     />
                                                 </TableCell>
                                                 <TableCell
-                                                    {...cellProps(key, 'unit_count')}
+                                                    {...cellProps(
+                                                        key,
+                                                        'unit_count',
+                                                    )}
                                                     className="w-20 border-r border-slate-100 p-0 dark:border-neutral-800"
                                                 >
-                                                    {cellDecorations(key, 'unit_count')}
+                                                    {cellDecorations(
+                                                        key,
+                                                        'unit_count',
+                                                    )}
                                                     <Input
                                                         type="number"
                                                         step="any"
@@ -1926,10 +2051,16 @@ export function SaleDialog({
                                                     />
                                                 </TableCell>
                                                 <TableCell
-                                                    {...cellProps(key, 'real_price')}
+                                                    {...cellProps(
+                                                        key,
+                                                        'real_price',
+                                                    )}
                                                     className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800"
                                                 >
-                                                    {cellDecorations(key, 'real_price')}
+                                                    {cellDecorations(
+                                                        key,
+                                                        'real_price',
+                                                    )}
                                                     <Input
                                                         type="number"
                                                         step="any"
@@ -1974,10 +2105,16 @@ export function SaleDialog({
                                                     )}
                                                 </TableCell>
                                                 <TableCell
-                                                    {...cellProps(key, 'is_with_tax')}
+                                                    {...cellProps(
+                                                        key,
+                                                        'is_with_tax',
+                                                    )}
                                                     className="w-20 border-r border-slate-100 text-center dark:border-neutral-800"
                                                 >
-                                                    {cellDecorations(key, 'is_with_tax')}
+                                                    {cellDecorations(
+                                                        key,
+                                                        'is_with_tax',
+                                                    )}
                                                     <Checkbox
                                                         checked={
                                                             taxFlags[key] ??
