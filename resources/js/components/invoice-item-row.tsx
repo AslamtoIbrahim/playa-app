@@ -34,6 +34,12 @@ import { SearchSelect } from './search-select';
 import MissingBoatPopup from './missing-boat-popup';
 import MissingCategoryPopup from './missing-category-popup';
 
+/**
+ * Synthetic id for the unsaved row displayed at the top of the table. It lets
+ * the cell selection (blue range + fill handle) work before the row is saved.
+ */
+export const NEW_INVOICE_ITEM_ROW_ID = -1;
+
 interface Props {
     invoiceId: number;
     item?: InvoiceItem;
@@ -89,15 +95,21 @@ export default function InvoiceItemRow({
         handleRowBlur,
     } = useInvoiceItem({ invoiceId, item, isNew });
 
+    /**
+     * Row id used by the cell selection: the saved row id, or the synthetic
+     * id for the unsaved row so it behaves like the saved rows.
+     */
+    const rowId = item?.id ?? (isNew ? NEW_INVOICE_ITEM_ROW_ID : undefined);
+
     useEffect(() => {
-        if (!item) {
+        if (rowId === undefined) {
             return;
         }
 
         const applyFill = (event: Event) => {
             const detail = (event as CustomEvent<{ rowId: number; field: string; value: string }>).detail;
 
-            if (detail.rowId !== item.id) {
+            if (detail.rowId !== rowId) {
                 return;
             }
 
@@ -114,18 +126,18 @@ export default function InvoiceItemRow({
         window.addEventListener('invoice-cell-fill', applyFill);
 
         return () => window.removeEventListener('invoice-cell-fill', applyFill);
-    }, [item, categories, handleDataChange]);
+    }, [rowId, categories, handleDataChange]);
 
     const cellProps = (field: string, value: string | number) => ({
         'data-invoice-cell': field,
-        'data-invoice-row': item?.id,
+        'data-invoice-row': rowId,
         onMouseDownCapture: (event: React.MouseEvent) => {
             if (event.shiftKey) {
                 event.preventDefault();
                 event.stopPropagation();
 
-                if (item) {
-                    onCellSelect?.(item.id, field, String(value), true);
+                if (rowId !== undefined) {
+                    onCellSelect?.(rowId, field, String(value), true);
                 }
             }
         },
@@ -136,8 +148,8 @@ export default function InvoiceItemRow({
             }
         },
         onMouseDown: (event: React.MouseEvent) => {
-            if (item && !event.shiftKey) {
-                onCellSelect?.(item.id, field, String(value), event.shiftKey);
+            if (rowId !== undefined && !event.shiftKey) {
+                onCellSelect?.(rowId, field, String(value), event.shiftKey);
             }
         },
         onClick: (event: React.MouseEvent) => {
@@ -146,31 +158,34 @@ export default function InvoiceItemRow({
                 event.stopPropagation();
             }
         },
-        style: selectedCell?.includes(`|${item?.id}:${field}|`)
-            ? {
-                  position: 'relative' as const,
-                  backgroundColor: 'rgb(59 130 246 / 12%)',
-                  boxShadow: [
-                      'inset 1px 0 rgb(59 130 246)',
-                      'inset -1px 0 rgb(59 130 246)',
-                      selectedCell.startsWith(`|${item?.id}:${field}|`)
-                          ? 'inset 0 1px rgb(59 130 246)'
-                          : '',
-                      selectedCell.endsWith(`|${item?.id}:${field}|`)
-                          ? 'inset 0 -1px rgb(59 130 246)'
-                          : '',
-                  ]
-                      .filter(Boolean)
-                      .join(', '),
-              }
-            : undefined,
+        style:
+            rowId !== undefined &&
+            selectedCell?.includes(`|${rowId}:${field}|`)
+                ? {
+                      position: 'relative' as const,
+                      backgroundColor: 'rgb(59 130 246 / 12%)',
+                      boxShadow: [
+                          'inset 1px 0 rgb(59 130 246)',
+                          'inset -1px 0 rgb(59 130 246)',
+                          selectedCell.startsWith(`|${rowId}:${field}|`)
+                              ? 'inset 0 1px rgb(59 130 246)'
+                              : '',
+                          selectedCell.endsWith(`|${rowId}:${field}|`)
+                              ? 'inset 0 -1px rgb(59 130 246)'
+                              : '',
+                      ]
+                          .filter(Boolean)
+                          .join(', '),
+                  }
+                : undefined,
     });
 
     const isFillHandle = (field: string) =>
-        selectedCell?.endsWith(`|${item?.id}:${field}|`) ?? false;
+        rowId !== undefined &&
+        (selectedCell?.endsWith(`|${rowId}:${field}|`) ?? false);
 
     const fillHandle = (field: string, value: string | number) =>
-        item && isFillHandle(field) ? (
+        rowId !== undefined && isFillHandle(field) ? (
             <button
                 type="button"
                 aria-label="Recopier la valeur vers les lignes suivantes"
@@ -178,7 +193,7 @@ export default function InvoiceItemRow({
                 onPointerDown={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
-                    onFillStart?.(item.id, field, String(value));
+                    onFillStart?.(rowId, field, String(value));
                 }}
                 onClick={(event) => event.stopPropagation()}
             />

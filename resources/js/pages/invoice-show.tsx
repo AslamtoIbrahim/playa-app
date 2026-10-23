@@ -32,7 +32,9 @@ import { useEffect, useRef, useState } from 'react';
 // UI Components
 import { DeleteInvoiceItemsDialog } from '@/components/delete-invoice-items-dialog';
 import InvoiceItemDragOverlay from '@/components/invoice-item-drag-overlay';
-import InvoiceItemRow from '@/components/invoice-item-row';
+import InvoiceItemRow, {
+    NEW_INVOICE_ITEM_ROW_ID,
+} from '@/components/invoice-item-row';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -93,6 +95,16 @@ interface Props {
     /** URL de retour explicite fournie par le backend (journée liée ou liste). */
     backUrl: string;
 }
+
+/**
+ * Row ids in display order: the unsaved row is always rendered first, then
+ * the saved rows. Cell selection and fill share this index space so the new
+ * row behaves like the saved ones.
+ */
+const getRowIds = (items: InvoiceItem[]): number[] => [
+    NEW_INVOICE_ITEM_ROW_ID,
+    ...items.map((item) => item.id),
+];
 
 export default function InvoiceShow({
     invoice,
@@ -221,18 +233,18 @@ export default function InvoiceShow({
                 return;
             }
 
-            const sourceIndex = localItems.findIndex((row) => row.id === drag.rowId);
-            const targetIndex = localItems.findIndex((row) => row.id === drag.targetId);
-            
+            const rowIds = getRowIds(localItems);
+            const sourceIndex = rowIds.indexOf(drag.rowId);
+            const targetIndex = rowIds.indexOf(drag.targetId);
+
             if (sourceIndex < 0 || targetIndex < 0) {
                 return;
             }
 
             const direction = targetIndex >= sourceIndex ? 1 : -1;
-            
+
             for (let index = sourceIndex + direction; direction > 0 ? index <= targetIndex : index >= targetIndex; index += direction) {
-                const row = localItems[index];
-                window.dispatchEvent(new CustomEvent('invoice-cell-fill', { detail: { rowId: row.id, field: drag.field, value: drag.value } }));
+                window.dispatchEvent(new CustomEvent('invoice-cell-fill', { detail: { rowId: rowIds[index], field: drag.field, value: drag.value } }));
             }
         };
 
@@ -246,12 +258,14 @@ export default function InvoiceShow({
     }, [localItems]);
 
     useEffect(() => {
+        const rowIds = getRowIds(localItems);
+
         const fillDown = (event: KeyboardEvent) => {
             const cell = (event.target as HTMLElement).closest<HTMLElement>('[data-invoice-cell][data-invoice-row]');
 
             if (cell && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) {
                 const fields = ['boat_id', 'category_id', 'unit_count', 'unit_price', 'unit', 'weight', 'box'];
-                const rowIndex = localItems.findIndex((row) => row.id === Number(cell.dataset.invoiceRow));
+                const rowIndex = rowIds.indexOf(Number(cell.dataset.invoiceRow));
                 const columnIndex = fields.indexOf(cell.dataset.invoiceCell ?? '');
                 let nextRow = rowIndex;
                 let nextColumn = columnIndex;
@@ -266,16 +280,21 @@ export default function InvoiceShow({
                     nextColumn += 1;
                 }
 
-                const targetRow = localItems[nextRow];
+                const targetRowId = rowIds[nextRow];
                 const targetField = fields[nextColumn];
                 
-                if (targetRow && targetField) {
-                    const value = String(targetRow[targetField as keyof InvoiceItem] ?? '');
+                if (targetRowId !== undefined && targetField) {
+                    const targetCell = document.querySelector<HTMLElement>(`[data-invoice-row="${targetRowId}"][data-invoice-cell="${targetField}"]`);
+                    const targetRow = localItems.find((row) => row.id === targetRowId);
+                    const value =
+                        targetCell?.querySelector<HTMLInputElement>('input')?.value ??
+                        String(targetRow?.[targetField as keyof InvoiceItem] ?? '');
+
                     setCellSelection((current) => ({
-                        rowId: targetRow.id,
+                        rowId: targetRowId,
                         field: targetField,
                         value,
-                        anchorId: event.shiftKey && current ? current.anchorId : targetRow.id,
+                        anchorId: event.shiftKey && current ? current.anchorId : targetRowId,
                     }));
                 }
             }
@@ -285,8 +304,8 @@ export default function InvoiceShow({
             }
 
             event.preventDefault();
-            const anchorIndex = localItems.findIndex((row) => row.id === cellSelection.anchorId);
-            const endIndex = localItems.findIndex((row) => row.id === cellSelection.rowId);
+            const anchorIndex = rowIds.indexOf(cellSelection.anchorId);
+            const endIndex = rowIds.indexOf(cellSelection.rowId);
             
             if (anchorIndex < 0 || endIndex < 0) {
                 return;
@@ -294,13 +313,13 @@ export default function InvoiceShow({
 
             const first = Math.min(anchorIndex, endIndex);
             const last = Math.max(anchorIndex, endIndex);
-            const sourceRow = localItems[first];
-            const sourceCell = document.querySelector<HTMLElement>(`[data-invoice-row="${sourceRow.id}"][data-invoice-cell="${cellSelection.field}"]`);
+            const sourceRowId = rowIds[first];
+            const sourceCell = document.querySelector<HTMLElement>(`[data-invoice-row="${sourceRowId}"][data-invoice-cell="${cellSelection.field}"]`);
             const sourceControl = sourceCell?.querySelector<HTMLInputElement>('input');
             const value = sourceControl?.value ?? cellSelection.value;
 
-            localItems.slice(first + 1, last + 1).forEach((row) => {
-                window.dispatchEvent(new CustomEvent('invoice-cell-fill', { detail: { rowId: row.id, field: cellSelection.field, value } }));
+            rowIds.slice(first + 1, last + 1).forEach((rowId) => {
+                window.dispatchEvent(new CustomEvent('invoice-cell-fill', { detail: { rowId, field: cellSelection.field, value } }));
             });
         };
 
@@ -316,6 +335,40 @@ export default function InvoiceShow({
             value: shift && current?.field === field ? current.value : value,
             anchorId: shift && current?.field === field ? current.anchorId : rowId,
         }));
+    };
+
+    const rowIds = getRowIds(localItems);
+
+    /**
+     * Selection string consumed by a row: `|id:field|id:field|` for every row
+     * of the range, or null when the row is outside it.
+     */
+    const getSelectedCellRange = (rowId: number): string | null => {
+        if (!cellSelection) {
+            return null;
+        }
+
+        const rowIndex = rowIds.indexOf(rowId);
+        const anchorIndex = rowIds.indexOf(cellSelection.anchorId);
+        const targetIndex = rowIds.indexOf(cellSelection.rowId);
+
+        if (rowIndex < 0 || anchorIndex < 0 || targetIndex < 0) {
+            return null;
+        }
+
+        const first = Math.min(anchorIndex, targetIndex);
+        const last = Math.max(anchorIndex, targetIndex);
+
+        if (rowIndex < first || rowIndex > last) {
+            return null;
+        }
+
+        const range = rowIds
+            .slice(first, last + 1)
+            .map((id) => `${id}:${cellSelection.field}`)
+            .join('|');
+
+        return `|${range}|`;
     };
 
     // الحسابات
@@ -741,6 +794,11 @@ export default function InvoiceShow({
                                 owners={owners}
                                 categories={categories}
                                 isNew={true}
+                                onCellSelect={handleCellSelect}
+                                onFillStart={handleFillStart}
+                                selectedCell={getSelectedCellRange(
+                                    NEW_INVOICE_ITEM_ROW_ID,
+                                )}
                                 onOpenDifference={() => {}} // New row doesn't need this
                                 onOpenSale={() => {}} // New row doesn't need this
                             />
@@ -761,7 +819,7 @@ export default function InvoiceShow({
                                         globalSoldCount={globalSoldCountByInvoiceItem[row.id] ?? 0}
                                         onCellSelect={handleCellSelect}
                                         onFillStart={handleFillStart}
-                                        selectedCell={cellSelection && localItems.findIndex((entry) => entry.id === row.id) >= Math.min(localItems.findIndex((entry) => entry.id === cellSelection.anchorId), localItems.findIndex((entry) => entry.id === cellSelection.rowId)) && localItems.findIndex((entry) => entry.id === row.id) <= Math.max(localItems.findIndex((entry) => entry.id === cellSelection.anchorId), localItems.findIndex((entry) => entry.id === cellSelection.rowId)) ? `|${localItems.slice(Math.min(localItems.findIndex((entry) => entry.id === cellSelection.anchorId), localItems.findIndex((entry) => entry.id === cellSelection.rowId)), Math.max(localItems.findIndex((entry) => entry.id === cellSelection.anchorId), localItems.findIndex((entry) => entry.id === cellSelection.rowId)) + 1).map((entry) => `${entry.id}:${cellSelection.field}`).join('|')}|` : null}
+                                        selectedCell={getSelectedCellRange(row.id)}
                                         selected={selectedIds.includes(row.id)}
                                         onSelectChange={(checked) => {
                                             setSelectedIds((prev) =>
