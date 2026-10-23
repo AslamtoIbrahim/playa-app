@@ -11,8 +11,11 @@ import {
     InvoiceItemFilters as Filters,
 } from '@/hooks/use-invoice-item-filters';
 import { cn } from '@/lib/utils';
+import { computeInvoiceItemDifferenceTotal } from '@/lib/differences';
+import { InvoiceItem } from '@/types/invoice-item';
 import { Filter, Search, X } from 'lucide-react';
 import { Dispatch, SetStateAction } from 'react';
+import { TableHead, TableRow } from '@/components/ui/table';
 
 interface GlobalSearchProps {
     value: string;
@@ -85,6 +88,95 @@ export function InvoiceGlobalSearch({
                 )}
             </Button>
         </div>
+    );
+}
+
+interface InvoiceColumnTotalsProps {
+    items: InvoiceItem[];
+    visible: boolean;
+}
+
+const formatTotal = (value: number) =>
+    value.toLocaleString('fr-FR', { maximumFractionDigits: 2 });
+
+export function InvoiceColumnTotals({
+    items,
+    visible,
+}: InvoiceColumnTotalsProps) {
+    if (!visible) {
+        return null;
+    }
+
+    const totals = items.reduce(
+        (result, item) => ({
+            quantity: result.quantity + Number(item.unit_count || 0),
+            price: result.price + Number(item.unit_price || 0),
+            weight: result.weight + Number(item.weight || 0),
+            boxes: result.boxes + Number(item.box || 0),
+            amount: result.amount + Number(item.amount || 0),
+            difference:
+                result.difference + computeInvoiceItemDifferenceTotal(item),
+        }),
+        {
+            quantity: 0,
+            price: 0,
+            weight: 0,
+            boxes: 0,
+            amount: 0,
+            difference: 0,
+        },
+    );
+    const boatCount = new Set(
+        items.map((item) => item.boat?.name).filter(Boolean),
+    ).size;
+    const categoryCount = new Set(
+        items.map((item) => item.category?.name).filter(Boolean),
+    ).size;
+
+    return (
+        <TableRow
+            aria-label="Totaux des lignes affichées"
+            className="h-9 border-b border-border/50 bg-primary/[0.035] hover:bg-primary/[0.035]"
+        >
+            <TableHead colSpan={2} />
+            <TableHead className="text-center">
+                <span
+                    aria-label={`${boatCount} bateaux`}
+                    className="inline-flex min-w-7 items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary tabular-nums ring-1 ring-primary/15"
+                >
+                    {boatCount}
+                </span>
+            </TableHead>
+            <TableHead className="text-center">
+                <span
+                    aria-label={`${categoryCount} catégories`}
+                    className="inline-flex min-w-7 items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary tabular-nums ring-1 ring-primary/15"
+                >
+                    {categoryCount}
+                </span>
+            </TableHead>
+            <TableHead className="text-center text-xs font-semibold text-foreground tabular-nums">
+                {formatTotal(totals.quantity)}
+            </TableHead>
+            <TableHead className="text-right text-xs font-semibold text-foreground tabular-nums">
+                {formatTotal(totals.price)}
+            </TableHead>
+            <TableHead />
+            <TableHead className="text-center text-xs font-semibold text-foreground tabular-nums">
+                {formatTotal(totals.weight)}
+            </TableHead>
+            <TableHead className="text-center text-xs font-semibold text-foreground tabular-nums">
+                {formatTotal(totals.boxes)}
+            </TableHead>
+            <TableHead className="px-6 text-right text-xs font-semibold text-foreground tabular-nums">
+                {formatTotal(totals.amount)}
+            </TableHead>
+            <TableHead className="border-l border-slate-100 px-4 text-right text-xs font-semibold text-foreground tabular-nums dark:border-neutral-800">
+                {formatTotal(totals.difference)}
+            </TableHead>
+            <TableHead className="border-l border-slate-100 dark:border-neutral-800" />
+            <TableHead />
+        </TableRow>
     );
 }
 

@@ -51,6 +51,7 @@ import { InvoiceStatsGrid } from '@/components/invoice-stats-grid';
 import { useInvoiceCalculations } from '@/hooks/use-invoice-calculations';
 import {
     InvoiceColumnFilter,
+    InvoiceColumnTotals,
     InvoiceGlobalSearch,
 } from '@/components/invoice-item-filters';
 import { useInvoiceItemFilters } from '@/hooks/use-invoice-item-filters';
@@ -851,6 +852,10 @@ export default function InvoiceShow({
                 >
                     <Table>
                         <TableHeader className={`border-b border-slate-100 bg-slate-50/50 dark:border-neutral-800 dark:bg-neutral-900/50 ${showColumnFilters ? '' : '[&_[data-column-filter-trigger]]:hidden'}`}>
+                            <InvoiceColumnTotals
+                                items={filteredItems}
+                                visible={showColumnFilters}
+                            />
                             <TableRow className="h-11 hover:bg-transparent">
                                 <TableHead className="w-8 print:hidden"></TableHead>
                                 <TableHead className="w-10 print:hidden">
