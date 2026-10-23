@@ -980,7 +980,7 @@ export function SaleDialog({
                                                             }),
                                                         )
                                                     }
-                                                    className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 capitalize shadow-none hover:bg-transparent focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800"
+                                                    className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 capitalize shadow-none hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-transparent"
                                                 />
                                             </TableCell>
                                             <TableCell className="min-w-28 border-r border-slate-100 px-3 py-0 font-medium capitalize dark:border-neutral-800">
@@ -1226,7 +1226,7 @@ export function SaleDialog({
                                                             [key]: String(id),
                                                         }))
                                                     }
-                                                    className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 capitalize shadow-none hover:bg-transparent focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800"
+                                                    className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 capitalize shadow-none hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none dark:text-neutral-100 dark:focus-visible:bg-transparent"
                                                 />
                                             </TableCell>
                                             <TableCell
@@ -1545,7 +1545,7 @@ export function SaleDialog({
                                                                 selectedId,
                                                             );
                                                         }}
-                                                        className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 capitalize shadow-none hover:bg-transparent focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800"
+                                                        className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 capitalize shadow-none hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-transparent"
                                                     />
                                                 </TableCell>
                                                 <TableCell className="min-w-28 border-r border-slate-100 px-3 dark:border-neutral-800">
@@ -1880,7 +1880,7 @@ export function SaleDialog({
                                                                 selectedId,
                                                             );
                                                         }}
-                                                        className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 capitalize shadow-none hover:bg-transparent focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800"
+                                                        className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 capitalize shadow-none hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-transparent"
                                                     />
                                                 </TableCell>
                                                 <TableCell
