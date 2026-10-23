@@ -123,7 +123,7 @@ export default function InvoiceItemRow({
             if (event.shiftKey) {
                 event.preventDefault();
                 event.stopPropagation();
-                
+
                 if (item) {
                     onCellSelect?.(item.id, field, String(value), true);
                 }
@@ -150,7 +150,18 @@ export default function InvoiceItemRow({
             ? {
                   position: 'relative' as const,
                   backgroundColor: 'rgb(59 130 246 / 12%)',
-                  boxShadow: 'inset 0 1px rgb(59 130 246), inset 0 -1px rgb(59 130 246)',
+                  boxShadow: [
+                      'inset 1px 0 rgb(59 130 246)',
+                      'inset -1px 0 rgb(59 130 246)',
+                      selectedCell.startsWith(`|${item?.id}:${field}|`)
+                          ? 'inset 0 1px rgb(59 130 246)'
+                          : '',
+                      selectedCell.endsWith(`|${item?.id}:${field}|`)
+                          ? 'inset 0 -1px rgb(59 130 246)'
+                          : '',
+                  ]
+                      .filter(Boolean)
+                      .join(', '),
               }
             : undefined,
     });
