@@ -123,6 +123,7 @@ export default function InvoiceItemRow({
             if (event.shiftKey) {
                 event.preventDefault();
                 event.stopPropagation();
+                
                 if (item) {
                     onCellSelect?.(item.id, field, String(value), true);
                 }

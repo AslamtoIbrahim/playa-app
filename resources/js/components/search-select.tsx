@@ -1,6 +1,3 @@
-import * as React from 'react';
-import { Check, ChevronsUpDown } from 'lucide-react';
-import { cn, commandItemClass } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
     Command,
@@ -15,6 +12,9 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
+import { cn, commandItemClass } from '@/lib/utils';
+import { Check, ChevronsUpDown } from 'lucide-react';
+import * as React from 'react';
 
 interface SearchSelectProps {
     value: string | number | undefined;
@@ -28,9 +28,9 @@ interface SearchSelectProps {
     disabled?: boolean;
     className?: string;
     /**
-     * Action optionnelle rendue à côté du champ de recherche lorsque la
-     * valeur saisie n'existe pas dans les options (ex : bouton "+" pour
-     * créer l'élément manquant).
+     * Optional action rendered next to the search field when the entered
+     * value does not exist in the options (e.g. a "+" button to create the
+     * missing item).
      */
     renderNoMatchAction?: (search: string) => React.ReactNode;
 }
