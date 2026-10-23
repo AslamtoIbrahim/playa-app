@@ -39,12 +39,40 @@ import type { DailySession } from '@/types/daily-session';
 import { router } from '@inertiajs/react';
 import { Plus, ShoppingCart, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import type { MouseEvent } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 const formatSaleNumber = (value: number): string =>
     value.toLocaleString('fr-FR', {
         minimumFractionDigits: Number.isInteger(value) ? 0 : 2,
         maximumFractionDigits: 3,
     });
+
+const selectableFields = [
+    'sale_id',
+    'sale_price',
+    'item_id',
+    'unit_count',
+    'real_price',
+    'is_with_tax',
+] as const;
+
+type SelectableField = (typeof selectableFields)[number];
+
+interface CellSelection {
+    rowId: string;
+    field: SelectableField;
+    anchorId: string;
+    anchorField: SelectableField;
+}
+
+interface FillDrag {
+    rowId: string;
+    field: SelectableField;
+    targetRowId: string;
+    targetField: SelectableField;
+    table: HTMLTableElement;
+}
 
 interface Props {
     open: boolean;
@@ -110,6 +138,585 @@ export function SaleDialog({
         onOpenChange,
     });
 
+    const [cellSelection, setCellSelection] =
+        useState<CellSelection | null>(null);
+    const fillDrag = useRef<FillDrag | null>(null);
+    const gridKeyDownHandler = useRef<
+        ((event: globalThis.KeyboardEvent) => void) | null
+    >(null);
+    const rowIds = useMemo(
+        () => [
+            ...sellableItems.map((item) => `item-${item.id}`),
+            ...savedSaleRows.map(({ line }) => `sale-${line.id}`),
+        ],
+        [savedSaleRows, sellableItems],
+    );
+
+    const getSelectionGeometry = (
+        rowId: string,
+        field: SelectableField,
+    ) => {
+        const anchorRowIndex = cellSelection
+            ? rowIds.indexOf(cellSelection.anchorId)
+            : -1;
+        const selectedRowIndex = cellSelection
+            ? rowIds.indexOf(cellSelection.rowId)
+            : -1;
+        const rowIndex = rowIds.indexOf(rowId);
+        const anchorFieldIndex = cellSelection
+            ? selectableFields.indexOf(cellSelection.anchorField)
+            : -1;
+        const selectedFieldIndex = cellSelection
+            ? selectableFields.indexOf(cellSelection.field)
+            : -1;
+        const fieldIndex = selectableFields.indexOf(field);
+        const isSelected =
+            anchorRowIndex >= 0 &&
+            selectedRowIndex >= 0 &&
+            rowIndex >= Math.min(anchorRowIndex, selectedRowIndex) &&
+            rowIndex <= Math.max(anchorRowIndex, selectedRowIndex) &&
+            fieldIndex >= Math.min(anchorFieldIndex, selectedFieldIndex) &&
+            fieldIndex <= Math.max(anchorFieldIndex, selectedFieldIndex);
+
+        if (!isSelected) {
+            return { isSelected, boxShadow: '' };
+        }
+
+        const boxShadow = [
+            rowIndex === Math.min(anchorRowIndex, selectedRowIndex)
+                ? 'inset 0 1px rgb(59 130 246)'
+                : '',
+            rowIndex === Math.max(anchorRowIndex, selectedRowIndex)
+                ? 'inset 0 -1px rgb(59 130 246)'
+                : '',
+            fieldIndex === Math.min(anchorFieldIndex, selectedFieldIndex)
+                ? 'inset 1px 0 rgb(59 130 246)'
+                : '',
+            fieldIndex === Math.max(anchorFieldIndex, selectedFieldIndex)
+                ? 'inset -1px 0 rgb(59 130 246)'
+                : '',
+        ]
+            .filter(Boolean)
+            .join(', ');
+
+        return { isSelected, boxShadow };
+    };
+
+    const cellProps = (rowId: string, field: SelectableField) => {
+        const { isSelected, boxShadow } = getSelectionGeometry(rowId, field);
+
+        return {
+            'data-sale-cell': field,
+            'data-sale-row': rowId,
+            onMouseDownCapture: (event: MouseEvent<HTMLTableCellElement>) => {
+                if (event.shiftKey) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+
+                setCellSelection((current) => ({
+                    rowId,
+                    field,
+                    anchorId: event.shiftKey
+                        ? (current?.anchorId ?? rowId)
+                        : rowId,
+                    anchorField: event.shiftKey
+                        ? (current?.anchorField ?? field)
+                        : field,
+                }));
+            },
+            onFocusCapture: () => {
+                setCellSelection((current) =>
+                    current?.rowId === rowId && current.field === field
+                        ? current
+                        : {
+                              rowId,
+                              field,
+                              anchorId: rowId,
+                              anchorField: field,
+                          },
+                );
+            },
+            style: isSelected
+                ? {
+                      position: 'relative' as const,
+                      zIndex: 10,
+                      backgroundColor: 'rgb(59 130 246 / 12%)',
+                      boxShadow,
+                  }
+                : { position: 'relative' as const },
+        };
+    };
+
+    const fillHandle = (rowId: string, field: SelectableField) => {
+        if (!cellSelection) {
+            return null;
+        }
+
+        const anchorRowIndex = rowIds.indexOf(cellSelection.anchorId);
+        const selectedRowIndex = rowIds.indexOf(cellSelection.rowId);
+        const anchorFieldIndex = selectableFields.indexOf(
+            cellSelection.anchorField,
+        );
+        const selectedFieldIndex = selectableFields.indexOf(cellSelection.field);
+
+        if (
+            rowIds.indexOf(rowId) !==
+                Math.max(anchorRowIndex, selectedRowIndex) ||
+            selectableFields.indexOf(field) !==
+                Math.max(anchorFieldIndex, selectedFieldIndex)
+        ) {
+            return null;
+        }
+
+        return (
+            <button
+                type="button"
+                aria-label="Recopier la valeur vers les cellules voisines"
+                className="absolute -right-1 -bottom-1 z-30 size-2 cursor-crosshair rounded-full border border-white bg-blue-600 p-0 shadow-sm dark:border-neutral-900"
+                onPointerDown={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    const table = event.currentTarget.closest<HTMLTableElement>(
+                        '[data-sale-selection-table]',
+                    );
+
+                    if (!table) {
+                        return;
+                    }
+
+                    fillDrag.current = {
+                        rowId: cellSelection.anchorId,
+                        field: cellSelection.anchorField,
+                        targetRowId: rowId,
+                        targetField: field,
+                        table,
+                    };
+                }}
+                onClick={(event) => event.stopPropagation()}
+            />
+        );
+    };
+
+    const cellDecorations = (rowId: string, field: SelectableField) =>
+        fillHandle(rowId, field);
+
+    useEffect(() => {
+        const clearSelectionOutsideCells = (event: PointerEvent) => {
+            if (
+                event.target instanceof Element &&
+                !event.target.closest('[data-sale-selection-table]')
+            ) {
+                setCellSelection(null);
+            }
+        };
+
+        document.addEventListener('pointerdown', clearSelectionOutsideCells);
+
+        return () => {
+            document.removeEventListener(
+                'pointerdown',
+                clearSelectionOutsideCells,
+            );
+        };
+    }, []);
+
+    useEffect(() => {
+        const handlePointerMove = (event: PointerEvent) => {
+            const drag = fillDrag.current;
+
+            if (!drag) {
+                return;
+            }
+
+            const target = document
+                .elementFromPoint(event.clientX, event.clientY)
+                ?.closest<HTMLElement>('[data-sale-cell][data-sale-row]');
+            const targetRowId = target?.dataset.saleRow;
+            const targetField = target?.dataset.saleCell as
+                | SelectableField
+                | undefined;
+
+            if (
+                !targetRowId ||
+                !targetField ||
+                !rowIds.includes(targetRowId) ||
+                !drag.table.contains(target)
+            ) {
+                return;
+            }
+
+            const sourceRowIndex = rowIds.indexOf(drag.rowId);
+            const targetRowIndex = rowIds.indexOf(targetRowId);
+            const numericFields: SelectableField[] = [
+                'sale_price',
+                'unit_count',
+                'real_price',
+            ];
+            const isVerticalFill =
+                targetField === drag.field &&
+                sourceRowIndex !== targetRowIndex;
+            const isHorizontalFill =
+                targetRowId === drag.rowId &&
+                numericFields.includes(drag.field) &&
+                numericFields.includes(targetField) &&
+                selectableFields.indexOf(drag.field) !==
+                    selectableFields.indexOf(targetField);
+
+            if (!isVerticalFill && !isHorizontalFill) {
+                return;
+            }
+
+            drag.targetRowId = targetRowId;
+            drag.targetField = targetField;
+            setCellSelection({
+                anchorId: drag.rowId,
+                anchorField: drag.field,
+                rowId: targetRowId,
+                field: targetField,
+            });
+        };
+
+        const handlePointerUp = () => {
+            const drag = fillDrag.current;
+            fillDrag.current = null;
+
+            if (!drag) {
+                return;
+            }
+
+            window.requestAnimationFrame(() => {
+                const targetCell = drag.table.querySelector<HTMLElement>(
+                    '[data-sale-row="' +
+                        drag.targetRowId +
+                        '"] [data-sale-cell="' +
+                        drag.targetField +
+                        '"]',
+                );
+
+                targetCell?.dispatchEvent(
+                    new KeyboardEvent('keydown', {
+                        bubbles: true,
+                        cancelable: true,
+                        key: 'd',
+                        ctrlKey: true,
+                    }),
+                );
+            });
+        };
+
+        window.addEventListener('pointermove', handlePointerMove);
+        window.addEventListener('pointerup', handlePointerUp);
+
+        return () => {
+            window.removeEventListener('pointermove', handlePointerMove);
+            window.removeEventListener('pointerup', handlePointerUp);
+        };
+    }, [rowIds]);
+
+    useEffect(() => {
+        const handleGridKeyDown = (event: globalThis.KeyboardEvent) => {
+            const target = event.target;
+            const cell =
+                target instanceof Element
+                    ? target.closest<HTMLElement>('[data-sale-cell]')
+                    : null;
+            const table = cell?.closest<HTMLTableElement>(
+                '[data-sale-selection-table]',
+            );
+
+            if (!cell || !table || !cellSelection) {
+                return;
+            }
+
+            if (
+                !(event.ctrlKey || event.metaKey) ||
+                event.key.toLowerCase() !== 'd'
+            ) {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopImmediatePropagation();
+
+            const anchorRowIndex = rowIds.indexOf(cellSelection.anchorId);
+            const selectedRowIndex = rowIds.indexOf(cellSelection.rowId);
+
+            if (anchorRowIndex < 0 || selectedRowIndex < 0) {
+                return;
+            }
+
+            const getRowData = (rowId: string) => {
+                if (rowId.startsWith('item-')) {
+                    const item = sellableItems.find(
+                        (entry) => `item-${entry.id}` === rowId,
+                    );
+
+                    return item ? { item, line: undefined } : undefined;
+                }
+
+                const saved = savedSaleRows.find(
+                    ({ line }) => `sale-${line.id}` === rowId,
+                );
+
+                return saved
+                    ? { item: saved.item, line: saved.line }
+                    : undefined;
+            };
+
+            const readValue = (
+                rowId: string,
+                field: SelectableField,
+            ): string | boolean => {
+                const row = getRowData(rowId);
+
+                if (!row) {
+                    return '';
+                }
+
+                const key = row.line
+                    ? `sale-${row.line.id}`
+                    : `item-${row.item.id}`;
+
+                if (field === 'sale_id') {
+                    return (
+                        saleIds[key] ??
+                        (row.line ? String(row.line.sale_id) : '')
+                    );
+                }
+
+                if (field === 'sale_price') {
+                    return (
+                        prices[key] ??
+                        String(
+                            row.line
+                                ? row.line.sale_price
+                                : defaultSalePrice(row.item),
+                        )
+                    );
+                }
+
+                if (field === 'item_id') {
+                    return (
+                        itemIds[key] ??
+                        (row.line ? String(row.line.item_id) : '')
+                    );
+                }
+
+                if (field === 'unit_count') {
+                    return (
+                        counts[key] ??
+                        String(
+                            row.line
+                                ? Math.abs(Number(row.line.unit_count))
+                                : Math.min(
+                                      remaining(row.item),
+                                      availableStockByCategory[
+                                          row.item.category_id
+                                      ] ?? remaining(row.item),
+                                  ),
+                        )
+                    );
+                }
+
+                if (field === 'real_price') {
+                    return (
+                        realPrices[key] ??
+                        String(
+                            row.line
+                                ? row.line.real_price
+                                : defaultRealPrice(row.item),
+                        )
+                    );
+                }
+
+                return taxFlags[key] ?? row.line?.is_with_tax ?? false;
+            };
+
+            const applyValue = async (
+                sourceRowId: string,
+                rowId: string,
+                field: SelectableField,
+                value: string | boolean,
+            ): Promise<void> => {
+                const row = getRowData(rowId);
+
+                if (!row) {
+                    return;
+                }
+
+                const sourceRow = getRowData(sourceRowId);
+
+                if (
+                    field === 'item_id' &&
+                    sourceRow?.item.category_id !== row.item.category_id
+                ) {
+                    return;
+                }
+
+                const key = row.line
+                    ? `sale-${row.line.id}`
+                    : `item-${row.item.id}`;
+                const textValue = String(value);
+
+                if (field === 'sale_id') {
+                    setSaleIds((current) => ({
+                        ...current,
+                        [key]: textValue,
+                    }));
+                } else if (field === 'sale_price') {
+                    setPrices((current) => ({
+                        ...current,
+                        [key]: textValue,
+                    }));
+                } else if (field === 'item_id') {
+                    setItemIds((current) => ({
+                        ...current,
+                        [key]: textValue,
+                    }));
+                } else if (field === 'unit_count') {
+                    setCounts((current) => ({
+                        ...current,
+                        [key]: textValue,
+                    }));
+                } else if (field === 'real_price') {
+                    setRealPrices((current) => ({
+                        ...current,
+                        [key]: textValue,
+                    }));
+                } else {
+                    setTaxFlags((current) => ({
+                        ...current,
+                        [key]: value === true || value === 'true',
+                    }));
+                }
+
+                if (row.line) {
+                    await save(
+                        row.item,
+                        row.line,
+                        field === 'sale_id' ? Number(value) : undefined,
+                        field === 'item_id' ? Number(value) : undefined,
+                        field === 'sale_price' ? Number(value) : undefined,
+                        field === 'unit_count' ? Number(value) : undefined,
+                        field === 'real_price' ? Number(value) : undefined,
+                        field === 'is_with_tax'
+                            ? value === true || value === 'true'
+                            : undefined,
+                    );
+                }
+            };
+
+            if (anchorRowIndex !== selectedRowIndex) {
+                const firstRowIndex = Math.min(
+                    anchorRowIndex,
+                    selectedRowIndex,
+                );
+                const lastRowIndex = Math.max(anchorRowIndex, selectedRowIndex);
+                const value = readValue(
+                    rowIds[firstRowIndex],
+                    cellSelection.field,
+                );
+
+                const fillRows = async () => {
+                    for (const rowId of rowIds.slice(
+                        firstRowIndex + 1,
+                        lastRowIndex + 1,
+                    )) {
+                        await applyValue(
+                            rowIds[firstRowIndex],
+                            rowId,
+                            cellSelection.field,
+                            value,
+                        );
+                    }
+                };
+
+                void fillRows();
+
+                return;
+            }
+
+            const anchorFieldIndex = selectableFields.indexOf(
+                cellSelection.anchorField,
+            );
+            const selectedFieldIndex = selectableFields.indexOf(
+                cellSelection.field,
+            );
+            const firstFieldIndex = Math.min(
+                anchorFieldIndex,
+                selectedFieldIndex,
+            );
+            const lastFieldIndex = Math.max(
+                anchorFieldIndex,
+                selectedFieldIndex,
+            );
+            const numericFields: SelectableField[] = [
+                'sale_price',
+                'unit_count',
+                'real_price',
+            ];
+
+            if (!numericFields.includes(cellSelection.anchorField)) {
+                return;
+            }
+
+            const value = readValue(
+                cellSelection.anchorId,
+                cellSelection.anchorField,
+            );
+
+            const fieldsToFill = selectableFields
+                .slice(firstFieldIndex, lastFieldIndex + 1)
+                .filter(
+                    (field) =>
+                        field !== cellSelection.anchorField &&
+                        numericFields.includes(field),
+                );
+            const fillFields = async () => {
+                for (const field of fieldsToFill) {
+                    await applyValue(
+                        cellSelection.anchorId,
+                        cellSelection.anchorId,
+                        field,
+                        value,
+                    );
+                }
+            };
+
+            void fillFields();
+        };
+
+        gridKeyDownHandler.current = handleGridKeyDown;
+
+        return () => {
+            gridKeyDownHandler.current = null;
+        };
+    }, [
+        availableStockByCategory,
+        cellSelection,
+        counts,
+        defaultRealPrice,
+        defaultSalePrice,
+        itemIds,
+        prices,
+        realPrices,
+        remaining,
+        rowIds,
+        saleIds,
+        save,
+        savedSaleRows,
+        sellableItems,
+        setCounts,
+        setItemIds,
+        setPrices,
+        setRealPrices,
+        setSaleIds,
+        setTaxFlags,
+        taxFlags,
+    ]);
+
     return (
         <>
             <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -129,7 +736,22 @@ export function SaleDialog({
                     </DialogHeader>
 
                     <div className="min-h-0 flex-1 overflow-auto bg-slate-50/60 p-3 dark:bg-neutral-950">
-                        <Table className="w-auto min-w-212.5 border-collapse">
+                        <Table
+                            data-sale-selection-table
+                            onKeyDownCapture={(event) => {
+                                if (
+                                    !(event.ctrlKey || event.metaKey) ||
+                                    event.key.toLowerCase() !== 'd'
+                                ) {
+                                    return;
+                                }
+
+                                event.preventDefault();
+                                event.stopPropagation();
+                                gridKeyDownHandler.current?.(event.nativeEvent);
+                            }}
+                            className="w-auto min-w-212.5 border-collapse"
+                        >
                             <TableHeader className="sticky top-0 z-20 bg-slate-50/80 shadow-sm backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-900/90">
                                 <TableRow className="border-b border-slate-100 hover:bg-transparent dark:border-neutral-800">
                                     <TableHead className="min-w-40 py-4 pl-6 text-[10px] font-bold text-slate-500 uppercase dark:text-neutral-400">
@@ -246,10 +868,12 @@ export function SaleDialog({
 
                                     return (
                                         <TableRow
+                                            data-sale-row={key}
                                             key={item.id}
                                             className="group h-10 min-h-10 border-b border-slate-100 transition-colors hover:bg-transparent dark:border-neutral-800"
                                         >
                                             <TableCell
+                                                {...cellProps(key, 'sale_id')}
                                                 tabIndex={-1}
                                                 onMouseDown={(event) =>
                                                     selectCellRange(
@@ -289,6 +913,7 @@ export function SaleDialog({
                                                         'bg-orange-100/90 dark:bg-orange-900/50',
                                                 )}
                                             >
+                                                {cellDecorations(key, 'sale_id')}
                                                 <SearchSelect
                                                     value={saleIds[key] ?? ''}
                                                     options={saleOptions}
@@ -365,6 +990,7 @@ export function SaleDialog({
                                                 </span>
                                             </TableCell>
                                             <TableCell
+                                                {...cellProps(key, 'sale_price')}
                                                 tabIndex={-1}
                                                 onMouseDown={(event) =>
                                                     selectCellRange(
@@ -409,6 +1035,7 @@ export function SaleDialog({
                                                         'bg-orange-100/90 dark:bg-orange-900/50',
                                                 )}
                                             >
+                                                {cellDecorations(key, 'sale_price')}
                                                 <Input
                                                     type="number"
                                                     step="any"
@@ -457,11 +1084,12 @@ export function SaleDialog({
                                                             event,
                                                         );
                                                     }}
-                                                    className="h-10 [appearance:textfield] border-none bg-transparent text-center text-slate-900 transition-all focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                                    className="h-10 [appearance:textfield] border-none bg-transparent text-center text-slate-900 transition-all focus-visible:bg-transparent focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-transparent [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                                                     aria-label="Prix de vente"
                                                 />
                                             </TableCell>
                                             <TableCell
+                                                {...cellProps(key, 'item_id')}
                                                 tabIndex={-1}
                                                 onMouseDown={(event) =>
                                                     selectCellRange(
@@ -521,6 +1149,7 @@ export function SaleDialog({
                                                         'bg-orange-100/90 dark:bg-orange-900/50',
                                                 )}
                                             >
+                                                {cellDecorations(key, 'item_id')}
                                                 <SearchSelect
                                                     value={itemIds[key] ?? ''}
                                                     options={catalogItems
@@ -600,7 +1229,11 @@ export function SaleDialog({
                                                     className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 capitalize shadow-none hover:bg-transparent focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800"
                                                 />
                                             </TableCell>
-                                            <TableCell className="w-20 border-r border-slate-100 p-0 dark:border-neutral-800">
+                                            <TableCell
+                                                {...cellProps(key, 'unit_count')}
+                                                className="w-20 border-r border-slate-100 p-0 dark:border-neutral-800"
+                                            >
+                                                {cellDecorations(key, 'unit_count')}
                                                 <Input
                                                     type="number"
                                                     step="any"
@@ -638,11 +1271,15 @@ export function SaleDialog({
                                                             event,
                                                         );
                                                     }}
-                                                    className="h-10 [appearance:textfield] border-none bg-transparent text-center text-slate-900 transition-all focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                                    className="h-10 [appearance:textfield] border-none bg-transparent text-center text-slate-900 transition-all focus-visible:bg-transparent focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-transparent [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                                                     aria-label="Quantit\u00e9 vendue"
                                                 />
                                             </TableCell>
-                                            <TableCell className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800">
+                                            <TableCell
+                                                {...cellProps(key, 'real_price')}
+                                                className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800"
+                                            >
+                                                {cellDecorations(key, 'real_price')}
                                                 <Input
                                                     type="number"
                                                     step="any"
@@ -680,7 +1317,7 @@ export function SaleDialog({
                                                             event,
                                                         );
                                                     }}
-                                                    className="h-10 [appearance:textfield] border-none bg-transparent text-center text-slate-900 transition-all focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                                    className="h-10 [appearance:textfield] border-none bg-transparent text-center text-slate-900 transition-all focus-visible:bg-transparent focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-transparent [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                                                     aria-label="Prix r\u00e9el"
                                                 />
                                             </TableCell>
@@ -694,7 +1331,11 @@ export function SaleDialog({
                                                         : 0,
                                                 )}
                                             </TableCell>
-                                            <TableCell className="w-20 border-r border-slate-100 p-0 text-center dark:border-neutral-800">
+                                            <TableCell
+                                                {...cellProps(key, 'is_with_tax')}
+                                                className="w-20 border-r border-slate-100 p-0 text-center dark:border-neutral-800"
+                                            >
+                                                {cellDecorations(key, 'is_with_tax')}
                                                 <Checkbox
                                                     checked={isWithTax}
                                                     onKeyDown={(event) => {
@@ -764,10 +1405,12 @@ export function SaleDialog({
 
                                         return (
                                             <TableRow
+                                                data-sale-row={key}
                                                 key={key}
                                                 className="group h-10 border-b border-slate-100 hover:bg-transparent dark:border-neutral-800"
                                             >
                                                 <TableCell
+                                                    {...cellProps(key, 'sale_id')}
                                                     tabIndex={-1}
                                                     onMouseDown={(event) =>
                                                         selectSavedCellRange(
@@ -822,6 +1465,7 @@ export function SaleDialog({
                                                             'bg-orange-100/90 dark:bg-orange-900/50',
                                                     )}
                                                 >
+                                                    {cellDecorations(key, 'sale_id')}
                                                     <SearchSelect
                                                         value={
                                                             saleIds[key] ??
@@ -911,6 +1555,7 @@ export function SaleDialog({
                                                     {item.boat?.name ?? '—'}
                                                 </TableCell>
                                                 <TableCell
+                                                    {...cellProps(key, 'sale_price')}
                                                     tabIndex={-1}
                                                     onMouseDown={(event) =>
                                                         selectSavedCellRange(
@@ -962,6 +1607,7 @@ export function SaleDialog({
                                                             'bg-orange-100/90 dark:bg-orange-900/50',
                                                     )}
                                                 >
+                                                    {cellDecorations(key, 'sale_price')}
                                                     <Input
                                                         type="number"
                                                         step="any"
@@ -1019,11 +1665,12 @@ export function SaleDialog({
                                                                 event,
                                                             );
                                                         }}
-                                                        className="h-10 [appearance:textfield] border-none bg-transparent text-center focus-visible:bg-slate-100 focus-visible:ring-0 dark:focus-visible:bg-neutral-800 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                                        className="h-10 [appearance:textfield] border-none bg-transparent text-center focus-visible:bg-transparent focus-visible:ring-0 dark:focus-visible:bg-transparent [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                                                         aria-label="Prix de vente"
                                                     />
                                                 </TableCell>
                                                 <TableCell
+                                                    {...cellProps(key, 'item_id')}
                                                     tabIndex={-1}
                                                     onMouseDown={(event) =>
                                                         selectSavedCellRange(
@@ -1119,6 +1766,7 @@ export function SaleDialog({
                                                             'bg-orange-100/90 dark:bg-orange-900/50',
                                                     )}
                                                 >
+                                                    {cellDecorations(key, 'item_id')}
                                                     <SearchSelect
                                                         value={
                                                             itemIds[key] ??
@@ -1240,7 +1888,11 @@ export function SaleDialog({
                                                         className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 capitalize shadow-none hover:bg-transparent focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800"
                                                     />
                                                 </TableCell>
-                                                <TableCell className="w-20 border-r border-slate-100 p-0 dark:border-neutral-800">
+                                                <TableCell
+                                                    {...cellProps(key, 'unit_count')}
+                                                    className="w-20 border-r border-slate-100 p-0 dark:border-neutral-800"
+                                                >
+                                                    {cellDecorations(key, 'unit_count')}
                                                     <Input
                                                         type="number"
                                                         step="any"
@@ -1274,11 +1926,15 @@ export function SaleDialog({
                                                                 );
                                                             }
                                                         }}
-                                                        className="h-10 [appearance:textfield] border-none bg-transparent text-center focus-visible:bg-slate-100 focus-visible:ring-0 dark:focus-visible:bg-neutral-800 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                                        className="h-10 [appearance:textfield] border-none bg-transparent text-center focus-visible:bg-transparent focus-visible:ring-0 dark:focus-visible:bg-transparent [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                                                         aria-label="Quantité vendue"
                                                     />
                                                 </TableCell>
-                                                <TableCell className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800">
+                                                <TableCell
+                                                    {...cellProps(key, 'real_price')}
+                                                    className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800"
+                                                >
+                                                    {cellDecorations(key, 'real_price')}
                                                     <Input
                                                         type="number"
                                                         step="any"
@@ -1304,7 +1960,7 @@ export function SaleDialog({
                                                         onKeyDown={
                                                             navigateToAdjacentCell
                                                         }
-                                                        className="h-10 [appearance:textfield] border-none bg-transparent text-center focus-visible:bg-slate-100 focus-visible:ring-0 dark:focus-visible:bg-neutral-800 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                                        className="h-10 [appearance:textfield] border-none bg-transparent text-center focus-visible:bg-transparent focus-visible:ring-0 dark:focus-visible:bg-transparent [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                                                         aria-label="Prix réel"
                                                     />
                                                 </TableCell>
@@ -1322,7 +1978,11 @@ export function SaleDialog({
                                                         ),
                                                     )}
                                                 </TableCell>
-                                                <TableCell className="w-20 border-r border-slate-100 text-center dark:border-neutral-800">
+                                                <TableCell
+                                                    {...cellProps(key, 'is_with_tax')}
+                                                    className="w-20 border-r border-slate-100 text-center dark:border-neutral-800"
+                                                >
+                                                    {cellDecorations(key, 'is_with_tax')}
                                                     <Checkbox
                                                         checked={
                                                             taxFlags[key] ??

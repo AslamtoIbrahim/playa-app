@@ -86,7 +86,10 @@ export function useSaleDialog({
         selectedSaleId?: number,
         selectedItemId?: number,
         selectedSalePrice?: number,
-    ): void => {
+        selectedCount?: number,
+        selectedRealPrice?: number,
+        selectedTaxFlag?: boolean,
+    ): Promise<boolean> => {
         const key = line ? `sale-${line.id}` : `item-${item.id}`;
         const categoryAvailable = availableStockByCategory[item.category_id];
         const maxCount =
@@ -95,7 +98,8 @@ export function useSaleDialog({
                 : categoryAvailable +
                   (line ? Math.abs(Number(line.unit_count)) : 0);
         const count = Number(
-            counts[key] ??
+            selectedCount ??
+                counts[key] ??
                 (line
                     ? Math.abs(Number(line.unit_count))
                     : Math.min(remaining(item), maxCount)),
@@ -104,7 +108,10 @@ export function useSaleDialog({
             selectedSalePrice ??
             Number(prices[key] ?? line?.sale_price ?? defaultSalePrice(item));
         const realPrice = Number(
-            realPrices[key] ?? line?.real_price ?? defaultRealPrice(item),
+            selectedRealPrice ??
+                realPrices[key] ??
+                line?.real_price ??
+                defaultRealPrice(item),
         );
 
         const saleId = selectedSaleId ?? Number(saleIds[key] ?? line?.sale_id);
@@ -117,7 +124,7 @@ export function useSaleDialog({
                 `La quantité dépasse le reste disponible de cette catégorie (${maxCount}).`,
             );
 
-            return;
+            return Promise.resolve(false);
         }
 
         if (!saleId || !count || !articleId) {
@@ -125,7 +132,7 @@ export function useSaleDialog({
                 'Choisissez une vente, un article et une quantit\u00e9.',
             );
 
-            return;
+            return Promise.resolve(false);
         }
 
         const payload = {
@@ -136,64 +143,75 @@ export function useSaleDialog({
             unit_count: count > 0 ? -count : count,
             sale_price: salePrice,
             real_price: realPrice,
-            is_with_tax: taxFlags[key] ?? line?.is_with_tax ?? false,
-        };
-        const options = {
-            preserveScroll: true,
-            onSuccess: () => {
-                if (!line) {
-                    setSaleIds((current) => {
-                        const next = { ...current };
-                        delete next[key];
-
-                        return next;
-                    });
-                    setCounts((current) => {
-                        const next = { ...current };
-                        delete next[key];
-
-                        return next;
-                    });
-                    setPrices((current) => {
-                        const next = { ...current };
-                        delete next[key];
-
-                        return next;
-                    });
-                    setRealPrices((current) => {
-                        const next = { ...current };
-                        delete next[key];
-
-                        return next;
-                    });
-                    setTaxFlags((current) => {
-                        const next = { ...current };
-                        delete next[key];
-
-                        return next;
-                    });
-                }
-
-                toast.success(
-                    line
-                        ? 'Ligne de vente mise à jour.'
-                        : 'Ligne de vente enregistrée.',
-                );
-            },
-            onError: (errors: Record<string, string>) => {
-                toast.error(
-                    Object.values(errors)[0] ??
-                        'Stock insuffisant ou donn\u00e9es invalides.',
-                    { duration: 6000 },
-                );
-            },
+            is_with_tax:
+                selectedTaxFlag ?? taxFlags[key] ?? line?.is_with_tax ?? false,
         };
 
-        if (line) {
-            router.patch(`/sale-items/${line.id}`, payload, options);
-        } else {
-            router.post('/sale-items', payload, options);
-        }
+        return new Promise<boolean>((resolve) => {
+            let didSave = false;
+
+            const options = {
+                preserveScroll: true,
+                onSuccess: () => {
+                    didSave = true;
+
+                    if (!line) {
+                        setSaleIds((current) => {
+                            const next = { ...current };
+                            delete next[key];
+
+                            return next;
+                        });
+                        setCounts((current) => {
+                            const next = { ...current };
+                            delete next[key];
+
+                            return next;
+                        });
+                        setPrices((current) => {
+                            const next = { ...current };
+                            delete next[key];
+
+                            return next;
+                        });
+                        setRealPrices((current) => {
+                            const next = { ...current };
+                            delete next[key];
+
+                            return next;
+                        });
+                        setTaxFlags((current) => {
+                            const next = { ...current };
+                            delete next[key];
+
+                            return next;
+                        });
+                    }
+
+                    toast.success(
+                        line
+                            ? 'Ligne de vente mise à jour.'
+                            : 'Ligne de vente enregistrée.',
+                    );
+                    resolve(true);
+                },
+                onError: (errors: Record<string, string>) => {
+                    toast.error(
+                        Object.values(errors)[0] ??
+                            'Stock insuffisant ou donn\u00e9es invalides.',
+                        { duration: 6000 },
+                    );
+                    resolve(false);
+                },
+                onFinish: () => resolve(didSave),
+            };
+
+            if (line) {
+                router.patch(`/sale-items/${line.id}`, payload, options);
+            } else {
+                router.post('/sale-items', payload, options);
+            }
+        });
     };
 
     const fillSavedSelection = (
