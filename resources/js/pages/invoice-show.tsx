@@ -49,6 +49,11 @@ import {
 import { InvoiceHeader } from '@/components/invoice-header';
 import { InvoiceStatsGrid } from '@/components/invoice-stats-grid';
 import { useInvoiceCalculations } from '@/hooks/use-invoice-calculations';
+import {
+    InvoiceColumnFilter,
+    InvoiceGlobalSearch,
+} from '@/components/invoice-item-filters';
+import { useInvoiceItemFilters } from '@/hooks/use-invoice-item-filters';
 
 // Types & Routes
 import { DifferenceDialog } from '@/components/difference-dialog';
@@ -179,6 +184,20 @@ export default function InvoiceShow({
     );
 
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
+    const [showColumnFilters, setShowColumnFilters] = useState(false);
+    const { filters, setFilters, filteredItems, activeFilterCount, clearColumnFilters } =
+        useInvoiceItemFilters(localItems);
+
+    const toggleColumnFilters = () => {
+        if (showColumnFilters) {
+            clearColumnFilters();
+            setShowColumnFilters(false);
+
+            return;
+        }
+
+        setShowColumnFilters(true);
+    };
     /**
      * Lignes ciblées par la suppression en cours : sélection multiple ou
      * ligne unique (menu de ligne). `single` détermine la route utilisée.
@@ -188,22 +207,41 @@ export default function InvoiceShow({
         single: boolean;
     } | null>(null);
     const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
-    const [cellSelection, setCellSelection] = useState<{ rowId: number; field: string; value: string; anchorId: number } | null>(null);
-    const fillDrag = useRef<{ rowId: number; field: string; value: string; targetId: number } | null>(null);
+    const [cellSelection, setCellSelection] = useState<{
+        rowId: number;
+        field: string;
+        value: string;
+        anchorId: number;
+    } | null>(null);
+    const fillDrag = useRef<{
+        rowId: number;
+        field: string;
+        value: string;
+        targetId: number;
+    } | null>(null);
 
     useEffect(() => {
         const clearCellSelectionOutsideTable = (event: PointerEvent) => {
             const target = event.target;
 
-            if (target instanceof Element && !target.closest('[data-invoice-cell]')) {
+            if (
+                target instanceof Element &&
+                !target.closest('[data-invoice-cell]')
+            ) {
                 setCellSelection(null);
             }
         };
 
-        document.addEventListener('pointerdown', clearCellSelectionOutsideTable);
+        document.addEventListener(
+            'pointerdown',
+            clearCellSelectionOutsideTable,
+        );
 
         return () => {
-            document.removeEventListener('pointerdown', clearCellSelectionOutsideTable);
+            document.removeEventListener(
+                'pointerdown',
+                clearCellSelectionOutsideTable,
+            );
         };
     }, []);
 
@@ -217,11 +255,21 @@ export default function InvoiceShow({
                 return;
             }
 
-            const target = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-invoice-cell][data-invoice-row]');
-            
-            if (target?.dataset.invoiceCell === fillDrag.current.field && target.dataset.invoiceRow) {
+            const target = document
+                .elementFromPoint(event.clientX, event.clientY)
+                ?.closest<HTMLElement>('[data-invoice-cell][data-invoice-row]');
+
+            if (
+                target?.dataset.invoiceCell === fillDrag.current.field &&
+                target.dataset.invoiceRow
+            ) {
                 fillDrag.current.targetId = Number(target.dataset.invoiceRow);
-                setCellSelection({ rowId: fillDrag.current.targetId, anchorId: fillDrag.current.rowId, field: fillDrag.current.field, value: fillDrag.current.value });
+                setCellSelection({
+                    rowId: fillDrag.current.targetId,
+                    anchorId: fillDrag.current.rowId,
+                    field: fillDrag.current.field,
+                    value: fillDrag.current.value,
+                });
             }
         };
 
@@ -243,14 +291,26 @@ export default function InvoiceShow({
 
             const direction = targetIndex >= sourceIndex ? 1 : -1;
 
-            for (let index = sourceIndex + direction; direction > 0 ? index <= targetIndex : index >= targetIndex; index += direction) {
-                window.dispatchEvent(new CustomEvent('invoice-cell-fill', { detail: { rowId: rowIds[index], field: drag.field, value: drag.value } }));
+            for (
+                let index = sourceIndex + direction;
+                direction > 0 ? index <= targetIndex : index >= targetIndex;
+                index += direction
+            ) {
+                window.dispatchEvent(
+                    new CustomEvent('invoice-cell-fill', {
+                        detail: {
+                            rowId: rowIds[index],
+                            field: drag.field,
+                            value: drag.value,
+                        },
+                    }),
+                );
             }
         };
 
         window.addEventListener('pointermove', handlePointerMove);
         window.addEventListener('pointerup', handlePointerUp);
-        
+
         return () => {
             window.removeEventListener('pointermove', handlePointerMove);
             window.removeEventListener('pointerup', handlePointerUp);
@@ -261,12 +321,31 @@ export default function InvoiceShow({
         const rowIds = getRowIds(localItems);
 
         const fillDown = (event: KeyboardEvent) => {
-            const cell = (event.target as HTMLElement).closest<HTMLElement>('[data-invoice-cell][data-invoice-row]');
+            const cell = (event.target as HTMLElement).closest<HTMLElement>(
+                '[data-invoice-cell][data-invoice-row]',
+            );
 
-            if (cell && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) {
-                const fields = ['boat_id', 'category_id', 'unit_count', 'unit_price', 'unit', 'weight', 'box'];
-                const rowIndex = rowIds.indexOf(Number(cell.dataset.invoiceRow));
-                const columnIndex = fields.indexOf(cell.dataset.invoiceCell ?? '');
+            if (
+                cell &&
+                ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(
+                    event.key,
+                )
+            ) {
+                const fields = [
+                    'boat_id',
+                    'category_id',
+                    'unit_count',
+                    'unit_price',
+                    'unit',
+                    'weight',
+                    'box',
+                ];
+                const rowIndex = rowIds.indexOf(
+                    Number(cell.dataset.invoiceRow),
+                );
+                const columnIndex = fields.indexOf(
+                    cell.dataset.invoiceCell ?? '',
+                );
                 let nextRow = rowIndex;
                 let nextColumn = columnIndex;
 
@@ -282,31 +361,45 @@ export default function InvoiceShow({
 
                 const targetRowId = rowIds[nextRow];
                 const targetField = fields[nextColumn];
-                
+
                 if (targetRowId !== undefined && targetField) {
-                    const targetCell = document.querySelector<HTMLElement>(`[data-invoice-row="${targetRowId}"][data-invoice-cell="${targetField}"]`);
-                    const targetRow = localItems.find((row) => row.id === targetRowId);
+                    const targetCell = document.querySelector<HTMLElement>(
+                        `[data-invoice-row="${targetRowId}"][data-invoice-cell="${targetField}"]`,
+                    );
+                    const targetRow = localItems.find(
+                        (row) => row.id === targetRowId,
+                    );
                     const value =
-                        targetCell?.querySelector<HTMLInputElement>('input')?.value ??
-                        String(targetRow?.[targetField as keyof InvoiceItem] ?? '');
+                        targetCell?.querySelector<HTMLInputElement>('input')
+                            ?.value ??
+                        String(
+                            targetRow?.[targetField as keyof InvoiceItem] ?? '',
+                        );
 
                     setCellSelection((current) => ({
                         rowId: targetRowId,
                         field: targetField,
                         value,
-                        anchorId: event.shiftKey && current ? current.anchorId : targetRowId,
+                        anchorId:
+                            event.shiftKey && current
+                                ? current.anchorId
+                                : targetRowId,
                     }));
                 }
             }
 
-            if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'd' || !cellSelection) {
+            if (
+                !(event.ctrlKey || event.metaKey) ||
+                event.key.toLowerCase() !== 'd' ||
+                !cellSelection
+            ) {
                 return;
             }
 
             event.preventDefault();
             const anchorIndex = rowIds.indexOf(cellSelection.anchorId);
             const endIndex = rowIds.indexOf(cellSelection.rowId);
-            
+
             if (anchorIndex < 0 || endIndex < 0) {
                 return;
             }
@@ -314,26 +407,39 @@ export default function InvoiceShow({
             const first = Math.min(anchorIndex, endIndex);
             const last = Math.max(anchorIndex, endIndex);
             const sourceRowId = rowIds[first];
-            const sourceCell = document.querySelector<HTMLElement>(`[data-invoice-row="${sourceRowId}"][data-invoice-cell="${cellSelection.field}"]`);
-            const sourceControl = sourceCell?.querySelector<HTMLInputElement>('input');
+            const sourceCell = document.querySelector<HTMLElement>(
+                `[data-invoice-row="${sourceRowId}"][data-invoice-cell="${cellSelection.field}"]`,
+            );
+            const sourceControl =
+                sourceCell?.querySelector<HTMLInputElement>('input');
             const value = sourceControl?.value ?? cellSelection.value;
 
             rowIds.slice(first + 1, last + 1).forEach((rowId) => {
-                window.dispatchEvent(new CustomEvent('invoice-cell-fill', { detail: { rowId, field: cellSelection.field, value } }));
+                window.dispatchEvent(
+                    new CustomEvent('invoice-cell-fill', {
+                        detail: { rowId, field: cellSelection.field, value },
+                    }),
+                );
             });
         };
 
         window.addEventListener('keydown', fillDown);
-        
+
         return () => window.removeEventListener('keydown', fillDown);
     }, [cellSelection, localItems]);
 
-    const handleCellSelect = (rowId: number, field: string, value: string, shift: boolean) => {
+    const handleCellSelect = (
+        rowId: number,
+        field: string,
+        value: string,
+        shift: boolean,
+    ) => {
         setCellSelection((current) => ({
             rowId,
             field,
             value: shift && current?.field === field ? current.value : value,
-            anchorId: shift && current?.field === field ? current.anchorId : rowId,
+            anchorId:
+                shift && current?.field === field ? current.anchorId : rowId,
         }));
     };
 
@@ -722,6 +828,20 @@ export default function InvoiceShow({
                 id="invoice-content"
                 className="relative overflow-hidden rounded-lg rounded-b-none border border-slate-100 shadow-sm dark:border-neutral-800 dark:bg-neutral-900"
             >
+                <div className="flex items-center justify-between border-b border-border/60 bg-muted/20 px-3 py-2 print:hidden">
+                    <InvoiceGlobalSearch
+                        value={filters.search}
+                        onChange={(search) =>
+                            setFilters((current) => ({ ...current, search }))
+                        }
+                        showColumnFilters={showColumnFilters}
+                        activeFilterCount={activeFilterCount}
+                        onToggleColumnFilters={toggleColumnFilters}
+                    />
+                    <span className="text-xs text-muted-foreground">
+                        {filteredItems.length} / {localItems.length} lignes
+                    </span>
+                </div>
                 <DndContext
                     sensors={sensors}
                     collisionDetection={closestCenter}
@@ -730,7 +850,7 @@ export default function InvoiceShow({
                     modifiers={[restrictToVerticalAxis]}
                 >
                     <Table>
-                        <TableHeader className="border-b border-slate-100 bg-slate-50/50 dark:border-neutral-800 dark:bg-neutral-900/50">
+                        <TableHeader className={`border-b border-slate-100 bg-slate-50/50 dark:border-neutral-800 dark:bg-neutral-900/50 ${showColumnFilters ? '' : '[&_[data-column-filter-trigger]]:hidden'}`}>
                             <TableRow className="h-11 hover:bg-transparent">
                                 <TableHead className="w-8 print:hidden"></TableHead>
                                 <TableHead className="w-10 print:hidden">
@@ -738,49 +858,190 @@ export default function InvoiceShow({
                                         className="mt-1 mr-2"
                                         checked={
                                             selectedIds.length ===
-                                                localItems.length &&
-                                            localItems.length > 0
+                                                filteredItems.length &&
+                                            filteredItems.length > 0
                                         }
                                         onCheckedChange={(checked) => {
                                             if (checked) {
-                                                setSelectedIds(
-                                                    localItems.map((i) => i.id),
-                                                );
+                                                setSelectedIds((current) => [
+                                                    ...new Set([
+                                                        ...current,
+                                                        ...filteredItems.map(
+                                                            (item) => item.id,
+                                                        ),
+                                                    ]),
+                                                ]);
                                             } else {
-                                                setSelectedIds([]);
+                                                const visibleIds = new Set(
+                                                    filteredItems.map(
+                                                        (item) => item.id,
+                                                    ),
+                                                );
+                                                setSelectedIds((current) =>
+                                                    current.filter(
+                                                        (id) =>
+                                                            !visibleIds.has(id),
+                                                    ),
+                                                );
                                             }
                                         }}
                                     />
                                 </TableHead>
                                 <TableHead className="text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
-                                    Bateau
+                                    <span className="inline-flex items-center">
+                                        Bateau
+                                        <InvoiceColumnFilter
+                                            column="boat"
+                                            title="Bateau"
+                                            options={[
+                                                ...new Set(
+                                                    localItems
+                                                        .map(
+                                                            (row) =>
+                                                                row.boat?.name,
+                                                        )
+                                                        .filter(
+                                                            (
+                                                                name,
+                                                            ): name is string =>
+                                                                Boolean(name),
+                                                        ),
+                                                ),
+                                            ].sort()}
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
-                                    Catégorie
+                                    <span className="inline-flex items-center">
+                                        Catégorie
+                                        <InvoiceColumnFilter
+                                            column="category"
+                                            title="Catégorie"
+                                            options={[
+                                                ...new Set(
+                                                    localItems
+                                                        .map(
+                                                            (row) =>
+                                                                row.category
+                                                                    ?.name,
+                                                        )
+                                                        .filter(
+                                                            (
+                                                                name,
+                                                            ): name is string =>
+                                                                Boolean(name),
+                                                        ),
+                                                ),
+                                            ].sort()}
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="text-center text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
-                                    Qte / NC
+                                    <span className="inline-flex items-center">
+                                        Qte / NC
+                                        <InvoiceColumnFilter
+                                            column="quantity"
+                                            title="Quantité"
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="text-right text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
-                                    Prix Unitaire
+                                    <span className="inline-flex items-center">
+                                        Prix Unitaire
+                                        <InvoiceColumnFilter
+                                            column="price"
+                                            title="Prix unitaire"
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="text-center text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
-                                    Unité
+                                    <span className="inline-flex items-center">
+                                        Unité
+                                        <InvoiceColumnFilter
+                                            column="unit"
+                                            title="Unité"
+                                            options={[
+                                                ...new Set(
+                                                    localItems.map(
+                                                        (row) => row.unit,
+                                                    ),
+                                                ),
+                                            ].sort()}
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="text-center text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
-                                    Poids
+                                    <span className="inline-flex items-center">
+                                        Poids
+                                        <InvoiceColumnFilter
+                                            column="weight"
+                                            title="Poids"
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="text-center text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
-                                    Caisses
+                                    <span className="inline-flex items-center">
+                                        Caisses
+                                        <InvoiceColumnFilter
+                                            column="boxes"
+                                            title="Caisses"
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="px-6 text-right text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
-                                    Valeur DH
+                                    <span className="inline-flex items-center">
+                                        Valeur DH
+                                        <InvoiceColumnFilter
+                                            column="amount"
+                                            title="Valeur DH"
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="w-28 border-l border-slate-100 px-4 text-right text-[10px] font-black tracking-tight text-slate-500 uppercase dark:border-neutral-800 dark:text-neutral-400">
-                                    Différence
+                                    <span className="inline-flex items-center">
+                                        Différence
+                                        <InvoiceColumnFilter
+                                            column="difference"
+                                            title="Différence"
+                                            options={[
+                                                'Avec différence',
+                                                'Sans différence',
+                                            ]}
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="w-12 border-l border-slate-100 px-2 text-center text-[10px] font-black tracking-tight text-slate-500 uppercase dark:border-neutral-800 dark:text-neutral-400 print:hidden">
-                                    Vente
+                                    <span className="inline-flex items-center">
+                                        Vente
+                                        <InvoiceColumnFilter
+                                            column="sale"
+                                            title="Vente"
+                                            options={[
+                                                'Avec vente',
+                                                'Sans vente',
+                                            ]}
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="w-12 print:hidden"></TableHead>
                             </TableRow>
@@ -804,10 +1065,10 @@ export default function InvoiceShow({
                             />
 
                             <SortableContext
-                                items={localItems.map((i) => i.id)}
+                                items={filteredItems.map((i) => i.id)}
                                 strategy={verticalListSortingStrategy}
                             >
-                                {localItems.map((row) => (
+                                {filteredItems.map((row) => (
                                     <InvoiceItemRow
                                         key={row.id}
                                         invoiceId={invoice.id}
@@ -816,10 +1077,16 @@ export default function InvoiceShow({
                                         items={items}
                                         owners={owners}
                                         categories={categories}
-                                        globalSoldCount={globalSoldCountByInvoiceItem[row.id] ?? 0}
+                                        globalSoldCount={
+                                            globalSoldCountByInvoiceItem[
+                                                row.id
+                                            ] ?? 0
+                                        }
                                         onCellSelect={handleCellSelect}
                                         onFillStart={handleFillStart}
-                                        selectedCell={getSelectedCellRange(row.id)}
+                                        selectedCell={getSelectedCellRange(
+                                            row.id,
+                                        )}
                                         selected={selectedIds.includes(row.id)}
                                         onSelectChange={(checked) => {
                                             setSelectedIds((prev) =>
