@@ -20,6 +20,18 @@
 - Remove unused imports, variables, and code introduced by your changes.
 - Edit files directly using file-editing tools. Do not use terminal `echo` or `cat` to modify files unless explicitly requested.
 
+## Regression Prevention and Existing Behavior
+
+- Preserve Existing Behavior: Treat all currently working and verified behavior as a requirement. Do not change or remove it unless the task explicitly requires that change.
+- Minimal Changes: Make the smallest focused changes necessary to complete the task. Do not rewrite, refactor, or restructure unrelated code.
+- Protect Existing Fixes: Before modifying existing logic, inspect how it currently works and identify the behavior that must remain unchanged.
+- Regression Testing: When fixing a bug, add or update a regression test whenever practical. Verify that the test fails before the fix and passes after it.
+- Verification Required: Run the relevant tests and checks after making changes. Never claim that a fix works unless it has been verified.
+- Final Diff Review: Before finishing, inspect all changed files and the complete diff. Revert unintended changes and investigate any modification unrelated to the task.
+- Report Regressions: If an existing behavior breaks during implementation, fix it before finishing. If verification is blocked, clearly report what could not be verified.
+- No Unrequested Changes: Do not modify database schemas, business rules, APIs, or component architecture unless required by the task.
+
+
 
 ## Frontend, UI & Themes
 
