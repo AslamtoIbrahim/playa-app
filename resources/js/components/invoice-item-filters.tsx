@@ -99,6 +99,35 @@ interface InvoiceColumnTotalsProps {
 const formatTotal = (value: number) =>
     value.toLocaleString('fr-FR', { maximumFractionDigits: 2 });
 
+type TotalBadgeTone = 'neutral' | 'blue' | 'violet' | 'amber' | 'rose';
+
+const totalBadgeToneClasses: Record<TotalBadgeTone, string> = {
+    neutral: 'text-slate-800 dark:text-neutral-100',
+    blue: 'text-blue-700 dark:text-blue-300',
+    violet: 'text-violet-700 dark:text-violet-300',
+    amber: 'text-amber-700 dark:text-amber-300',
+    rose: 'text-rose-700 dark:text-rose-300',
+};
+
+function TotalBadge({
+    value,
+    tone = 'neutral',
+}: {
+    value: number;
+    tone?: TotalBadgeTone;
+}) {
+    return (
+        <span
+            className={cn(
+                'inline-flex min-w-14 items-center justify-center rounded-lg bg-white px-2.5 py-0.5 text-xs font-bold tracking-tight tabular-nums shadow-sm ring-1 ring-slate-200/80 dark:bg-neutral-800 dark:ring-neutral-700',
+                totalBadgeToneClasses[tone],
+            )}
+        >
+            {formatTotal(value)}
+        </span>
+    );
+}
+
 export function InvoiceColumnTotals({
     items,
     visible,
@@ -136,13 +165,17 @@ export function InvoiceColumnTotals({
     return (
         <TableRow
             aria-label="Totaux des lignes affichées"
-            className="h-9 border-b border-border/50 bg-primary/[0.035] hover:bg-primary/[0.035]"
+            className="h-11 border-b border-slate-200/80 bg-linear-to-r from-white via-slate-50 to-white hover:from-white hover:via-slate-50 hover:to-white dark:border-neutral-800 dark:from-neutral-900 dark:via-neutral-900/60 dark:to-neutral-900 dark:hover:from-neutral-900 dark:hover:via-neutral-900/60 dark:hover:to-neutral-900"
         >
-            <TableHead colSpan={2} />
+            <TableHead colSpan={2} className="pl-4">
+                <span className="text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
+                    Totaux
+                </span>
+            </TableHead>
             <TableHead className="text-center">
                 <span
                     aria-label={`${boatCount} bateaux`}
-                    className="inline-flex min-w-7 items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary tabular-nums ring-1 ring-primary/15"
+                    className="inline-flex min-w-7 items-center justify-center rounded-lg bg-white px-2 py-0.5 text-xs font-bold shadow-sm ring-1 ring-slate-200/80 dark:bg-neutral-800 dark:ring-neutral-700"
                 >
                     {boatCount}
                 </span>
@@ -150,31 +183,31 @@ export function InvoiceColumnTotals({
             <TableHead className="text-center">
                 <span
                     aria-label={`${categoryCount} catégories`}
-                    className="inline-flex min-w-7 items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary tabular-nums ring-1 ring-primary/15"
+                    className="inline-flex min-w-7 items-center justify-center rounded-lg bg-white px-2 py-0.5 text-xs font-bold shadow-sm ring-1 ring-slate-200/80 dark:bg-neutral-800 dark:ring-neutral-700"
                 >
                     {categoryCount}
                 </span>
             </TableHead>
-            <TableHead className="text-center text-xs font-semibold text-foreground tabular-nums">
-                {formatTotal(totals.quantity)}
+            <TableHead className="text-center">
+                <TotalBadge value={totals.quantity} />
             </TableHead>
-            <TableHead className="text-right text-xs font-semibold text-foreground tabular-nums">
-                {formatTotal(totals.price)}
+            <TableHead className="text-right">
+                <TotalBadge value={totals.price} tone="blue" />
             </TableHead>
             <TableHead />
-            <TableHead className="text-center text-xs font-semibold text-foreground tabular-nums">
-                {formatTotal(totals.weight)}
+            <TableHead className="text-center">
+                <TotalBadge value={totals.weight} tone="violet" />
             </TableHead>
-            <TableHead className="text-center text-xs font-semibold text-foreground tabular-nums">
-                {formatTotal(totals.boxes)}
+            <TableHead className="text-center">
+                <TotalBadge value={totals.boxes} tone="amber" />
             </TableHead>
-            <TableHead className="px-6 text-right text-xs font-semibold text-foreground tabular-nums">
-                {formatTotal(totals.amount)}
+            <TableHead className="px-6 text-right">
+                <TotalBadge value={totals.amount} tone="blue" />
             </TableHead>
-            <TableHead className="border-l border-slate-100 px-4 text-right text-xs font-semibold text-foreground tabular-nums dark:border-neutral-800">
-                {formatTotal(totals.difference)}
+            <TableHead className="px-4 text-right">
+                <TotalBadge value={totals.difference} tone="rose" />
             </TableHead>
-            <TableHead className="border-l border-slate-100 dark:border-neutral-800" />
+            <TableHead />
             <TableHead />
         </TableRow>
     );
