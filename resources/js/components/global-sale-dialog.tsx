@@ -968,7 +968,7 @@ export function GlobalSaleDialog({
                             <TableRow
                                 data-sale-row="draft"
                                 hidden={!hasRemainingInvoiceStock}
-                                className="group h-10 min-h-10 border-b border-amber-200 bg-amber-50/70 transition-colors hover:bg-amber-100/70 dark:border-amber-900 dark:bg-amber-950/30 dark:hover:bg-amber-950/50"
+                                className="group h-10 min-h-10 border-b border-amber-200 bg-amber-50/70 transition-colors hover:bg-amber-50/70 dark:border-amber-900 dark:bg-amber-950/30 dark:hover:bg-amber-950/30"
                             >
                                 <TableCell
                                     {...(!sale ? cellProps('draft', 'sale_id') : {})}
@@ -1006,7 +1006,7 @@ export function GlobalSaleDialog({
                                                         setSelectedSaleId(''),
                                                     )
                                                 }
-                                                className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 shadow-none capitalize focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800"
+                                                className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 shadow-none capitalize hover:bg-transparent focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800"
                                             />
                                         </>
                                     )}
@@ -1049,7 +1049,7 @@ export function GlobalSaleDialog({
                                                 updateDraft({ itemId: '' }),
                                             )
                                         }
-                                        className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 shadow-none capitalize focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800"
+                                        className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 shadow-none capitalize hover:bg-transparent focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800"
                                     />
                                 </TableCell>
                                 <TableCell {...cellProps('draft', 'unit_count')} className="w-20 border-r border-slate-100 p-0 dark:border-neutral-800">
@@ -1130,7 +1130,7 @@ export function GlobalSaleDialog({
                                 <TableCell className="w-12" />
                             </TableRow>
                             {boatlessSaleItems.map((line) => (
-                                <TableRow data-sale-row={line.id} key={line.id} className="group h-10 border-b border-slate-100 dark:border-neutral-800">
+                                <TableRow data-sale-row={line.id} key={line.id} className="group h-10 border-b border-slate-100 hover:bg-transparent dark:border-neutral-800">
                                     <TableCell {...cellProps(String(line.id), 'sale_id')} className="min-w-40 border-r border-slate-100 p-0 dark:border-neutral-800">
                                         {cellDecorations(String(line.id), 'sale_id')}
                                         <SearchSelect value={clientIds[String(line.id)] ?? String(line.sale_id)} options={sales.map((option) => ({ id: option.id, name: option.customer?.name ?? `Vente #${option.id}` }))} placeholder="Client..." emptyMessage="Aucun client trouvé." open={openClientIds[String(line.id)] ?? false} onOpenChange={(open) => setOpenClientIds((state) => ({ ...state, [String(line.id)]: open }))} onKeyDown={(event) => handleCellKeyDown(event, () => setClientIds((state) => ({ ...state, [String(line.id)]: '' })))} onSelect={async (id) => {
@@ -1145,7 +1145,7 @@ export function GlobalSaleDialog({
                                                     return next;
                                                 });
                                             }
-                                        }} className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 shadow-none capitalize focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800" />
+                                        }} className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 shadow-none capitalize hover:bg-transparent focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800" />
                                     </TableCell>
                                     <TableCell {...cellProps(String(line.id), 'sale_price')} className="w-28 border-r border-slate-100 p-0 dark:border-neutral-800">
                                         {cellDecorations(String(line.id), 'sale_price')}
@@ -1204,7 +1204,7 @@ export function GlobalSaleDialog({
                                                     });
                                                 }
                                             }}
-                                            className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 shadow-none capitalize focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800"
+                                            className="h-10 w-full border-none bg-transparent px-3 font-medium text-slate-900 shadow-none capitalize hover:bg-transparent focus-visible:bg-slate-100 focus-visible:ring-0 dark:text-neutral-100 dark:focus-visible:bg-neutral-800"
                                         />
                                     </TableCell>
                                     <TableCell {...cellProps(String(line.id), 'unit_count')} className="w-20 border-r border-slate-100 p-0 dark:border-neutral-800">

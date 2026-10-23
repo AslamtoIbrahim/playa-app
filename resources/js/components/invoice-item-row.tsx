@@ -206,7 +206,7 @@ export default function InvoiceItemRow({
 
     const cellFocusClass = 'transition-colors';
     const searchSelectClass =
-        'h-10 w-full border-none bg-transparent px-3 text-left text-xs shadow-none focus-visible:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none';
+        'h-10 w-full border-none bg-transparent px-3 text-left text-xs shadow-none hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none';
 
     const inputBaseClass =
         'border-none rounded-none h-10 text-xs shadow-none bg-transparent focus-visible:ring-0 w-full font-normal [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none text-slate-900 dark:text-neutral-100';
@@ -222,9 +222,13 @@ export default function InvoiceItemRow({
                 'group border-b border-slate-100 dark:border-neutral-800',
                 isNew
                     ? 'bg-slate-50/50 dark:bg-neutral-900/60'
-                    : 'hover:bg-slate-50/30 dark:hover:bg-neutral-900/40',
+                    : 'hover:bg-transparent',
+                isNew &&
+                    'hover:bg-slate-50/50 dark:hover:bg-neutral-900/60',
                 isDragging && 'bg-blue-50/80 shadow-2xl dark:bg-blue-950/60',
                 selected && 'bg-blue-50/50 dark:bg-blue-950/40',
+                selected &&
+                    'hover:bg-blue-50/50 dark:hover:bg-blue-950/40',
                 isNew && 'print:hidden',
             )}
         >
