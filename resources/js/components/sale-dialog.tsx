@@ -1450,9 +1450,6 @@ export function SaleDialog({
                                                                         )
                                                                     );
                                                                 },
-                                                                undefined,
-                                                                (_item, index) =>
-                                                                    `sale-${savedSaleRows[index].line.id}`,
                                                             );
                                                         }
                                                     }}
@@ -1752,8 +1749,6 @@ export function SaleDialog({
                                                                                 .category_id
                                                                     );
                                                                 },
-                                                                (_item, index) =>
-                                                                    `sale-${savedSaleRows[index].line.id}`,
                                                             );
                                                         }
                                                     }}
