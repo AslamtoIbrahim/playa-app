@@ -253,7 +253,7 @@ export function InvoiceColumnFilter({
                             'bg-primary/15 text-primary ring-1 ring-primary/20',
                     )}
                 >
-                    <Filter className="size-3.5" />
+                    <Filter className="size-3" />
                 </button>
             </PopoverTrigger>
             <PopoverContent
