@@ -55,6 +55,8 @@ import {
     InvoiceGlobalSearch,
 } from '@/components/invoice-item-filters';
 import { useInvoiceItemFilters } from '@/hooks/use-invoice-item-filters';
+import { useInvoiceCellSelection } from '@/hooks/use-invoice-cell-selection';
+import { InvoiceSelectionStatistics } from '@/components/invoice-selection-statistics';
 
 // Types & Routes
 import { DifferenceDialog } from '@/components/difference-dialog';
@@ -186,8 +188,13 @@ export default function InvoiceShow({
 
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [showColumnFilters, setShowColumnFilters] = useState(false);
-    const { filters, setFilters, filteredItems, activeFilterCount, clearColumnFilters } =
-        useInvoiceItemFilters(localItems);
+    const {
+        filters,
+        setFilters,
+        filteredItems,
+        activeFilterCount,
+        clearColumnFilters,
+    } = useInvoiceItemFilters(localItems);
 
     const toggleColumnFilters = () => {
         if (showColumnFilters) {
@@ -208,12 +215,15 @@ export default function InvoiceShow({
         single: boolean;
     } | null>(null);
     const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
-    const [cellSelection, setCellSelection] = useState<{
-        rowId: number;
-        field: string;
-        value: string;
-        anchorId: number;
-    } | null>(null);
+    const {
+        selection: cellSelection,
+        setSelection: setCellSelection,
+        selectCell,
+        extendSelection,
+        getSelectedCellRange,
+        statistics: selectionStatistics,
+        rowIds,
+    } = useInvoiceCellSelection(localItems);
     const fillDrag = useRef<{
         rowId: number;
         field: string;
@@ -227,7 +237,9 @@ export default function InvoiceShow({
 
             if (
                 target instanceof Element &&
-                !target.closest('[data-invoice-cell]')
+                !target.closest(
+                    '[data-invoice-cell], [data-invoice-selection-statistics]',
+                )
             ) {
                 setCellSelection(null);
             }
@@ -244,7 +256,7 @@ export default function InvoiceShow({
                 clearCellSelectionOutsideTable,
             );
         };
-    }, []);
+    }, [setCellSelection]);
 
     const handleFillStart = (rowId: number, field: string, value: string) => {
         fillDrag.current = { rowId, field, value, targetId: rowId };
@@ -316,7 +328,7 @@ export default function InvoiceShow({
             window.removeEventListener('pointermove', handlePointerMove);
             window.removeEventListener('pointerup', handlePointerUp);
         };
-    }, [localItems]);
+    }, [localItems, setCellSelection]);
 
     useEffect(() => {
         const rowIds = getRowIds(localItems);
@@ -377,15 +389,22 @@ export default function InvoiceShow({
                             targetRow?.[targetField as keyof InvoiceItem] ?? '',
                         );
 
-                    setCellSelection((current) => ({
-                        rowId: targetRowId,
-                        field: targetField,
-                        value,
-                        anchorId:
-                            event.shiftKey && current
-                                ? current.anchorId
-                                : targetRowId,
-                    }));
+                    if (event.shiftKey && event.key.startsWith('Arrow')) {
+                        if (
+                            event.key === 'ArrowUp' ||
+                            event.key === 'ArrowDown'
+                        ) {
+                            event.preventDefault();
+                            extendSelection(targetRowId, targetField, value);
+                        }
+                    } else {
+                        setCellSelection({
+                            rowId: targetRowId,
+                            field: targetField,
+                            value,
+                            anchorId: targetRowId,
+                        });
+                    }
                 }
             }
 
@@ -427,56 +446,7 @@ export default function InvoiceShow({
         window.addEventListener('keydown', fillDown);
 
         return () => window.removeEventListener('keydown', fillDown);
-    }, [cellSelection, localItems]);
-
-    const handleCellSelect = (
-        rowId: number,
-        field: string,
-        value: string,
-        shift: boolean,
-    ) => {
-        setCellSelection((current) => ({
-            rowId,
-            field,
-            value: shift && current?.field === field ? current.value : value,
-            anchorId:
-                shift && current?.field === field ? current.anchorId : rowId,
-        }));
-    };
-
-    const rowIds = getRowIds(localItems);
-
-    /**
-     * Selection string consumed by a row: `|id:field|id:field|` for every row
-     * of the range, or null when the row is outside it.
-     */
-    const getSelectedCellRange = (rowId: number): string | null => {
-        if (!cellSelection) {
-            return null;
-        }
-
-        const rowIndex = rowIds.indexOf(rowId);
-        const anchorIndex = rowIds.indexOf(cellSelection.anchorId);
-        const targetIndex = rowIds.indexOf(cellSelection.rowId);
-
-        if (rowIndex < 0 || anchorIndex < 0 || targetIndex < 0) {
-            return null;
-        }
-
-        const first = Math.min(anchorIndex, targetIndex);
-        const last = Math.max(anchorIndex, targetIndex);
-
-        if (rowIndex < first || rowIndex > last) {
-            return null;
-        }
-
-        const range = rowIds
-            .slice(first, last + 1)
-            .map((id) => `${id}:${cellSelection.field}`)
-            .join('|');
-
-        return `|${range}|`;
-    };
+    }, [cellSelection, extendSelection, localItems, rowIds, setCellSelection]);
 
     // الحسابات
     const stats = useInvoiceCalculations(invoice);
@@ -839,9 +809,14 @@ export default function InvoiceShow({
                         activeFilterCount={activeFilterCount}
                         onToggleColumnFilters={toggleColumnFilters}
                     />
-                    <span className="text-xs text-muted-foreground">
-                        {filteredItems.length} / {localItems.length} lignes
-                    </span>
+                    <div className="flex items-center gap-2">
+                        <InvoiceSelectionStatistics
+                            statistics={selectionStatistics}
+                        />
+                        <span className="text-xs text-muted-foreground">
+                            {filteredItems.length} / {localItems.length} lignes
+                        </span>
+                    </div>
                 </div>
                 <DndContext
                     sensors={sensors}
@@ -851,7 +826,9 @@ export default function InvoiceShow({
                     modifiers={[restrictToVerticalAxis]}
                 >
                     <Table>
-                        <TableHeader className={`border-b border-slate-100 bg-slate-50/50 dark:border-neutral-800 dark:bg-neutral-900/50 ${showColumnFilters ? '' : '[&_[data-column-filter-trigger]]:hidden'}`}>
+                        <TableHeader
+                            className={`border-b border-slate-100 bg-slate-50/50 dark:border-neutral-800 dark:bg-neutral-900/50 ${showColumnFilters ? '' : '[&_[data-column-filter-trigger]]:hidden'}`}
+                        >
                             <InvoiceColumnTotals
                                 items={filteredItems}
                                 visible={showColumnFilters}
@@ -1060,7 +1037,7 @@ export default function InvoiceShow({
                                 owners={owners}
                                 categories={categories}
                                 isNew={true}
-                                onCellSelect={handleCellSelect}
+                                onCellSelect={selectCell}
                                 onFillStart={handleFillStart}
                                 selectedCell={getSelectedCellRange(
                                     NEW_INVOICE_ITEM_ROW_ID,
@@ -1087,7 +1064,7 @@ export default function InvoiceShow({
                                                 row.id
                                             ] ?? 0
                                         }
-                                        onCellSelect={handleCellSelect}
+                                        onCellSelect={selectCell}
                                         onFillStart={handleFillStart}
                                         selectedCell={getSelectedCellRange(
                                             row.id,
