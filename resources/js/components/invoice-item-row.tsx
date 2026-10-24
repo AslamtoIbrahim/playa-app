@@ -546,7 +546,7 @@ export default function InvoiceItemRow({
             <TableCell
                 {...cellProps('difference', differenceTotal)}
                 className={cn(
-                    'w-28 border-l border-slate-100 bg-slate-50/10 p-0 dark:border-neutral-800 dark:bg-neutral-900/20',
+                    'w-28 bg-slate-50/10 p-0 dark:bg-neutral-900/20',
                     cellFocusClass,
                 )}
             >
@@ -590,7 +590,7 @@ export default function InvoiceItemRow({
             </TableCell>
 
             {/* VENTE : ouvre le dialogue de vente */}
-            <TableCell className="w-12 border-l border-slate-100 p-0 text-center dark:border-neutral-800 print:hidden">
+            <TableCell className="w-12 p-0 text-center print:hidden">
                 <div className="flex h-10 w-full items-center justify-center">
                     <InvoiceItemSaleButton
                         item={item}

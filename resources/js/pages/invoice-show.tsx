@@ -917,8 +917,23 @@ export default function InvoiceShow({
                 >
                     <div className="shrink-0">
                         <Table>
+                            <colgroup>
+                                <col className="w-8" />
+                                <col className="w-10" />
+                                <col className="w-55" />
+                                <col className="w-50" />
+                                <col className="w-20" />
+                                <col className="w-28" />
+                                <col className="w-28" />
+                                <col className="w-24" />
+                                <col className="w-20" />
+                                <col className="w-25" />
+                                <col className="w-20" />
+                                <col className="w-10" />
+                                <col className="w-10" />
+                            </colgroup>
                             <TableHeader
-                                className={`border-b border-slate-100 bg-slate-50/50 dark:border-neutral-800 dark:bg-neutral-900/50 ${showColumnFilters ? '' : '[&_[data-column-filter-trigger]]:hidden'}`}
+                                className={`border-b border-slate-100 bg-slate-50/50 dark:border-neutral-800 dark:bg-neutral-900/50 ${showColumnFilters ? '' : '**:data-column-filter-trigger:hidden'}`}
                             >
                                 <InvoiceColumnTotals
                                     items={filteredItems}
@@ -1034,7 +1049,7 @@ export default function InvoiceShow({
                                             />
                                         </span>
                                     </TableHead>
-                                    <TableHead className="text-right text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
+                                    <TableHead className="pr-6 text-right text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
                                         <span className="inline-flex items-center">
                                             Prix Unitaire
                                             <InvoiceColumnFilter
@@ -1063,7 +1078,7 @@ export default function InvoiceShow({
                                             />
                                         </span>
                                     </TableHead>
-                                    <TableHead className="text-center text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
+                                    <TableHead className="pr-6 text-center text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
                                         <span className="inline-flex items-center">
                                             Poids
                                             <InvoiceColumnFilter
@@ -1074,7 +1089,7 @@ export default function InvoiceShow({
                                             />
                                         </span>
                                     </TableHead>
-                                    <TableHead className="text-center text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
+                                    <TableHead className="pr-8 text-center text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
                                         <span className="inline-flex items-center">
                                             Caisses
                                             <InvoiceColumnFilter
@@ -1096,7 +1111,7 @@ export default function InvoiceShow({
                                             />
                                         </span>
                                     </TableHead>
-                                    <TableHead className="w-28 border-l border-slate-100 px-4 text-right text-[10px] font-black tracking-tight text-slate-500 uppercase dark:border-neutral-800 dark:text-neutral-400">
+                                    <TableHead className="w-28 pr-6 text-right text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
                                         <span className="inline-flex items-center">
                                             Différence
                                             <InvoiceColumnFilter
@@ -1111,7 +1126,7 @@ export default function InvoiceShow({
                                             />
                                         </span>
                                     </TableHead>
-                                    <TableHead className="w-12 border-l border-slate-100 px-2 text-center text-[10px] font-black tracking-tight text-slate-500 uppercase dark:border-neutral-800 dark:text-neutral-400 print:hidden">
+                                    <TableHead className="w-12 pr-4 text-center text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400 print:hidden">
                                         <span className="inline-flex items-center">
                                             Vente
                                             <InvoiceColumnFilter
@@ -1133,6 +1148,21 @@ export default function InvoiceShow({
                     </div>
                     <div className="min-h-0 flex-1 overflow-y-auto">
                         <Table>
+                            <colgroup>
+                                <col className="w-8" />
+                                <col className="w-10" />
+                                <col className="w-45" />
+                                <col className="w-45" />
+                                <col className="w-24" />
+                                <col className="w-28" />
+                                <col className="w-28" />
+                                <col className="w-24" />
+                                <col className="w-20" />
+                                <col className="w-32" />
+                                <col className="w-28" />
+                                <col className="w-12" />
+                                <col className="w-12" />
+                            </colgroup>
                             <TableBody>
                                 <InvoiceItemRow
                                     invoiceId={invoice.id}
