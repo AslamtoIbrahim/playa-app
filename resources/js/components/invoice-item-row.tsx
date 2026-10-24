@@ -14,7 +14,7 @@ import {
     formatDifferenceAmount,
 } from '@/lib/differences';
 import { Check, Loader2, GripVertical } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useEffect } from 'react';
 
 // Drag & Drop
@@ -100,6 +100,19 @@ export default function InvoiceItemRow({
      * id for the unsaved row so it behaves like the saved rows.
      */
     const rowId = item?.id ?? (isNew ? NEW_INVOICE_ITEM_ROW_ID : undefined);
+    const [isUnitSelectOpen, setIsUnitSelectOpen] = useState(false);
+
+    useEffect(() => {
+        const closeUnitSelect = () => setIsUnitSelectOpen(false);
+        window.addEventListener('invoice-close-unit-select', closeUnitSelect);
+
+        return () => {
+            window.removeEventListener(
+                'invoice-close-unit-select',
+                closeUnitSelect,
+            );
+        };
+    }, []);
 
     useEffect(() => {
         if (rowId === undefined) {
@@ -132,13 +145,13 @@ export default function InvoiceItemRow({
         'data-invoice-cell': field,
         'data-invoice-row': rowId,
         onMouseDownCapture: (event: React.MouseEvent) => {
+            if (rowId !== undefined) {
+                onCellSelect?.(rowId, field, String(value), event.shiftKey);
+            }
+
             if (event.shiftKey) {
                 event.preventDefault();
                 event.stopPropagation();
-
-                if (rowId !== undefined) {
-                    onCellSelect?.(rowId, field, String(value), true);
-                }
             }
         },
         onClickCapture: (event: React.MouseEvent) => {
@@ -147,19 +160,16 @@ export default function InvoiceItemRow({
                 event.stopPropagation();
             }
         },
-        onMouseDown: (event: React.MouseEvent) => {
-            if (rowId !== undefined && !event.shiftKey) {
-                onCellSelect?.(rowId, field, String(value), event.shiftKey);
-            }
-        },
         onClick: (event: React.MouseEvent) => {
             if (event.shiftKey) {
                 event.preventDefault();
                 event.stopPropagation();
             }
         },
-        style:
-            rowId !== undefined &&
+        style: {
+            cursor: field === 'amount' ? 'pointer' : 'cell',
+            userSelect: 'none' as const,
+            ...(rowId !== undefined &&
             selectedCell?.includes(`|${rowId}:${field}|`)
                 ? {
                       position: 'relative' as const,
@@ -177,7 +187,8 @@ export default function InvoiceItemRow({
                           .filter(Boolean)
                           .join(', '),
                   }
-                : undefined,
+                : {}),
+        },
     });
 
     const isFillHandle = (field: string) =>
@@ -420,6 +431,8 @@ export default function InvoiceItemRow({
                 )}
             >
                 <Select
+                    open={isUnitSelectOpen}
+                    onOpenChange={setIsUnitSelectOpen}
                     value={data.unit}
                     onValueChange={(val) => {
                         {
@@ -515,7 +528,13 @@ export default function InvoiceItemRow({
                 {fillHandle('box', displayBox)}
             </TableCell>
 
-            <TableCell className="w-32 bg-slate-50/10 px-6 text-right text-xs font-normal text-slate-900 dark:bg-neutral-900/20 dark:text-neutral-100">
+            <TableCell
+                {...cellProps('amount', amount)}
+                className={cn(
+                    'w-32 bg-slate-50/10 px-6 text-right text-xs font-normal text-slate-900 dark:bg-neutral-900/20 dark:text-neutral-100',
+                    cellFocusClass,
+                )}
+            >
                 {amount > 0
                     ? amount.toLocaleString('fr-FR', {
                           minimumFractionDigits: 2,
@@ -524,7 +543,13 @@ export default function InvoiceItemRow({
             </TableCell>
 
             {/* DIFFÉRENCE : clic = ouvrir le DifferenceDialog */}
-            <TableCell className="w-28 border-l border-slate-100 bg-slate-50/10 p-0 dark:border-neutral-800 dark:bg-neutral-900/20">
+            <TableCell
+                {...cellProps('difference', differenceTotal)}
+                className={cn(
+                    'w-28 border-l border-slate-100 bg-slate-50/10 p-0 dark:border-neutral-800 dark:bg-neutral-900/20',
+                    cellFocusClass,
+                )}
+            >
                 <button
                     type="button"
                     disabled={!item}

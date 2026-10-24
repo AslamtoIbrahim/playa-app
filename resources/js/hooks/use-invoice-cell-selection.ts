@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import type { InvoiceItem } from '@/types/invoice-item';
+import { computeInvoiceItemDifferenceTotal } from '@/lib/differences';
 
 export interface InvoiceCellSelection {
     rowId: number;
@@ -14,6 +15,7 @@ const numericFields = new Set([
     'weight',
     'box',
     'amount',
+    'difference',
 ]);
 
 const parseNumber = (value: string): number | null => {
@@ -109,6 +111,17 @@ export function useInvoiceCellSelection(items: InvoiceItem[]) {
             }
 
             const item = items.find((row) => row.id === id);
+
+            if (selection.field === 'amount') {
+                return String(
+                    Number(item?.unit_count ?? 0) *
+                        Number(item?.unit_price ?? 0),
+                );
+            }
+
+            if (selection.field === 'difference') {
+                return String(computeInvoiceItemDifferenceTotal(item));
+            }
 
             return String(item?.[selection.field as keyof InvoiceItem] ?? '');
         });

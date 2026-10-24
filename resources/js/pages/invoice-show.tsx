@@ -230,6 +230,10 @@ export default function InvoiceShow({
         value: string;
         targetId: number;
     } | null>(null);
+    const cellSelectDrag = useRef<{
+        rowId: number;
+        field: string;
+    } | null>(null);
 
     useEffect(() => {
         const clearCellSelectionOutsideTable = (event: PointerEvent) => {
@@ -262,9 +266,47 @@ export default function InvoiceShow({
         fillDrag.current = { rowId, field, value, targetId: rowId };
     };
 
+    const handleCellSelect = (
+        rowId: number,
+        field: string,
+        value: string,
+        shift: boolean,
+    ) => {
+        selectCell(rowId, field, value, shift);
+        cellSelectDrag.current = shift ? null : { rowId, field };
+    };
+
     useEffect(() => {
         const handlePointerMove = (event: PointerEvent) => {
             if (!fillDrag.current) {
+                const drag = cellSelectDrag.current;
+
+                if (drag?.field === 'unit') {
+                    window.dispatchEvent(
+                        new Event('invoice-close-unit-select'),
+                    );
+                }
+
+                const target = document
+                    .elementFromPoint(event.clientX, event.clientY)
+                    ?.closest<HTMLElement>(
+                        '[data-invoice-cell][data-invoice-row]',
+                    );
+
+                if (
+                    drag &&
+                    target?.dataset.invoiceCell === drag.field &&
+                    target.dataset.invoiceRow
+                ) {
+                    const rowId = Number(target.dataset.invoiceRow);
+                    const value =
+                        target.querySelector<HTMLInputElement>('input')
+                            ?.value ??
+                        target.textContent?.trim() ??
+                        '';
+                    extendSelection(rowId, drag.field, value);
+                }
+
                 return;
             }
 
@@ -287,6 +329,7 @@ export default function InvoiceShow({
         };
 
         const handlePointerUp = () => {
+            cellSelectDrag.current = null;
             const drag = fillDrag.current;
             fillDrag.current = null;
 
@@ -328,7 +371,51 @@ export default function InvoiceShow({
             window.removeEventListener('pointermove', handlePointerMove);
             window.removeEventListener('pointerup', handlePointerUp);
         };
-    }, [localItems, setCellSelection]);
+    }, [extendSelection, localItems, setCellSelection]);
+
+    useEffect(() => {
+        const extendSelectionWithShiftArrow = (event: KeyboardEvent) => {
+            if (
+                !event.shiftKey ||
+                (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') ||
+                !cellSelection
+            ) {
+                return;
+            }
+
+            const currentIndex = rowIds.indexOf(cellSelection.rowId);
+            const targetIndex =
+                currentIndex + (event.key === 'ArrowDown' ? 1 : -1);
+            const targetRowId = rowIds[targetIndex];
+
+            if (targetRowId === undefined) {
+                return;
+            }
+
+            const targetCell = document.querySelector<HTMLElement>(
+                `[data-invoice-row="${targetRowId}"][data-invoice-cell="${cellSelection.field}"]`,
+            );
+            const value =
+                targetCell?.querySelector<HTMLInputElement>('input')?.value ??
+                targetCell?.textContent?.trim() ??
+                '';
+
+            event.preventDefault();
+            event.stopPropagation();
+            extendSelection(targetRowId, cellSelection.field, value);
+            window.dispatchEvent(new Event('invoice-close-unit-select'));
+        };
+
+        window.addEventListener('keydown', extendSelectionWithShiftArrow, true);
+
+        return () => {
+            window.removeEventListener(
+                'keydown',
+                extendSelectionWithShiftArrow,
+                true,
+            );
+        };
+    }, [cellSelection, extendSelection, rowIds]);
 
     useEffect(() => {
         const rowIds = getRowIds(localItems);
@@ -352,6 +439,8 @@ export default function InvoiceShow({
                     'unit',
                     'weight',
                     'box',
+                    'amount',
+                    'difference',
                 ];
                 const rowIndex = rowIds.indexOf(
                     Number(cell.dataset.invoiceRow),
@@ -385,6 +474,7 @@ export default function InvoiceShow({
                     const value =
                         targetCell?.querySelector<HTMLInputElement>('input')
                             ?.value ??
+                        targetCell?.textContent?.trim() ??
                         String(
                             targetRow?.[targetField as keyof InvoiceItem] ?? '',
                         );
@@ -1037,7 +1127,7 @@ export default function InvoiceShow({
                                 owners={owners}
                                 categories={categories}
                                 isNew={true}
-                                onCellSelect={selectCell}
+                                onCellSelect={handleCellSelect}
                                 onFillStart={handleFillStart}
                                 selectedCell={getSelectedCellRange(
                                     NEW_INVOICE_ITEM_ROW_ID,
@@ -1064,7 +1154,7 @@ export default function InvoiceShow({
                                                 row.id
                                             ] ?? 0
                                         }
-                                        onCellSelect={selectCell}
+                                        onCellSelect={handleCellSelect}
                                         onFillStart={handleFillStart}
                                         selectedCell={getSelectedCellRange(
                                             row.id,
