@@ -11,7 +11,10 @@ export default function AppSidebarLayout({
     return (
         <AppShell variant="sidebar">
             <AppSidebar />
-            <AppContent variant="sidebar" className="overflow-x-hidden">
+            <AppContent variant="sidebar" className="overflow-x-clip">
+                {/* overflow-x-clip instead of hidden: clip does not create a
+                    scroll container, so position:sticky keeps working inside
+                    pages (e.g. sticky table headers). */}
                 {/* <AppSidebarHeader breadcrumbs={breadcrumbs} /> */}
                 {children}
             </AppContent>

@@ -887,9 +887,9 @@ export default function InvoiceShow({
             {/* Table Area */}
             <div
                 id="invoice-content"
-                className="relative overflow-hidden rounded-lg border border-slate-100 shadow-sm dark:border-neutral-800 dark:bg-neutral-900"
+                className="relative overflow-clip rounded-lg border border-slate-100 shadow-sm **:data-[slot=table-container]:overflow-clip dark:border-neutral-800 dark:bg-neutral-900"
             >
-                <div className="flex items-center justify-between border-b border-border/60 bg-muted/20 px-3 py-2 print:hidden">
+                <div className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border/60 bg-muted/80 px-3 py-2 backdrop-blur-sm print:hidden">
                     <InvoiceGlobalSearch
                         value={filters.search}
                         onChange={(search) =>
@@ -899,7 +899,7 @@ export default function InvoiceShow({
                         activeFilterCount={activeFilterCount}
                         onToggleColumnFilters={toggleColumnFilters}
                     />
-                    <div className="flex items-center gap-2 mr-8">
+                    <div className="mr-8 flex items-center gap-2">
                         <InvoiceSelectionStatistics
                             statistics={selectionStatistics}
                         />
@@ -932,7 +932,7 @@ export default function InvoiceShow({
                             <col className="w-12" />
                         </colgroup>
                         <TableHeader
-                            className={`border-b border-slate-100 bg-slate-50/50 dark:border-neutral-800 dark:bg-neutral-900/50 ${showColumnFilters ? '' : '**:data-column-filter-trigger:hidden'}`}
+                            className={`sticky top-14 z-20 border-b border-slate-100 bg-slate-50/80 shadow-sm backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-900/90 ${showColumnFilters ? '' : '**:data-column-filter-trigger:hidden'}`}
                         >
                             <InvoiceColumnTotals
                                 items={filteredItems}
@@ -940,7 +940,7 @@ export default function InvoiceShow({
                             />
                             <TableRow className="h-11 hover:bg-transparent">
                                 <TableHead className="w-8 print:hidden"></TableHead>
-                                <TableHead className="w-10 print:hidden">
+                                <TableHead className="w-8 print:hidden">
                                     <Checkbox
                                         className="mt-1 mr-2"
                                         checked={
