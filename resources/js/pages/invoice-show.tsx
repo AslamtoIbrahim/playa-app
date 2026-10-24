@@ -899,7 +899,7 @@ export default function InvoiceShow({
                         activeFilterCount={activeFilterCount}
                         onToggleColumnFilters={toggleColumnFilters}
                     />
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 mr-8">
                         <InvoiceSelectionStatistics
                             statistics={selectionStatistics}
                         />
