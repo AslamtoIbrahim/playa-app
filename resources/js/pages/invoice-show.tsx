@@ -887,7 +887,7 @@ export default function InvoiceShow({
             {/* Table Area */}
             <div
                 id="invoice-content"
-                className="relative overflow-hidden rounded-lg rounded-b-none border border-slate-100 shadow-sm dark:border-neutral-800 dark:bg-neutral-900"
+                className="relative flex max-h-[calc(100vh-3.5rem)] flex-col overflow-hidden rounded-lg border border-slate-100 shadow-sm dark:border-neutral-800 dark:bg-neutral-900"
             >
                 <div className="flex items-center justify-between border-b border-border/60 bg-muted/20 px-3 py-2 print:hidden">
                     <InvoiceGlobalSearch
@@ -915,268 +915,288 @@ export default function InvoiceShow({
                     onDragEnd={handleDragEnd}
                     modifiers={[restrictToVerticalAxis]}
                 >
-                    <Table>
-                        <TableHeader
-                            className={`border-b border-slate-100 bg-slate-50/50 dark:border-neutral-800 dark:bg-neutral-900/50 ${showColumnFilters ? '' : '[&_[data-column-filter-trigger]]:hidden'}`}
-                        >
-                            <InvoiceColumnTotals
-                                items={filteredItems}
-                                visible={showColumnFilters}
-                            />
-                            <TableRow className="h-11 hover:bg-transparent">
-                                <TableHead className="w-8 print:hidden"></TableHead>
-                                <TableHead className="w-10 print:hidden">
-                                    <Checkbox
-                                        className="mt-1 mr-2"
-                                        checked={
-                                            selectedIds.length ===
-                                                filteredItems.length &&
-                                            filteredItems.length > 0
-                                        }
-                                        onCheckedChange={(checked) => {
-                                            if (checked) {
-                                                setSelectedIds((current) => [
-                                                    ...new Set([
-                                                        ...current,
-                                                        ...filteredItems.map(
+                    <div className="shrink-0">
+                        <Table>
+                            <TableHeader
+                                className={`border-b border-slate-100 bg-slate-50/50 dark:border-neutral-800 dark:bg-neutral-900/50 ${showColumnFilters ? '' : '[&_[data-column-filter-trigger]]:hidden'}`}
+                            >
+                                <InvoiceColumnTotals
+                                    items={filteredItems}
+                                    visible={showColumnFilters}
+                                />
+                                <TableRow className="h-11 hover:bg-transparent">
+                                    <TableHead className="w-8 print:hidden"></TableHead>
+                                    <TableHead className="w-10 print:hidden">
+                                        <Checkbox
+                                            className="mt-1 mr-2"
+                                            checked={
+                                                selectedIds.length ===
+                                                    filteredItems.length &&
+                                                filteredItems.length > 0
+                                            }
+                                            onCheckedChange={(checked) => {
+                                                if (checked) {
+                                                    setSelectedIds(
+                                                        (current) => [
+                                                            ...new Set([
+                                                                ...current,
+                                                                ...filteredItems.map(
+                                                                    (item) =>
+                                                                        item.id,
+                                                                ),
+                                                            ]),
+                                                        ],
+                                                    );
+                                                } else {
+                                                    const visibleIds = new Set(
+                                                        filteredItems.map(
                                                             (item) => item.id,
                                                         ),
-                                                    ]),
-                                                ]);
-                                            } else {
-                                                const visibleIds = new Set(
-                                                    filteredItems.map(
-                                                        (item) => item.id,
+                                                    );
+                                                    setSelectedIds((current) =>
+                                                        current.filter(
+                                                            (id) =>
+                                                                !visibleIds.has(
+                                                                    id,
+                                                                ),
+                                                        ),
+                                                    );
+                                                }
+                                            }}
+                                        />
+                                    </TableHead>
+                                    <TableHead className="text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
+                                        <span className="inline-flex items-center">
+                                            Bateau
+                                            <InvoiceColumnFilter
+                                                column="boat"
+                                                title="Bateau"
+                                                options={[
+                                                    ...new Set(
+                                                        localItems
+                                                            .map(
+                                                                (row) =>
+                                                                    row.boat
+                                                                        ?.name,
+                                                            )
+                                                            .filter(
+                                                                (
+                                                                    name,
+                                                                ): name is string =>
+                                                                    Boolean(
+                                                                        name,
+                                                                    ),
+                                                            ),
                                                     ),
-                                                );
-                                                setSelectedIds((current) =>
-                                                    current.filter(
-                                                        (id) =>
-                                                            !visibleIds.has(id),
+                                                ].sort()}
+                                                filters={filters}
+                                                setFilters={setFilters}
+                                            />
+                                        </span>
+                                    </TableHead>
+                                    <TableHead className="text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
+                                        <span className="inline-flex items-center">
+                                            Catégorie
+                                            <InvoiceColumnFilter
+                                                column="category"
+                                                title="Catégorie"
+                                                options={[
+                                                    ...new Set(
+                                                        localItems
+                                                            .map(
+                                                                (row) =>
+                                                                    row.category
+                                                                        ?.name,
+                                                            )
+                                                            .filter(
+                                                                (
+                                                                    name,
+                                                                ): name is string =>
+                                                                    Boolean(
+                                                                        name,
+                                                                    ),
+                                                            ),
                                                     ),
-                                                );
+                                                ].sort()}
+                                                filters={filters}
+                                                setFilters={setFilters}
+                                            />
+                                        </span>
+                                    </TableHead>
+                                    <TableHead className="text-center text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
+                                        <span className="inline-flex items-center">
+                                            Qte / NC
+                                            <InvoiceColumnFilter
+                                                column="quantity"
+                                                title="Quantité"
+                                                filters={filters}
+                                                setFilters={setFilters}
+                                            />
+                                        </span>
+                                    </TableHead>
+                                    <TableHead className="text-right text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
+                                        <span className="inline-flex items-center">
+                                            Prix Unitaire
+                                            <InvoiceColumnFilter
+                                                column="price"
+                                                title="Prix unitaire"
+                                                filters={filters}
+                                                setFilters={setFilters}
+                                            />
+                                        </span>
+                                    </TableHead>
+                                    <TableHead className="text-center text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
+                                        <span className="inline-flex items-center">
+                                            Unité
+                                            <InvoiceColumnFilter
+                                                column="unit"
+                                                title="Unité"
+                                                options={[
+                                                    ...new Set(
+                                                        localItems.map(
+                                                            (row) => row.unit,
+                                                        ),
+                                                    ),
+                                                ].sort()}
+                                                filters={filters}
+                                                setFilters={setFilters}
+                                            />
+                                        </span>
+                                    </TableHead>
+                                    <TableHead className="text-center text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
+                                        <span className="inline-flex items-center">
+                                            Poids
+                                            <InvoiceColumnFilter
+                                                column="weight"
+                                                title="Poids"
+                                                filters={filters}
+                                                setFilters={setFilters}
+                                            />
+                                        </span>
+                                    </TableHead>
+                                    <TableHead className="text-center text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
+                                        <span className="inline-flex items-center">
+                                            Caisses
+                                            <InvoiceColumnFilter
+                                                column="boxes"
+                                                title="Caisses"
+                                                filters={filters}
+                                                setFilters={setFilters}
+                                            />
+                                        </span>
+                                    </TableHead>
+                                    <TableHead className="px-6 text-right text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
+                                        <span className="inline-flex items-center">
+                                            Valeur DH
+                                            <InvoiceColumnFilter
+                                                column="amount"
+                                                title="Valeur DH"
+                                                filters={filters}
+                                                setFilters={setFilters}
+                                            />
+                                        </span>
+                                    </TableHead>
+                                    <TableHead className="w-28 border-l border-slate-100 px-4 text-right text-[10px] font-black tracking-tight text-slate-500 uppercase dark:border-neutral-800 dark:text-neutral-400">
+                                        <span className="inline-flex items-center">
+                                            Différence
+                                            <InvoiceColumnFilter
+                                                column="difference"
+                                                title="Différence"
+                                                options={[
+                                                    'Avec différence',
+                                                    'Sans différence',
+                                                ]}
+                                                filters={filters}
+                                                setFilters={setFilters}
+                                            />
+                                        </span>
+                                    </TableHead>
+                                    <TableHead className="w-12 border-l border-slate-100 px-2 text-center text-[10px] font-black tracking-tight text-slate-500 uppercase dark:border-neutral-800 dark:text-neutral-400 print:hidden">
+                                        <span className="inline-flex items-center">
+                                            Vente
+                                            <InvoiceColumnFilter
+                                                column="sale"
+                                                title="Vente"
+                                                options={[
+                                                    'Avec vente',
+                                                    'Sans vente',
+                                                ]}
+                                                filters={filters}
+                                                setFilters={setFilters}
+                                            />
+                                        </span>
+                                    </TableHead>
+                                    <TableHead className="w-12 print:hidden"></TableHead>
+                                </TableRow>
+                            </TableHeader>
+                        </Table>
+                    </div>
+                    <div className="min-h-0 flex-1 overflow-y-auto">
+                        <Table>
+                            <TableBody>
+                                <InvoiceItemRow
+                                    invoiceId={invoice.id}
+                                    boats={boats}
+                                    items={items}
+                                    owners={owners}
+                                    categories={categories}
+                                    isNew={true}
+                                    onCellSelect={handleCellSelect}
+                                    onFillStart={handleFillStart}
+                                    selectedCell={getSelectedCellRange(
+                                        NEW_INVOICE_ITEM_ROW_ID,
+                                    )}
+                                    onOpenDifference={() => {}} // New row doesn't need this
+                                    onOpenSale={() => {}} // New row doesn't need this
+                                />
+
+                                <SortableContext
+                                    items={filteredItems.map((i) => i.id)}
+                                    strategy={verticalListSortingStrategy}
+                                >
+                                    {filteredItems.map((row) => (
+                                        <InvoiceItemRow
+                                            key={row.id}
+                                            invoiceId={invoice.id}
+                                            item={row}
+                                            boats={boats}
+                                            items={items}
+                                            owners={owners}
+                                            categories={categories}
+                                            globalSoldCount={
+                                                globalSoldCountByInvoiceItem[
+                                                    row.id
+                                                ] ?? 0
                                             }
-                                        }}
-                                    />
-                                </TableHead>
-                                <TableHead className="text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
-                                    <span className="inline-flex items-center">
-                                        Bateau
-                                        <InvoiceColumnFilter
-                                            column="boat"
-                                            title="Bateau"
-                                            options={[
-                                                ...new Set(
-                                                    localItems
-                                                        .map(
-                                                            (row) =>
-                                                                row.boat?.name,
-                                                        )
-                                                        .filter(
-                                                            (
-                                                                name,
-                                                            ): name is string =>
-                                                                Boolean(name),
-                                                        ),
-                                                ),
-                                            ].sort()}
-                                            filters={filters}
-                                            setFilters={setFilters}
+                                            onCellSelect={handleCellSelect}
+                                            onFillStart={handleFillStart}
+                                            selectedCell={getSelectedCellRange(
+                                                row.id,
+                                            )}
+                                            selected={selectedIds.includes(
+                                                row.id,
+                                            )}
+                                            onSelectChange={(checked) => {
+                                                setSelectedIds((prev) =>
+                                                    checked
+                                                        ? [...prev, row.id]
+                                                        : prev.filter(
+                                                              (id) =>
+                                                                  id !== row.id,
+                                                          ),
+                                                );
+                                            }}
+                                            onOpenDifference={
+                                                handleOpenDifference
+                                            }
+                                            onOpenSale={handleOpenSale}
+                                            onDelete={handleOpenDelete}
                                         />
-                                    </span>
-                                </TableHead>
-                                <TableHead className="text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
-                                    <span className="inline-flex items-center">
-                                        Catégorie
-                                        <InvoiceColumnFilter
-                                            column="category"
-                                            title="Catégorie"
-                                            options={[
-                                                ...new Set(
-                                                    localItems
-                                                        .map(
-                                                            (row) =>
-                                                                row.category
-                                                                    ?.name,
-                                                        )
-                                                        .filter(
-                                                            (
-                                                                name,
-                                                            ): name is string =>
-                                                                Boolean(name),
-                                                        ),
-                                                ),
-                                            ].sort()}
-                                            filters={filters}
-                                            setFilters={setFilters}
-                                        />
-                                    </span>
-                                </TableHead>
-                                <TableHead className="text-center text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
-                                    <span className="inline-flex items-center">
-                                        Qte / NC
-                                        <InvoiceColumnFilter
-                                            column="quantity"
-                                            title="Quantité"
-                                            filters={filters}
-                                            setFilters={setFilters}
-                                        />
-                                    </span>
-                                </TableHead>
-                                <TableHead className="text-right text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
-                                    <span className="inline-flex items-center">
-                                        Prix Unitaire
-                                        <InvoiceColumnFilter
-                                            column="price"
-                                            title="Prix unitaire"
-                                            filters={filters}
-                                            setFilters={setFilters}
-                                        />
-                                    </span>
-                                </TableHead>
-                                <TableHead className="text-center text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
-                                    <span className="inline-flex items-center">
-                                        Unité
-                                        <InvoiceColumnFilter
-                                            column="unit"
-                                            title="Unité"
-                                            options={[
-                                                ...new Set(
-                                                    localItems.map(
-                                                        (row) => row.unit,
-                                                    ),
-                                                ),
-                                            ].sort()}
-                                            filters={filters}
-                                            setFilters={setFilters}
-                                        />
-                                    </span>
-                                </TableHead>
-                                <TableHead className="text-center text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
-                                    <span className="inline-flex items-center">
-                                        Poids
-                                        <InvoiceColumnFilter
-                                            column="weight"
-                                            title="Poids"
-                                            filters={filters}
-                                            setFilters={setFilters}
-                                        />
-                                    </span>
-                                </TableHead>
-                                <TableHead className="text-center text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
-                                    <span className="inline-flex items-center">
-                                        Caisses
-                                        <InvoiceColumnFilter
-                                            column="boxes"
-                                            title="Caisses"
-                                            filters={filters}
-                                            setFilters={setFilters}
-                                        />
-                                    </span>
-                                </TableHead>
-                                <TableHead className="px-6 text-right text-[10px] font-black tracking-tight text-slate-500 uppercase dark:text-neutral-400">
-                                    <span className="inline-flex items-center">
-                                        Valeur DH
-                                        <InvoiceColumnFilter
-                                            column="amount"
-                                            title="Valeur DH"
-                                            filters={filters}
-                                            setFilters={setFilters}
-                                        />
-                                    </span>
-                                </TableHead>
-                                <TableHead className="w-28 border-l border-slate-100 px-4 text-right text-[10px] font-black tracking-tight text-slate-500 uppercase dark:border-neutral-800 dark:text-neutral-400">
-                                    <span className="inline-flex items-center">
-                                        Différence
-                                        <InvoiceColumnFilter
-                                            column="difference"
-                                            title="Différence"
-                                            options={[
-                                                'Avec différence',
-                                                'Sans différence',
-                                            ]}
-                                            filters={filters}
-                                            setFilters={setFilters}
-                                        />
-                                    </span>
-                                </TableHead>
-                                <TableHead className="w-12 border-l border-slate-100 px-2 text-center text-[10px] font-black tracking-tight text-slate-500 uppercase dark:border-neutral-800 dark:text-neutral-400 print:hidden">
-                                    <span className="inline-flex items-center">
-                                        Vente
-                                        <InvoiceColumnFilter
-                                            column="sale"
-                                            title="Vente"
-                                            options={[
-                                                'Avec vente',
-                                                'Sans vente',
-                                            ]}
-                                            filters={filters}
-                                            setFilters={setFilters}
-                                        />
-                                    </span>
-                                </TableHead>
-                                <TableHead className="w-12 print:hidden"></TableHead>
-                            </TableRow>
-                        </TableHeader>
-
-                        <TableBody>
-                            <InvoiceItemRow
-                                invoiceId={invoice.id}
-                                boats={boats}
-                                items={items}
-                                owners={owners}
-                                categories={categories}
-                                isNew={true}
-                                onCellSelect={handleCellSelect}
-                                onFillStart={handleFillStart}
-                                selectedCell={getSelectedCellRange(
-                                    NEW_INVOICE_ITEM_ROW_ID,
-                                )}
-                                onOpenDifference={() => {}} // New row doesn't need this
-                                onOpenSale={() => {}} // New row doesn't need this
-                            />
-
-                            <SortableContext
-                                items={filteredItems.map((i) => i.id)}
-                                strategy={verticalListSortingStrategy}
-                            >
-                                {filteredItems.map((row) => (
-                                    <InvoiceItemRow
-                                        key={row.id}
-                                        invoiceId={invoice.id}
-                                        item={row}
-                                        boats={boats}
-                                        items={items}
-                                        owners={owners}
-                                        categories={categories}
-                                        globalSoldCount={
-                                            globalSoldCountByInvoiceItem[
-                                                row.id
-                                            ] ?? 0
-                                        }
-                                        onCellSelect={handleCellSelect}
-                                        onFillStart={handleFillStart}
-                                        selectedCell={getSelectedCellRange(
-                                            row.id,
-                                        )}
-                                        selected={selectedIds.includes(row.id)}
-                                        onSelectChange={(checked) => {
-                                            setSelectedIds((prev) =>
-                                                checked
-                                                    ? [...prev, row.id]
-                                                    : prev.filter(
-                                                          (id) => id !== row.id,
-                                                      ),
-                                            );
-                                        }}
-                                        onOpenDifference={handleOpenDifference}
-                                        onOpenSale={handleOpenSale}
-                                        onDelete={handleOpenDelete}
-                                    />
-                                ))}
-                            </SortableContext>
-                        </TableBody>
-                    </Table>
+                                    ))}
+                                </SortableContext>
+                            </TableBody>
+                        </Table>
+                    </div>
 
                     <DragOverlay dropAnimation={null}>
                         {activeId
