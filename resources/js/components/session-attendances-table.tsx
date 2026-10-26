@@ -1,12 +1,6 @@
 import { router } from '@inertiajs/react';
-import {
-    ClipboardList,
-    CircleCheck,
-    Hourglass,
-    Lock,
-    Plus,
-    Trash2,
-} from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { CircleCheck, Hourglass, Lock, Plus, Trash2 } from 'lucide-react';
 
 import AddAttendanceDialog from '@/components/add-attendance-dialog';
 import DeleteAttendanceDialog from '@/components/delete-attendance-dialog';
@@ -35,6 +29,48 @@ import {
     SessionTableShell,
     sessionTableHeaderClass,
 } from './session-table-shell';
+import {
+    AttendancesColumnFilter,
+    AttendancesColumnTotals,
+    AttendancesSearch,
+} from './session-attendance-filters';
+import type {
+    AttendanceColumnFilterValue,
+    AttendanceFilterColumn,
+    AttendanceFilters,
+} from './session-attendance-filters';
+
+const initialAttendanceFilters: AttendanceFilters = { search: '', columns: {} };
+
+const getAttendanceFilterValue = (
+    attendance: Attendance,
+    column: AttendanceFilterColumn,
+): string | number => {
+    switch (column) {
+        case 'number':
+            return attendance.id;
+        case 'zone':
+            return attendance.session_zone?.zone?.name || '—';
+        case 'workers':
+            return attendance.items?.length || 0;
+        case 'wage':
+            return attendance.total_wage || 0;
+        case 'remaining':
+            return Math.max(computeAttendanceRemainingAmount(attendance), 0);
+    }
+};
+
+const attendanceFilterOptions = (
+    attendances: Attendance[],
+    column: AttendanceFilterColumn,
+): string[] =>
+    [
+        ...new Set(
+            attendances.map((attendance) =>
+                String(getAttendanceFilterValue(attendance, column)),
+            ),
+        ),
+    ].sort((left, right) => left.localeCompare(right, 'fr'));
 
 /**
  * Contexte de la journée courante : il alimente le dialogue de création et
@@ -60,7 +96,6 @@ export interface SessionAttendancesTableProps {
      * feuille de pointage au clic sur une ligne.
      */
     attendanceContext?: SessionAttendanceAddContext | null;
-    title?: string;
     /** Ventes de la journée : cibles pour imputer une part du pointage. */
     sales?: Sale[];
     /** Session courante pour créer la vente manquante depuis le dialogue. */
@@ -74,12 +109,113 @@ export function SessionAttendancesTable({
     formatCurrency,
     emptyMessage,
     attendanceContext,
-    title = 'Feuilles de pointage',
     sales = [],
     session = null,
     customers = [],
 }: SessionAttendancesTableProps) {
+    const [showColumnFilters, setShowColumnFilters] = useState(false);
+    const [filters, setFilters] = useState<AttendanceFilters>(
+        initialAttendanceFilters,
+    );
     const canAddAttendance = attendanceContext?.sessionStatus === 'open';
+
+    const filteredAttendances = useMemo(() => {
+        const query = filters.search.trim().toLocaleLowerCase('fr');
+
+        return attendances.filter((attendance) => {
+            const matchesSearch =
+                !query ||
+                [
+                    `#${attendance.id}`,
+                    attendance.id,
+                    attendance.session_zone?.zone?.name,
+                    attendance.items?.length || 0,
+                    attendance.total_wage || 0,
+                    formatCurrency(attendance.total_wage || 0),
+                    computeAttendanceRemainingAmount(attendance),
+                    formatCurrency(
+                        Math.max(
+                            computeAttendanceRemainingAmount(attendance),
+                            0,
+                        ),
+                    ),
+                ].some((value) =>
+                    String(value ?? '')
+                        .toLocaleLowerCase('fr')
+                        .includes(query),
+                );
+
+            const matchesColumns = (
+                Object.entries(filters.columns) as [
+                    AttendanceFilterColumn,
+                    AttendanceColumnFilterValue,
+                ][]
+            ).every(([column, filter]) => {
+                const value = getAttendanceFilterValue(attendance, column);
+
+                if (filter.values?.length) {
+                    return filter.values.includes(String(value));
+                }
+
+                if (filter.min || filter.max) {
+                    const numericValue = Number(value);
+
+                    return (
+                        (!filter.min || numericValue >= Number(filter.min)) &&
+                        (!filter.max || numericValue <= Number(filter.max))
+                    );
+                }
+
+                return true;
+            });
+
+            return matchesSearch && matchesColumns;
+        });
+    }, [attendances, filters, formatCurrency]);
+
+    const activeFilterCount = Object.values(filters.columns).filter((filter) =>
+        Boolean(filter?.values?.length || filter?.min || filter?.max),
+    ).length;
+    const hasActiveSearchOrFilters =
+        filters.search.trim().length > 0 || activeFilterCount > 0;
+
+    const toggleColumnFilters = () => {
+        if (showColumnFilters) {
+            setFilters((current) => ({ ...current, columns: {} }));
+            setShowColumnFilters(false);
+
+            return;
+        }
+
+        setShowColumnFilters(true);
+    };
+
+    const columnHeader = (
+        column: AttendanceFilterColumn,
+        label: string,
+        className?: string,
+    ) => (
+        <TableHead className={className}>
+            <span className="inline-flex items-center gap-1">
+                {label}
+                <AttendancesColumnFilter
+                    title={label}
+                    options={
+                        column === 'number' || column === 'zone'
+                            ? attendanceFilterOptions(attendances, column)
+                            : undefined
+                    }
+                    value={filters.columns[column]}
+                    onChange={(value) =>
+                        setFilters((current) => ({
+                            ...current,
+                            columns: { ...current.columns, [column]: value },
+                        }))
+                    }
+                />
+            </span>
+        </TableHead>
+    );
 
     // Ouvrir la feuille : c'est là que les ouvriers sont pointés.
     const handleRowClick = (attendanceId: number): void => {
@@ -96,79 +232,81 @@ export function SessionAttendancesTable({
     return (
         <SessionTableShell
             header={
-                attendanceContext ? (
-                    <>
-                        <div className="flex items-center gap-3">
-                            <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-300">
-                                <ClipboardList className="h-4 w-4" />
-                            </span>
-                            <div>
-                                <p className="text-sm font-bold text-slate-800 dark:text-neutral-100">
-                                    {title}
-                                </p>
-                                <p className="text-xs text-slate-500 dark:text-neutral-400">
-                                    {attendances.length} feuille
-                                    {attendances.length > 1 ? 's' : ''}{' '}
-                                    enregistrée
-                                    {attendances.length > 1 ? 's' : ''}
-                                </p>
-                            </div>
-                        </div>
-
-                        {canAddAttendance ? (
-                            <AddAttendanceDialog
-                                sessionZones={attendanceContext.sessionZones}
-                                lockedSessionZoneIds={attendanceContext.sessionZones.map(
-                                    (sessionZone) => sessionZone.id,
-                                )}
-                                lockedDate={attendanceContext.sessionDate}
-                                redirectTo="show"
-                                title="Nouvelle Feuille de Pointage"
-                                description="La journée et la zone sont déjà définies : la feuille s'ouvre directement pour pointer les ouvriers."
-                                trigger={
-                                    <Button
-                                        size="sm"
-                                        className="bg-blue-600 font-bold text-white shadow-sm hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500"
-                                    >
-                                        <Plus className="mr-2 h-4 w-4" /> Ouvrir
-                                        une Feuille
-                                    </Button>
-                                }
-                            />
-                        ) : (
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                disabled
-                                className="font-bold dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400"
-                            >
-                                <Lock className="mr-2 h-4 w-4" /> Journée
-                                clôturée
-                            </Button>
-                        )}
-                    </>
-                ) : null
+                <>
+                    <AttendancesSearch
+                        value={filters.search}
+                        onChange={(search) =>
+                            setFilters((current) => ({ ...current, search }))
+                        }
+                        showColumnFilters={showColumnFilters}
+                        activeFilterCount={activeFilterCount}
+                        onToggleColumnFilters={toggleColumnFilters}
+                    />
+                    {attendanceContext ? (
+                        <>
+                            {canAddAttendance ? (
+                                <AddAttendanceDialog
+                                    sessionZones={
+                                        attendanceContext.sessionZones
+                                    }
+                                    lockedSessionZoneIds={attendanceContext.sessionZones.map(
+                                        (sessionZone) => sessionZone.id,
+                                    )}
+                                    lockedDate={attendanceContext.sessionDate}
+                                    redirectTo="show"
+                                    title="Nouvelle Feuille de Pointage"
+                                    description="La journée et la zone sont déjà définies : la feuille s'ouvre directement pour pointer les ouvriers."
+                                    trigger={
+                                        <Button
+                                            size="sm"
+                                            className="bg-blue-600 font-bold text-white shadow-sm hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500"
+                                        >
+                                            <Plus className="mr-2 h-4 w-4" />{' '}
+                                            Ouvrir une Feuille
+                                        </Button>
+                                    }
+                                />
+                            ) : (
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled
+                                    className="font-bold dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400"
+                                >
+                                    <Lock className="mr-2 h-4 w-4" /> Journée
+                                    clôturée
+                                </Button>
+                            )}
+                        </>
+                    ) : null}
+                </>
             }
         >
             <div className="overflow-x-auto">
                 <Table className="min-w-[780px]">
                     <TableHeader
-                        className={`${sessionTableHeaderClass} [&_th]:h-12 [&_th]:bg-slate-50/80 [&_th]:text-[10px] [&_th]:tracking-[0.12em] dark:[&_th]:bg-neutral-950/70`}
+                        className={`${sessionTableHeaderClass} [&_th]:h-12 [&_th]:bg-slate-50/80 [&_th]:text-[10px] [&_th]:tracking-[0.12em] dark:[&_th]:bg-neutral-950/70 ${showColumnFilters ? '' : '**:data-column-filter-trigger:hidden'}`}
                     >
+                        {hasActiveSearchOrFilters && (
+                            <AttendancesColumnTotals
+                                attendances={filteredAttendances}
+                                formatCurrency={formatCurrency}
+                            />
+                        )}
                         <TableRow>
-                            <TableHead>ID pointage</TableHead>
-                            <TableHead>Zone</TableHead>
-
-                            <TableHead className="text-right">
-                                Total ouvriers
-                            </TableHead>
-
-                            <TableHead className="text-right">
-                                Masse salariale
-                            </TableHead>
-
-                            <TableHead className="text-right">Reste</TableHead>
-
+                            {columnHeader('number', 'ID pointage')}
+                            {columnHeader('zone', 'Zone')}
+                            {columnHeader(
+                                'workers',
+                                'Total ouvriers',
+                                'text-right',
+                            )}
+                            {columnHeader(
+                                'wage',
+                                'Masse salariale',
+                                'text-right',
+                            )}
+                            {columnHeader('remaining', 'Reste', 'text-right')}
                             <TableHead className="text-right">
                                 Actions
                             </TableHead>
@@ -176,8 +314,8 @@ export function SessionAttendancesTable({
                     </TableHeader>
 
                     <TableBody>
-                        {attendances.length > 0 ? (
-                            attendances.map((attendance) => (
+                        {filteredAttendances.length > 0 ? (
+                            filteredAttendances.map((attendance) => (
                                 <TableRow
                                     key={attendance.id}
                                     className="group cursor-pointer border-b border-slate-100 transition-colors last:border-0 hover:bg-blue-50/50 dark:border-neutral-800/70 dark:hover:bg-blue-950/20"
@@ -188,9 +326,11 @@ export function SessionAttendancesTable({
                                     <TableCell className="py-4">
                                         <span className="inline-flex items-center gap-2 font-mono text-xs font-bold text-slate-700 dark:text-neutral-200">
                                             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 ring-1 ring-blue-100 group-hover:bg-blue-100 dark:bg-blue-950/50 dark:text-blue-300 dark:ring-blue-900/50 dark:group-hover:bg-blue-900/50">
-                                                <ClipboardList className="h-4 w-4" />
+                                                <span className="text-[10px] font-black">
+                                                    #
+                                                </span>
                                             </span>
-                                            #{attendance.id}
+                                            {attendance.id}
                                         </span>
                                     </TableCell>
 
@@ -286,7 +426,9 @@ export function SessionAttendancesTable({
                             ))
                         ) : (
                             <SessionEmptyRow colSpan={6}>
-                                {emptyMessage}
+                                {attendances.length === 0
+                                    ? emptyMessage
+                                    : 'Aucune feuille ne correspond à la recherche ou aux filtres.'}
                             </SessionEmptyRow>
                         )}
                     </TableBody>
