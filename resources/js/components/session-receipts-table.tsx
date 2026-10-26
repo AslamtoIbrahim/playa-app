@@ -1,5 +1,6 @@
 import { CircleCheck, FileText, Hourglass, Lock, Plus } from 'lucide-react';
 import { router } from '@inertiajs/react';
+import { useMemo, useState } from 'react';
 
 import AddReceiptDialog from '@/components/add-receipt-dialog';
 import DeleteReceiptDialog from '@/components/delete-receipt-dialog';
@@ -8,6 +9,7 @@ import SellReceiptDialog from '@/components/sell-receipt-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { computeReceiptRemainingAmount } from '@/lib/sales';
 import {
     Table,
     TableBody,
@@ -23,12 +25,61 @@ import type { Receipt } from '@/types/receipt';
 import type { Sale } from '@/types/sale';
 import type { SessionZone } from '@/types/session-zone';
 import { show as showReceipt } from '@/routes/receipts';
+import {
+    SessionReceiptColumnFilter,
+    SessionReceiptColumnTotals,
+    SessionReceiptSearch,
+} from './session-receipt-filters';
+import type {
+    SessionReceiptColumnFilterValue,
+    SessionReceiptFilterColumn,
+    SessionReceiptFilters,
+} from './session-receipt-filters';
 
 import {
-    SessionEmptyRow,
     SessionTableShell,
     sessionTableHeaderClass,
 } from './session-table-shell';
+
+const initialReceiptFilters: SessionReceiptFilters = {
+    search: '',
+    columns: {},
+};
+
+const getRemainingAmount = (receipt: Receipt): number =>
+    Math.max(computeReceiptRemainingAmount(receipt), 0);
+
+const getReceiptFilterValue = (
+    receipt: Receipt,
+    column: SessionReceiptFilterColumn,
+    getRemainingAmount: (receipt: Receipt) => number,
+): string | number => {
+    switch (column) {
+        case 'number':
+            return receipt.id;
+        case 'supplier':
+            return receipt.boat?.name || receipt.customer?.name || '—';
+        case 'amount':
+            return receipt.total_amount || 0;
+        case 'remaining':
+            return getRemainingAmount(receipt);
+    }
+};
+
+const receiptFilterOptions = (
+    receipts: Receipt[],
+    column: SessionReceiptFilterColumn,
+    getRemainingAmount: (receipt: Receipt) => number,
+): string[] =>
+    [
+        ...new Set(
+            receipts.map((receipt) =>
+                String(
+                    getReceiptFilterValue(receipt, column, getRemainingAmount),
+                ),
+            ),
+        ),
+    ].sort((left, right) => left.localeCompare(right, 'fr'));
 
 /**
  * Contexte de la journée courante : il alimente le dialogue de création et les
@@ -55,7 +106,6 @@ export interface SessionReceiptsTableProps {
      * les icônes de modification / suppression sur chaque ligne.
      */
     receiptContext?: SessionReceiptAddContext | null;
-    title?: string;
     /** Ventes de la journée : cibles possibles pour vendre un bon. */
     sales?: Sale[];
     /** Session courante pour créer la vente manquante depuis le dialogue. */
@@ -67,11 +117,14 @@ export function SessionReceiptsTable({
     formatCurrency,
     emptyMessage,
     receiptContext,
-    title = 'Bons de réception',
     sales = [],
     session = null,
 }: SessionReceiptsTableProps) {
     const canAddReceipt = receiptContext?.sessionStatus === 'open';
+    const [showColumnFilters, setShowColumnFilters] = useState(false);
+    const [filters, setFilters] = useState<SessionReceiptFilters>(
+        initialReceiptFilters,
+    );
 
     // Ouvrir la fiche du bon : c'est là que les articles sont saisis.
     const handleRowClick = (receiptId: number): void => {
@@ -85,26 +138,129 @@ export function SessionReceiptsTable({
         );
     };
 
+    const filteredReceipts = useMemo(() => {
+        const query = filters.search.trim().toLocaleLowerCase('fr');
+
+        return receipts.filter((receipt) => {
+            const remaining = getRemainingAmount(receipt);
+            const matchesSearch =
+                !query ||
+                [
+                    `#${receipt.id}`,
+                    receipt.id,
+                    receipt.boat?.name,
+                    receipt.customer?.name,
+                    receipt.total_amount,
+                    formatCurrency(receipt.total_amount),
+                    remaining,
+                    formatCurrency(remaining),
+                    remaining <= 0.005 ? 'Terminée' : 'En cours',
+                ].some((value) =>
+                    String(value ?? '')
+                        .toLocaleLowerCase('fr')
+                        .includes(query),
+                );
+
+            const matchesColumns = (
+                Object.entries(filters.columns) as [
+                    SessionReceiptFilterColumn,
+                    SessionReceiptColumnFilterValue,
+                ][]
+            ).every(([column, filter]) => {
+                const value = getReceiptFilterValue(
+                    receipt,
+                    column,
+                    getRemainingAmount,
+                );
+
+                if (filter.values && filter.values.length > 0) {
+                    return filter.values.includes(String(value));
+                }
+
+                if (filter.min || filter.max) {
+                    const numericValue = Number(value);
+
+                    return (
+                        (!filter.min || numericValue >= Number(filter.min)) &&
+                        (!filter.max || numericValue <= Number(filter.max))
+                    );
+                }
+
+                return true;
+            });
+
+            return matchesSearch && matchesColumns;
+        });
+    }, [filters, formatCurrency, receipts]);
+
+    const activeFilterCount = Object.values(filters.columns).filter((filter) =>
+        Boolean(filter?.values?.length || filter?.min || filter?.max),
+    ).length;
+    const hasActiveSearchOrFilters =
+        filters.search.trim().length > 0 || activeFilterCount > 0;
+
+    const toggleColumnFilters = () => {
+        if (showColumnFilters) {
+            setFilters((current) => ({ ...current, columns: {} }));
+            setShowColumnFilters(false);
+
+            return;
+        }
+
+        setShowColumnFilters(true);
+    };
+
+    const columnHeader = (
+        column: SessionReceiptFilterColumn,
+        label: string,
+        className?: string,
+    ) => (
+        <TableHead className={className}>
+            <span className="inline-flex items-center gap-1">
+                {label}
+                <SessionReceiptColumnFilter
+                    title={label}
+                    options={
+                        column === 'number' || column === 'supplier'
+                            ? receiptFilterOptions(
+                                  receipts,
+                                  column,
+                                  getRemainingAmount,
+                              )
+                            : undefined
+                    }
+                    value={filters.columns[column]}
+                    onChange={(value) =>
+                        setFilters((current) => ({
+                            ...current,
+                            columns: {
+                                ...current.columns,
+                                [column]: value,
+                            },
+                        }))
+                    }
+                />
+            </span>
+        </TableHead>
+    );
+
     return (
         <SessionTableShell
             header={
                 receiptContext ? (
                     <>
-                        <div className="flex items-center gap-3">
-                            <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-blue-300 bg-blue-100 text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-300">
-                                <FileText className="h-4 w-4" />
-                            </span>
-                            <div>
-                                <p className="text-sm font-bold text-slate-800 dark:text-neutral-100">
-                                    {title}
-                                </p>
-                                <p className="text-xs text-slate-500 dark:text-neutral-400">
-                                    {receipts.length} bon
-                                    {receipts.length > 1 ? 's' : ''} enregistré
-                                    {receipts.length > 1 ? 's' : ''}
-                                </p>
-                            </div>
-                        </div>
+                        <SessionReceiptSearch
+                            value={filters.search}
+                            onChange={(search) =>
+                                setFilters((current) => ({
+                                    ...current,
+                                    search,
+                                }))
+                            }
+                            showColumnFilters={showColumnFilters}
+                            activeFilterCount={activeFilterCount}
+                            onToggleColumnFilters={toggleColumnFilters}
+                        />
 
                         {canAddReceipt ? (
                             <AddReceiptDialog
@@ -145,18 +301,24 @@ export function SessionReceiptsTable({
             <div className="overflow-x-auto">
                 <Table className="min-w-[680px]">
                     <TableHeader
-                        className={`${sessionTableHeaderClass} [&_th]:h-12 [&_th]:bg-slate-50/80 [&_th]:text-[10px] [&_th]:tracking-[0.12em] dark:[&_th]:bg-neutral-950/70`}
+                        className={`${sessionTableHeaderClass} [&_th]:h-12 [&_th]:bg-slate-50/80 [&_th]:text-[10px] [&_th]:tracking-[0.12em] dark:[&_th]:bg-neutral-950/70 ${showColumnFilters ? '' : '**:data-column-filter-trigger:hidden'}`}
                     >
+                        {hasActiveSearchOrFilters && (
+                            <SessionReceiptColumnTotals
+                                receipts={filteredReceipts}
+                                getRemainingAmount={getRemainingAmount}
+                                formatCurrency={formatCurrency}
+                            />
+                        )}
                         <TableRow>
-                            <TableHead>Bon N°</TableHead>
-                            <TableHead>Bateau / Fournisseur</TableHead>
-
-                            <TableHead className="text-right">
-                                Montant total
-                            </TableHead>
-
-                            <TableHead className="text-right">Reste</TableHead>
-
+                            {columnHeader('number', 'Bon N°')}
+                            {columnHeader('supplier', 'Bateau / Fournisseur')}
+                            {columnHeader(
+                                'amount',
+                                'Montant total',
+                                'text-right',
+                            )}
+                            {columnHeader('remaining', 'Reste', 'text-right')}
                             <TableHead className="text-right">
                                 Actions
                             </TableHead>
@@ -164,8 +326,8 @@ export function SessionReceiptsTable({
                     </TableHeader>
 
                     <TableBody>
-                        {receipts.length > 0 ? (
-                            receipts.map((receipt) => (
+                        {filteredReceipts.length > 0 ? (
+                            filteredReceipts.map((receipt) => (
                                 <TableRow
                                     key={receipt.id}
                                     className="group cursor-pointer border-b border-slate-100 transition-colors last:border-0 hover:bg-blue-100/70 dark:border-neutral-800/70 dark:hover:bg-blue-950/20"
@@ -290,9 +452,16 @@ export function SessionReceiptsTable({
                                 </TableRow>
                             ))
                         ) : (
-                            <SessionEmptyRow colSpan={5}>
-                                {emptyMessage}
-                            </SessionEmptyRow>
+                            <TableRow>
+                                <TableCell
+                                    colSpan={5}
+                                    className="h-24 text-center text-sm text-muted-foreground"
+                                >
+                                    {receipts.length === 0
+                                        ? emptyMessage
+                                        : 'Aucun bon ne correspond à la recherche ou aux filtres.'}
+                                </TableCell>
+                            </TableRow>
                         )}
                     </TableBody>
                 </Table>
