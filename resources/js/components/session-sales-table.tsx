@@ -1,4 +1,5 @@
 import { router } from '@inertiajs/react';
+import { useMemo, useState } from 'react';
 import { Lock, Pencil, Plus, ReceiptText, Trash2 } from 'lucide-react';
 
 import AddSaleDialog from '@/components/add-sale-dialog';
@@ -18,6 +19,16 @@ import { computeSaleNetToPayFromSale } from '@/lib/sales';
 import type { Customer } from '@/types/customer';
 import type { SessionStatus } from '@/types/daily-session';
 import type { Sale } from '@/types/sale';
+import {
+    SessionSaleColumnFilter,
+    SessionSaleSearch,
+    SessionSalesColumnTotals,
+} from './session-sale-filters';
+import type {
+    SessionSaleColumnFilterValue,
+    SessionSaleFilterColumn,
+    SessionSaleFilters,
+} from './session-sale-filters';
 
 import {
     SessionEmptyRow,
@@ -39,6 +50,32 @@ export interface SessionSaleAddContext {
 
 export type SessionSaleAddContextInput = SessionSaleAddContext;
 
+const initialSaleFilters: SessionSaleFilters = { search: '', columns: {} };
+
+const getSaleFilterValue = (
+    sale: Sale,
+    column: SessionSaleFilterColumn,
+): string | number => {
+    switch (column) {
+        case 'number':
+            return sale.id;
+        case 'client':
+            return sale.customer?.name || '—';
+        case 'amount':
+            return Math.abs(computeSaleNetToPayFromSale(sale));
+    }
+};
+
+const saleFilterOptions = (
+    sales: Sale[],
+    column: SessionSaleFilterColumn,
+): string[] =>
+    [
+        ...new Set(
+            sales.map((sale) => String(getSaleFilterValue(sale, column))),
+        ),
+    ].sort((left, right) => left.localeCompare(right, 'fr'));
+
 export interface SessionSalesTableProps {
     sales: Sale[];
     formatCurrency: (amount: number) => string;
@@ -56,9 +93,102 @@ export function SessionSalesTable({
     formatCurrency,
     emptyMessage,
     saleContext,
-    title = 'Ventes',
 }: SessionSalesTableProps) {
     const canAddSale = saleContext?.sessionStatus === 'open';
+    const [showColumnFilters, setShowColumnFilters] = useState(false);
+    const [filters, setFilters] =
+        useState<SessionSaleFilters>(initialSaleFilters);
+
+    const filteredSales = useMemo(() => {
+        const query = filters.search.trim().toLocaleLowerCase('fr');
+
+        return sales.filter((sale) => {
+            const amount = Math.abs(computeSaleNetToPayFromSale(sale));
+            const matchesSearch =
+                !query ||
+                [
+                    `#${sale.id}`,
+                    sale.id,
+                    sale.customer?.name,
+                    sale.type,
+                    amount,
+                    formatCurrency(amount),
+                ].some((value) =>
+                    String(value ?? '')
+                        .toLocaleLowerCase('fr')
+                        .includes(query),
+                );
+            const matchesColumns = (
+                Object.entries(filters.columns) as [
+                    SessionSaleFilterColumn,
+                    SessionSaleColumnFilterValue,
+                ][]
+            ).every(([column, filter]) => {
+                const value = getSaleFilterValue(sale, column);
+
+                if (filter.values?.length) {
+                    return filter.values.includes(String(value));
+                }
+
+                if (filter.min || filter.max) {
+                    const numericValue = Number(value);
+
+                    return (
+                        (!filter.min || numericValue >= Number(filter.min)) &&
+                        (!filter.max || numericValue <= Number(filter.max))
+                    );
+                }
+
+                return true;
+            });
+
+            return matchesSearch && matchesColumns;
+        });
+    }, [filters, formatCurrency, sales]);
+
+    const activeFilterCount = Object.values(filters.columns).filter((filter) =>
+        Boolean(filter?.values?.length || filter?.min || filter?.max),
+    ).length;
+    const hasActiveSearchOrFilters =
+        filters.search.trim().length > 0 || activeFilterCount > 0;
+
+    const toggleColumnFilters = () => {
+        if (showColumnFilters) {
+            setFilters((current) => ({ ...current, columns: {} }));
+            setShowColumnFilters(false);
+
+            return;
+        }
+
+        setShowColumnFilters(true);
+    };
+
+    const columnHeader = (
+        column: SessionSaleFilterColumn,
+        label: string,
+        className?: string,
+    ) => (
+        <TableHead className={className}>
+            <span className="inline-flex items-center gap-1">
+                {label}
+                <SessionSaleColumnFilter
+                    title={label}
+                    options={
+                        column === 'amount'
+                            ? undefined
+                            : saleFilterOptions(sales, column)
+                    }
+                    value={filters.columns[column]}
+                    onChange={(value) =>
+                        setFilters((current) => ({
+                            ...current,
+                            columns: { ...current.columns, [column]: value },
+                        }))
+                    }
+                />
+            </span>
+        </TableHead>
+    );
 
     // Open the sale sheet: this is where the items are assigned.
     const handleRowClick = (saleId: number): void => {
@@ -77,21 +207,18 @@ export function SessionSalesTable({
             header={
                 saleContext ? (
                     <>
-                        <div className="flex items-center gap-3">
-                            <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-900/50 dark:bg-orange-950/40 dark:text-orange-300">
-                                <ReceiptText className="h-4 w-4" />
-                            </span>
-                            <div>
-                                <p className="text-sm font-bold text-slate-800 dark:text-neutral-100">
-                                    {title}
-                                </p>
-                                <p className="text-xs text-slate-500 dark:text-neutral-400">
-                                    {sales.length} vente
-                                    {sales.length > 1 ? 's' : ''} enregistrée
-                                    {sales.length > 1 ? 's' : ''}
-                                </p>
-                            </div>
-                        </div>
+                        <SessionSaleSearch
+                            value={filters.search}
+                            onChange={(search) =>
+                                setFilters((current) => ({
+                                    ...current,
+                                    search,
+                                }))
+                            }
+                            showColumnFilters={showColumnFilters}
+                            activeFilterCount={activeFilterCount}
+                            onToggleColumnFilters={toggleColumnFilters}
+                        />
 
                         {canAddSale ? (
                             <AddSaleDialog
@@ -128,15 +255,18 @@ export function SessionSalesTable({
             <div className="overflow-x-auto">
                 <Table className="min-w-160">
                     <TableHeader
-                        className={`${sessionTableHeaderClass} [&_th]:h-12 [&_th]:bg-orange-50/70 [&_th]:text-[10px] [&_th]:tracking-[0.12em] dark:[&_th]:bg-orange-950/20`}
+                        className={`${sessionTableHeaderClass} [&_th]:h-12 [&_th]:bg-orange-50/70 [&_th]:text-[10px] [&_th]:tracking-[0.12em] dark:[&_th]:bg-orange-950/20 ${showColumnFilters ? '' : '**:data-column-filter-trigger:hidden'}`}
                     >
+                        {hasActiveSearchOrFilters && (
+                            <SessionSalesColumnTotals
+                                sales={filteredSales}
+                                formatCurrency={formatCurrency}
+                            />
+                        )}
                         <TableRow>
-                            <TableHead>ID / N°</TableHead>
-                            <TableHead>Clients</TableHead>
-
-                            <TableHead className="text-right">
-                                Montant
-                            </TableHead>
+                            {columnHeader('number', 'ID / N°')}
+                            {columnHeader('client', 'Clients')}
+                            {columnHeader('amount', 'Montant', 'text-right')}
 
                             <TableHead className="text-right">
                                 Actions
@@ -145,8 +275,8 @@ export function SessionSalesTable({
                     </TableHeader>
 
                     <TableBody>
-                        {sales.length > 0 ? (
-                            sales.map((sale) => (
+                        {filteredSales.length > 0 ? (
+                            filteredSales.map((sale) => (
                                 <TableRow
                                     key={sale.id}
                                     className="group cursor-pointer border-b border-slate-100 transition-colors last:border-0 hover:bg-orange-50/60 dark:border-neutral-800/70 dark:hover:bg-orange-950/20"
