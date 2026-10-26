@@ -1,4 +1,5 @@
 import { router } from '@inertiajs/react';
+import { useMemo, useState } from 'react';
 import { CalendarDays, Ship } from 'lucide-react';
 
 import {
@@ -14,12 +15,40 @@ import type { DifferenceReport } from '@/lib/differences';
 import { groupDifferencesByReport } from '@/lib/differences';
 import { report as differenceReport } from '@/routes/differences';
 import type { Difference } from '@/types/difference';
+import {
+    SessionDifferenceColumnFilter,
+    SessionDifferenceColumnTotals,
+    SessionDifferenceSearch,
+} from './session-difference-filters';
+import type {
+    SessionDifferenceColumnFilterValue,
+    SessionDifferenceFilterColumn,
+    SessionDifferenceFilters,
+} from './session-difference-filters';
 
 import {
     SessionEmptyRow,
     SessionTableShell,
     sessionTableHeaderClass,
 } from './session-table-shell';
+
+const initialFilters: SessionDifferenceFilters = { search: '', columns: {} };
+
+const getFilterValue = (
+    report: DifferenceReport,
+    column: SessionDifferenceFilterColumn,
+): string | number => {
+    switch (column) {
+        case 'date':
+            return report.invoiceDate ?? '—';
+        case 'client':
+            return report.customerName;
+        case 'boat':
+            return report.boatName;
+        case 'total':
+            return report.totalDiff;
+    }
+};
 
 export interface SessionDifferencesTableProps {
     differences: Difference[];
@@ -34,7 +63,112 @@ export function SessionDifferencesTable({
     emptyMessage,
     sessionId,
 }: SessionDifferencesTableProps) {
-    const reports = groupDifferencesByReport(differences);
+    const [showColumnFilters, setShowColumnFilters] = useState(false);
+    const [filters, setFilters] =
+        useState<SessionDifferenceFilters>(initialFilters);
+    const reports = useMemo(() => {
+        const allReports = groupDifferencesByReport(differences);
+        const query = filters.search.trim().toLocaleLowerCase('fr');
+
+        return allReports.filter((report) => {
+            const matchesSearch =
+                !query ||
+                [
+                    report.invoiceDate,
+                    formatDateDisplay(report.invoiceDate),
+                    report.customerName,
+                    report.boatName,
+                    report.totalDiff,
+                    formatCurrency(report.totalDiff),
+                    report.itemsCount,
+                ].some((value) =>
+                    String(value ?? '')
+                        .toLocaleLowerCase('fr')
+                        .includes(query),
+                );
+
+            const matchesColumns = (
+                Object.entries(filters.columns) as [
+                    SessionDifferenceFilterColumn,
+                    SessionDifferenceColumnFilterValue,
+                ][]
+            ).every(([column, filter]) => {
+                const value = getFilterValue(report, column);
+
+                if (filter.values?.length) {
+                    return filter.values.includes(String(value));
+                }
+
+                if (filter.min || filter.max) {
+                    const numericValue = Number(value);
+
+                    return (
+                        (!filter.min || numericValue >= Number(filter.min)) &&
+                        (!filter.max || numericValue <= Number(filter.max))
+                    );
+                }
+
+                return true;
+            });
+
+            return matchesSearch && matchesColumns;
+        });
+    }, [differences, filters, formatCurrency]);
+    const activeFilterCount = Object.values(filters.columns).filter((filter) =>
+        Boolean(filter?.values?.length || filter?.min || filter?.max),
+    ).length;
+    const hasActiveSearchOrFilters =
+        filters.search.trim().length > 0 || activeFilterCount > 0;
+    const toggleColumnFilters = () => {
+        if (showColumnFilters) {
+            setFilters((current) => ({ ...current, columns: {} }));
+            setShowColumnFilters(false);
+
+            return;
+        }
+
+        setShowColumnFilters(true);
+    };
+    const columnHeader = (
+        column: SessionDifferenceFilterColumn,
+        label: string,
+        className?: string,
+    ) => (
+        <TableHead className={className}>
+            <span className="inline-flex items-center gap-1">
+                {label}
+                <SessionDifferenceColumnFilter
+                    title={label}
+                    options={
+                        column === 'client' || column === 'boat'
+                            ? [
+                                  ...new Set(
+                                      groupDifferencesByReport(differences).map(
+                                          (report) =>
+                                              String(
+                                                  getFilterValue(
+                                                      report,
+                                                      column,
+                                                  ),
+                                              ),
+                                      ),
+                                  ),
+                              ].sort((left, right) =>
+                                  left.localeCompare(right, 'fr'),
+                              )
+                            : undefined
+                    }
+                    value={filters.columns[column]}
+                    onChange={(value) =>
+                        setFilters((current) => ({
+                            ...current,
+                            columns: { ...current.columns, [column]: value },
+                        }))
+                    }
+                />
+            </span>
+        </TableHead>
+    );
 
     const openReport = (item: DifferenceReport): void => {
         if (!item.invoiceDate || !item.boatId) {
@@ -54,22 +188,35 @@ export function SessionDifferencesTable({
     };
 
     return (
-        <SessionTableShell>
+        <SessionTableShell
+            header={
+                <SessionDifferenceSearch
+                    value={filters.search}
+                    onChange={(search) =>
+                        setFilters((current) => ({ ...current, search }))
+                    }
+                    showColumnFilters={showColumnFilters}
+                    activeFilterCount={activeFilterCount}
+                    onToggleColumnFilters={toggleColumnFilters}
+                />
+            }
+        >
             <div className="overflow-x-auto">
                 <Table className="min-w-[680px]">
                     <TableHeader
-                        className={`${sessionTableHeaderClass} [&_th]:h-12 [&_th]:bg-slate-50/80 [&_th]:text-[10px] [&_th]:tracking-[0.12em] dark:[&_th]:bg-neutral-950/70`}
+                        className={`${sessionTableHeaderClass} [&_th]:h-12 [&_th]:bg-slate-50/80 [&_th]:text-[10px] [&_th]:tracking-[0.12em] dark:[&_th]:bg-neutral-950/70 ${showColumnFilters ? '' : '**:data-column-filter-trigger:hidden'}`}
                     >
+                        {hasActiveSearchOrFilters && (
+                            <SessionDifferenceColumnTotals
+                                reports={reports}
+                                formatCurrency={formatCurrency}
+                            />
+                        )}
                         <TableRow>
-                            <TableHead>Date Facture</TableHead>
-                            <TableHead>Client</TableHead>
-                            <TableHead className="text-center">
-                                Bateau
-                            </TableHead>
-
-                            <TableHead className="text-right">
-                                Total Écart
-                            </TableHead>
+                            {columnHeader('date', 'Date Facture')}
+                            {columnHeader('client', 'Client')}
+                            {columnHeader('boat', 'Bateau', 'text-center')}
+                            {columnHeader('total', 'Total Écart', 'text-right')}
                         </TableRow>
                     </TableHeader>
 
