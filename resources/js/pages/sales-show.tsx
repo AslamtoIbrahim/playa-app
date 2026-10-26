@@ -1,8 +1,14 @@
 ﻿import { Head, router } from '@inertiajs/react';
 import { ArrowLeft, Camera, Printer } from 'lucide-react';
+import { useState } from 'react';
 
 import { ExportDropdown } from '@/components/export-dropdown';
 import { SaleHeader } from '@/components/sale-header';
+import {
+    SaleColumnFilter,
+    SaleColumnTotals,
+    SaleGlobalSearch,
+} from '@/components/sale-item-filters';
 import { SalePrintFooter } from '@/components/sale-print-footer';
 import { SaleReceiptChargesTable } from '@/components/sale-receipt-charges-table';
 import SaleShowItemRow from '@/components/sale-show-item-row';
@@ -19,15 +25,16 @@ import {
 } from '@/components/ui/table';
 import { useSaleCalculations } from '@/hooks/use-sale-calculations';
 import { useSaleExport } from '@/hooks/use-sale-export';
+import { useSaleItemFilters } from '@/hooks/use-sale-item-filters';
 import { useScreenshot } from '@/hooks/use-screenshot';
 import AppLayout from '@/layouts/app-layout';
-import { Sale } from '@/types/sale';
-import { SaleCharge } from '@/types/sale-charge';
-import { SaleItem } from '@/types/sale-item';
-import { SaleWorker } from '@/types/sale-worker';
-import { SessionZone } from '@/types/session-zone';
-import { Boat } from '@/types/boat';
-import { Item } from '@/types/item';
+import type { Sale } from '@/types/sale';
+import type { SaleCharge } from '@/types/sale-charge';
+import type { SaleItem } from '@/types/sale-item';
+import type { SaleWorker } from '@/types/sale-worker';
+import type { SessionZone } from '@/types/session-zone';
+import type { Boat } from '@/types/boat';
+import type { Item } from '@/types/item';
 
 interface Props {
     /** Sale with its manually managed line items. */
@@ -52,11 +59,7 @@ interface Props {
 /**
  * Sale details and its saved item lines.
  */
-export default function SalesShow({
-    sale,
-    sessionZones,
-    backUrl,
-}: Props) {
+export default function SalesShow({ sale, sessionZones, backUrl }: Props) {
     const items = sale.items || [];
 
     const calculatedStats = useSaleCalculations(sale);
@@ -65,10 +68,12 @@ export default function SalesShow({
         totalBoxes: Math.abs(calculatedStats.totalBoxes),
         totalValeur: Math.abs(calculatedStats.totalValeur),
         netToPay: Math.abs(calculatedStats.netToPay),
-        formattedTotalValeur: Math.abs(calculatedStats.totalValeur).toLocaleString(
-            'fr-FR',
-            { minimumFractionDigits: 2, maximumFractionDigits: 2 },
-        ),
+        formattedTotalValeur: Math.abs(
+            calculatedStats.totalValeur,
+        ).toLocaleString('fr-FR', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        }),
         formattedNetToPay: Math.abs(calculatedStats.netToPay).toLocaleString(
             'fr-FR',
             { minimumFractionDigits: 2, maximumFractionDigits: 2 },
@@ -78,6 +83,44 @@ export default function SalesShow({
     const { copyToClipboard } = useScreenshot();
 
     const { exportToExcel, exportToCSV, exportToPDF } = useSaleExport();
+
+    const [showColumnFilters, setShowColumnFilters] = useState(false);
+    const {
+        filters,
+        setFilters,
+        filteredItems,
+        activeFilterCount,
+        clearColumnFilters,
+    } = useSaleItemFilters(items);
+
+    const toggleColumnFilters = () => {
+        if (showColumnFilters) {
+            clearColumnFilters();
+            setShowColumnFilters(false);
+
+            return;
+        }
+
+        setShowColumnFilters(true);
+    };
+
+    const boatOptions = [
+        ...new Set(
+            items
+                .map((item) => item.boat?.name ?? item.invoice_item?.boat?.name)
+                .filter((name): name is string => Boolean(name)),
+        ),
+    ].sort();
+    const itemOptions = [
+        ...new Set(
+            items
+                .map(
+                    (item) =>
+                        item.item?.name ?? item.invoice_item?.category?.name,
+                )
+                .filter((name): name is string => Boolean(name)),
+        ),
+    ].sort();
 
     const handlePrint = () => {
         window.print();
@@ -149,23 +192,128 @@ export default function SalesShow({
                 id="sale-content"
                 className="relative overflow-hidden rounded-lg rounded-b-none border border-slate-100 shadow-sm dark:border-neutral-800 dark:bg-neutral-900"
             >
+                <div className="flex h-14 items-center justify-between border-b border-orange-200/60 bg-orange-50/70 px-3 py-2 backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-900/80 print:hidden">
+                    <SaleGlobalSearch
+                        value={filters.search}
+                        onChange={(search) =>
+                            setFilters((current) => ({ ...current, search }))
+                        }
+                        showColumnFilters={showColumnFilters}
+                        activeFilterCount={activeFilterCount}
+                        onToggleColumnFilters={toggleColumnFilters}
+                    />
+                    <span className="mr-2 text-xs text-muted-foreground">
+                        {filteredItems.length} / {items.length} lignes
+                    </span>
+                </div>
                 <Table>
-                    <TableHeader className="border-b border-slate-100 bg-slate-50/50 dark:border-neutral-800 dark:bg-neutral-900/50">
+                    <TableHeader
+                        className={`border-b border-slate-100 bg-slate-50/50 dark:border-neutral-800 dark:bg-neutral-900/50 ${showColumnFilters ? '' : '**:data-column-filter-trigger:hidden'}`}
+                    >
+                        <SaleColumnTotals
+                            items={filteredItems}
+                            visible={
+                                showColumnFilters ||
+                                filters.search.trim().length > 0
+                            }
+                        />
                         <TableRow className="h-11 hover:bg-transparent">
-                            <TableHead>Bateau</TableHead>
-                            <TableHead>Article</TableHead>
-                            <TableHead className="text-center">Quantité</TableHead>
-                            <TableHead className="text-center">Prix vente</TableHead>
-                            <TableHead className="text-center">Prix réel</TableHead>
-                            <TableHead className="text-center">Montant</TableHead>
-                            <TableHead className="text-center">Taxe 3%</TableHead>
-                            <TableHead className="text-center">Total diff</TableHead>
+                            <TableHead className="text-[10px] font-black tracking-tight text-orange-800 uppercase dark:text-orange-300">
+                                <span className="inline-flex items-center">
+                                    Bateau
+                                    <SaleColumnFilter
+                                        column="boat"
+                                        title="Bateau"
+                                        options={boatOptions}
+                                        filters={filters}
+                                        setFilters={setFilters}
+                                    />
+                                </span>
+                            </TableHead>
+                            <TableHead className="text-[10px] font-black tracking-tight text-orange-800 uppercase dark:text-orange-300">
+                                <span className="inline-flex items-center">
+                                    Article
+                                    <SaleColumnFilter
+                                        column="item"
+                                        title="Article"
+                                        options={itemOptions}
+                                        filters={filters}
+                                        setFilters={setFilters}
+                                    />
+                                </span>
+                            </TableHead>
+                            <TableHead className="text-center text-[10px] font-black tracking-tight text-orange-800 uppercase dark:text-orange-300">
+                                <span className="inline-flex items-center">
+                                    Quantité
+                                    <SaleColumnFilter
+                                        column="quantity"
+                                        title="Quantité"
+                                        filters={filters}
+                                        setFilters={setFilters}
+                                    />
+                                </span>
+                            </TableHead>
+                            <TableHead className="text-center text-[10px] font-black tracking-tight text-orange-800 uppercase dark:text-orange-300">
+                                <span className="inline-flex items-center">
+                                    Prix vente
+                                    <SaleColumnFilter
+                                        column="sale_price"
+                                        title="Prix vente"
+                                        filters={filters}
+                                        setFilters={setFilters}
+                                    />
+                                </span>
+                            </TableHead>
+                            <TableHead className="text-center text-[10px] font-black tracking-tight text-orange-800 uppercase dark:text-orange-300">
+                                <span className="inline-flex items-center">
+                                    Prix réel
+                                    <SaleColumnFilter
+                                        column="real_price"
+                                        title="Prix réel"
+                                        filters={filters}
+                                        setFilters={setFilters}
+                                    />
+                                </span>
+                            </TableHead>
+                            <TableHead className="text-center text-[10px] font-black tracking-tight text-orange-800 uppercase dark:text-orange-300">
+                                <span className="inline-flex items-center">
+                                    Montant
+                                    <SaleColumnFilter
+                                        column="amount"
+                                        title="Montant"
+                                        filters={filters}
+                                        setFilters={setFilters}
+                                    />
+                                </span>
+                            </TableHead>
+                            <TableHead className="text-center text-[10px] font-black tracking-tight text-orange-800 uppercase dark:text-orange-300">
+                                <span className="inline-flex items-center">
+                                    Taxe 3%
+                                    <SaleColumnFilter
+                                        column="tax"
+                                        title="Taxe 3%"
+                                        filters={filters}
+                                        setFilters={setFilters}
+                                    />
+                                </span>
+                            </TableHead>
+                            <TableHead className="text-center text-[10px] font-black tracking-tight text-orange-800 uppercase dark:text-orange-300">
+                                <span className="inline-flex items-center">
+                                    Total diff
+                                    <SaleColumnFilter
+                                        column="total_diff"
+                                        title="Total diff"
+                                        filters={filters}
+                                        setFilters={setFilters}
+                                    />
+                                </span>
+                            </TableHead>
                         </TableRow>
                     </TableHeader>
 
                     <TableBody>
-                        {items.length > 0 ? (
-                            items.map((item) => (
+                        {filteredItems.length > 0 ? (
+                            filteredItems.map((item) => (
                                 <SaleShowItemRow key={item.id} item={item} />
                             ))
                         ) : (
@@ -174,8 +322,9 @@ export default function SalesShow({
                                     colSpan={8}
                                     className="py-24 text-center font-medium text-muted-foreground italic"
                                 >
-                                    Aucune ligne de vente enregistrée pour le
-                                    moment.
+                                    {items.length > 0
+                                        ? 'Aucune ligne ne correspond aux filtres actifs.'
+                                        : 'Aucune ligne de vente enregistrée pour le moment.'}
                                 </TableCell>
                             </TableRow>
                         )}
@@ -203,7 +352,6 @@ export default function SalesShow({
             </div>
 
             <SalePrintFooter stats={stats} />
-
         </div>
     );
 }
