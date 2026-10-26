@@ -10,6 +10,7 @@ import { TableHead, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import type { Invoice } from '@/types/invoice';
 import { Filter, Search, X } from 'lucide-react';
+import { useState } from 'react';
 
 export type SessionInvoiceFilterColumn =
     | 'number'
@@ -119,8 +120,14 @@ export function SessionInvoiceColumnFilter({
     value,
     onChange,
 }: SessionInvoiceColumnFilterProps) {
+    const [optionsSearch, setOptionsSearch] = useState('');
     const active = Boolean(
         value && ((value.values?.length ?? 0) > 0 || value.min || value.max),
+    );
+    const filteredOptions = options?.filter((option) =>
+        option
+            .toLocaleLowerCase('fr')
+            .includes(optionsSearch.trim().toLocaleLowerCase('fr')),
     );
 
     return (
@@ -160,47 +167,77 @@ export function SessionInvoiceColumnFilter({
                     )}
                 </div>
                 {options ? (
-                    <div className="max-h-52 space-y-1 overflow-y-auto">
-                        {options.map((option) => {
-                            const checked =
-                                value?.values?.includes(option) ?? false;
-
-                            return (
-                                <label
-                                    key={option}
-                                    className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-muted/70"
+                    <>
+                        <div className="relative">
+                            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                                value={optionsSearch}
+                                onChange={(event) =>
+                                    setOptionsSearch(event.target.value)
+                                }
+                                placeholder={`Rechercher ${title.toLocaleLowerCase('fr')}…`}
+                                aria-label={`Rechercher ${title.toLocaleLowerCase('fr')}`}
+                                className="h-9 pr-9 pl-9"
+                            />
+                            {optionsSearch && (
+                                <button
+                                    type="button"
+                                    aria-label="Effacer la recherche"
+                                    onClick={() => setOptionsSearch('')}
+                                    className="absolute top-1/2 right-2 -translate-y-1/2 rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                                 >
-                                    <Checkbox
-                                        checked={checked}
-                                        onCheckedChange={(checked) =>
-                                            onChange({
-                                                values: checked
-                                                    ? [
-                                                          ...(value?.values ??
-                                                              []),
-                                                          option,
-                                                      ]
-                                                    : (
-                                                          value?.values ?? []
-                                                      ).filter(
-                                                          (entry) =>
-                                                              entry !== option,
-                                                      ),
-                                                min: value?.min ?? '',
-                                                max: value?.max ?? '',
-                                            })
-                                        }
-                                    />
-                                    <span className="truncate">{option}</span>
-                                </label>
-                            );
-                        })}
-                        {options.length === 0 && (
-                            <p className="px-2 py-4 text-center text-xs text-muted-foreground">
-                                Aucune valeur disponible
-                            </p>
-                        )}
-                    </div>
+                                    <X className="size-3.5" />
+                                </button>
+                            )}
+                        </div>
+                        <div className="max-h-52 space-y-1 overflow-y-auto">
+                            {filteredOptions?.map((option) => {
+                                const checked =
+                                    value?.values?.includes(option) ?? false;
+
+                                return (
+                                    <label
+                                        key={option}
+                                        className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-muted/70"
+                                    >
+                                        <Checkbox
+                                            checked={checked}
+                                            onCheckedChange={(checked) =>
+                                                onChange({
+                                                    values: checked
+                                                        ? [
+                                                              ...(value?.values ??
+                                                                  []),
+                                                              option,
+                                                          ]
+                                                        : (
+                                                              value?.values ??
+                                                              []
+                                                          ).filter(
+                                                              (entry) =>
+                                                                  entry !==
+                                                                  option,
+                                                          ),
+                                                    min: value?.min ?? '',
+                                                    max: value?.max ?? '',
+                                                })
+                                            }
+                                        />
+                                        <span className="truncate">
+                                            {option}
+                                        </span>
+                                    </label>
+                                );
+                            })}
+                            {filteredOptions?.length === 0 && (
+                                <p className="px-2 py-4 text-center text-xs text-muted-foreground">
+                                    {options.length === 0
+                                        ? 'Aucune valeur disponible'
+                                        : 'Aucun résultat'}
+                                </p>
+                            )}
+                        </div>
+                    </>
                 ) : (
                     <div className="grid grid-cols-2 gap-2">
                         <Input
