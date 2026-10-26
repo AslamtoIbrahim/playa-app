@@ -30,7 +30,7 @@ const getColumnValue = (
 ): string | number => {
     switch (column) {
         case 'boat':
-            return item.boat?.name ?? item.invoice_item?.boat?.name ?? '';
+            return item.boat?.name ?? item.invoice_item?.boat?.name ?? '—';
         case 'item':
             return item.item?.name ?? item.invoice_item?.category?.name ?? '';
         case 'quantity':

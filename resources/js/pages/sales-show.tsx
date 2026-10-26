@@ -106,9 +106,10 @@ export default function SalesShow({ sale, sessionZones, backUrl }: Props) {
 
     const boatOptions = [
         ...new Set(
-            items
-                .map((item) => item.boat?.name ?? item.invoice_item?.boat?.name)
-                .filter((name): name is string => Boolean(name)),
+            items.map(
+                (item) =>
+                    item.boat?.name ?? item.invoice_item?.boat?.name ?? '—',
+            ),
         ),
     ].sort();
     const itemOptions = [
