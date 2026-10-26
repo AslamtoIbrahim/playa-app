@@ -1,20 +1,12 @@
 import { router } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
-import { FileText, Filter, Lock, Plus, ShieldCheck } from 'lucide-react';
+import { FileText, Lock, Plus, ShieldCheck } from 'lucide-react';
 
 import AddInvoiceDialog from '@/components/add-invoice-dialog';
 import DeleteInvoiceDialog from '@/components/delete-invoice-dialog';
 import EditInvoiceDialog from '@/components/edit-invoice-dialog';
-import { InvoiceGlobalSearch } from '@/components/invoice-item-filters';
 import SellWholeInvoiceDialog from '@/components/sell-whole-invoice-dialog';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from '@/components/ui/popover';
 import {
     Table,
     TableBody,
@@ -23,7 +15,6 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { cn } from '@/lib/utils';
 import { computeInvoiceRemainingTotals } from '@/lib/sales';
 import { show as showInvoice } from '@/routes/invoices';
 import type { Caution } from '@/types/caution';
@@ -32,33 +23,22 @@ import type { SessionStatus } from '@/types/daily-session';
 import type { Billable, Invoice } from '@/types/invoice';
 import type { OfficeRoom } from '@/types/office-room';
 import type { SessionZone } from '@/types/session-zone';
+import {
+    SessionInvoiceColumnFilter,
+    SessionInvoiceSearch,
+    SessionInvoiceTotals,
+} from './session-invoice-filters';
+import type {
+    SessionInvoiceColumnFilterValue,
+    SessionInvoiceFilterColumn,
+    SessionInvoiceFilters,
+} from './session-invoice-filters';
 
 import {
     SessionEmptyRow,
     SessionTableShell,
     sessionTableHeaderClass,
 } from './session-table-shell';
-
-type SessionInvoiceFilterColumn =
-    | 'number'
-    | 'client'
-    | 'caution'
-    | 'boxes'
-    | 'weight'
-    | 'amount';
-
-interface SessionInvoiceColumnFilterValue {
-    values?: string[];
-    min?: string;
-    max?: string;
-}
-
-interface SessionInvoiceFilters {
-    search: string;
-    columns: Partial<
-        Record<SessionInvoiceFilterColumn, SessionInvoiceColumnFilterValue>
-    >;
-}
 
 const initialInvoiceFilters: SessionInvoiceFilters = {
     search: '',
@@ -210,6 +190,8 @@ export function SessionInvoicesTable({
     const activeFilterCount = Object.values(filters.columns).filter((filter) =>
         Boolean(filter?.values?.length || filter?.min || filter?.max),
     ).length;
+    const hasActiveSearchOrFilters =
+        filters.search.trim().length > 0 || activeFilterCount > 0;
 
     const toggleColumnFilters = () => {
         if (showColumnFilters) {
@@ -259,7 +241,7 @@ export function SessionInvoicesTable({
             header={
                 invoiceContext ? (
                     <>
-                        <InvoiceGlobalSearch
+                        <SessionInvoiceSearch
                             value={filters.search}
                             onChange={(search) =>
                                 setFilters((current) => ({
@@ -320,6 +302,12 @@ export function SessionInvoicesTable({
                     <TableHeader
                         className={`${sessionTableHeaderClass} [&_th]:h-12 [&_th]:bg-slate-50/80 [&_th]:text-[10px] [&_th]:tracking-[0.12em] dark:[&_th]:bg-neutral-950/70 ${showColumnFilters ? '' : '**:data-column-filter-trigger:hidden'}`}
                     >
+                        {hasActiveSearchOrFilters && (
+                            <SessionInvoiceTotals
+                                invoices={filteredInvoices}
+                                formatCurrency={formatCurrency}
+                            />
+                        )}
                         <TableRow>
                             {columnHeader('number', 'ID / N°')}
                             {columnHeader('client', 'Clients')}
@@ -471,138 +459,6 @@ export function SessionInvoicesTable({
                 </Table>
             </div>
         </SessionTableShell>
-    );
-}
-
-interface SessionInvoiceColumnFilterProps {
-    title: string;
-    options?: string[];
-    value?: SessionInvoiceColumnFilterValue;
-    onChange: (value: SessionInvoiceColumnFilterValue) => void;
-}
-
-function SessionInvoiceColumnFilter({
-    title,
-    options,
-    value,
-    onChange,
-}: SessionInvoiceColumnFilterProps) {
-    const active = Boolean(
-        value && ((value.values?.length ?? 0) > 0 || value.min || value.max),
-    );
-
-    return (
-        <Popover>
-            <PopoverTrigger asChild>
-                <button
-                    type="button"
-                    data-column-filter-trigger
-                    aria-label={`Filtrer : ${title}`}
-                    title={`Filtrer : ${title}`}
-                    className={cn(
-                        'ml-1 inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-all hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
-                        active &&
-                            'bg-primary/15 text-primary ring-1 ring-primary/20',
-                    )}
-                >
-                    <Filter className="size-3" />
-                </button>
-            </PopoverTrigger>
-            <PopoverContent
-                align="start"
-                className="w-64 gap-3 rounded-xl border-border/70 p-3 shadow-lg"
-            >
-                <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold">Filtrer : {title}</p>
-                    {active && (
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-xs"
-                            onClick={() =>
-                                onChange({ values: [], min: '', max: '' })
-                            }
-                        >
-                            Effacer
-                        </Button>
-                    )}
-                </div>
-                {options ? (
-                    <div className="max-h-52 space-y-1 overflow-y-auto">
-                        {options.map((option) => {
-                            const checked =
-                                value?.values?.includes(option) ?? false;
-
-                            return (
-                                <label
-                                    key={option}
-                                    className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-muted/70"
-                                >
-                                    <Checkbox
-                                        checked={checked}
-                                        onCheckedChange={(checked) =>
-                                            onChange({
-                                                values: checked
-                                                    ? [
-                                                          ...(value?.values ??
-                                                              []),
-                                                          option,
-                                                      ]
-                                                    : (
-                                                          value?.values ?? []
-                                                      ).filter(
-                                                          (entry) =>
-                                                              entry !== option,
-                                                      ),
-                                                min: value?.min ?? '',
-                                                max: value?.max ?? '',
-                                            })
-                                        }
-                                    />
-                                    <span className="truncate">{option}</span>
-                                </label>
-                            );
-                        })}
-                        {options.length === 0 && (
-                            <p className="px-2 py-4 text-center text-xs text-muted-foreground">
-                                Aucune valeur disponible
-                            </p>
-                        )}
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-2 gap-2">
-                        <Input
-                            type="number"
-                            aria-label={`${title} minimum`}
-                            placeholder="Minimum"
-                            value={value?.min ?? ''}
-                            onChange={(event) =>
-                                onChange({
-                                    values: [],
-                                    min: event.target.value,
-                                    max: value?.max ?? '',
-                                })
-                            }
-                            className="h-9"
-                        />
-                        <Input
-                            type="number"
-                            aria-label={`${title} maximum`}
-                            placeholder="Maximum"
-                            value={value?.max ?? ''}
-                            onChange={(event) =>
-                                onChange({
-                                    values: [],
-                                    min: value?.min ?? '',
-                                    max: event.target.value,
-                                })
-                            }
-                            className="h-9"
-                        />
-                    </div>
-                )}
-            </PopoverContent>
-        </Popover>
     );
 }
 
