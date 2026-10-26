@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 import { computeInvoiceItemDifferenceTotal } from '@/lib/differences';
 import { InvoiceItem } from '@/types/invoice-item';
 import { Filter, Search, X } from 'lucide-react';
-import { Dispatch, SetStateAction } from 'react';
+import { Dispatch, SetStateAction, useState } from 'react';
 import { TableHead, TableRow } from '@/components/ui/table';
 
 interface GlobalSearchProps {
@@ -228,9 +228,15 @@ export function InvoiceColumnFilter({
     filters,
     setFilters,
 }: ColumnFilterProps) {
+    const [optionSearch, setOptionSearch] = useState('');
     const value = filters.columns[column];
     const active = Boolean(
         value && ((value.values?.length ?? 0) > 0 || value.min || value.max),
+    );
+    const searchableOptions = column === 'boat' || column === 'category';
+    const normalizedOptionSearch = optionSearch.trim().toLocaleLowerCase('fr');
+    const filteredOptions = options?.filter((option) =>
+        option.toLocaleLowerCase('fr').includes(normalizedOptionSearch),
     );
 
     const update = (next: NonNullable<typeof value>) =>
@@ -276,47 +282,73 @@ export function InvoiceColumnFilter({
                     )}
                 </div>
                 {options ? (
-                    <div className="max-h-52 space-y-1 overflow-y-auto">
-                        {options.map((option) => {
-                            const checked =
-                                value?.values?.includes(option) ?? false;
-
-                            return (
-                                <label
-                                    key={option}
-                                    className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-muted/70"
-                                >
-                                    <Checkbox
-                                        checked={checked}
-                                        onCheckedChange={(checked) =>
-                                            update({
-                                                values: checked
-                                                    ? [
-                                                          ...(value?.values ??
-                                                              []),
-                                                          option,
-                                                      ]
-                                                    : (
-                                                          value?.values ?? []
-                                                      ).filter(
-                                                          (entry) =>
-                                                              entry !== option,
-                                                      ),
-                                                min: value?.min ?? '',
-                                                max: value?.max ?? '',
-                                            })
-                                        }
-                                    />
-                                    <span className="truncate">{option}</span>
-                                </label>
-                            );
-                        })}
-                        {options.length === 0 && (
-                            <p className="px-2 py-4 text-center text-xs text-muted-foreground">
-                                Aucune valeur disponible
-                            </p>
+                    <>
+                        {searchableOptions && (
+                            <div className="relative">
+                                <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                                <Input
+                                    value={optionSearch}
+                                    onChange={(event) =>
+                                        setOptionSearch(event.target.value)
+                                    }
+                                    placeholder={
+                                        column === 'boat'
+                                            ? 'Rechercher un bateau...'
+                                            : 'Rechercher une catégorie...'
+                                    }
+                                    aria-label={`Rechercher ${title.toLocaleLowerCase('fr')}`}
+                                    className="h-9 pl-9"
+                                />
+                            </div>
                         )}
-                    </div>
+                        <div className="max-h-52 space-y-1 overflow-y-auto">
+                            {filteredOptions?.map((option) => {
+                                const checked =
+                                    value?.values?.includes(option) ?? false;
+
+                                return (
+                                    <label
+                                        key={option}
+                                        className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-muted/70"
+                                    >
+                                        <Checkbox
+                                            checked={checked}
+                                            onCheckedChange={(checked) =>
+                                                update({
+                                                    values: checked
+                                                        ? [
+                                                              ...(value?.values ??
+                                                                  []),
+                                                              option,
+                                                          ]
+                                                        : (
+                                                              value?.values ??
+                                                              []
+                                                          ).filter(
+                                                              (entry) =>
+                                                                  entry !==
+                                                                  option,
+                                                          ),
+                                                    min: value?.min ?? '',
+                                                    max: value?.max ?? '',
+                                                })
+                                            }
+                                        />
+                                        <span className="truncate">
+                                            {option}
+                                        </span>
+                                    </label>
+                                );
+                            })}
+                            {filteredOptions?.length === 0 && (
+                                <p className="px-2 py-4 text-center text-xs text-muted-foreground">
+                                    {normalizedOptionSearch
+                                        ? 'Aucun résultat'
+                                        : 'Aucune valeur disponible'}
+                                </p>
+                            )}
+                        </div>
+                    </>
                 ) : (
                     <div className="grid grid-cols-2 gap-2">
                         <Input
