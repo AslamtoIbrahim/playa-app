@@ -168,7 +168,6 @@ export function SessionPurchasesTab({
                     invoices={purchaseData.invoices}
                     formatCurrency={formatCurrency}
                     emptyMessage="Aucune facture d'achat trouvée pour cette session."
-                    title="Factures d'achat"
                     invoiceContext={
                         invoiceContext
                             ? { ...invoiceContext, type: 'purchase' }
