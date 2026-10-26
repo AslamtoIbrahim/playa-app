@@ -936,7 +936,10 @@ export default function InvoiceShow({
                         >
                             <InvoiceColumnTotals
                                 items={filteredItems}
-                                visible={showColumnFilters}
+                                visible={
+                                    showColumnFilters ||
+                                    filters.search.trim().length > 0
+                                }
                             />
                             <TableRow className="h-11 hover:bg-transparent">
                                 <TableHead className="w-8 print:hidden"></TableHead>
