@@ -261,7 +261,13 @@ export default function DifferenceShow({
                                         className="hover:bg-transparent dark:hover:bg-transparent"
                                     >
                                         <TableCell className="font-semibold text-neutral-700 capitalize dark:text-neutral-200">
-                                            {item.invoice_item?.category?.name.toLocaleLowerCase()}
+                                            {(
+                                                item.invoice_item?.item?.name ??
+                                                item.item?.name ??
+                                                item.invoice_item?.category
+                                                    ?.name ??
+                                                '—'
+                                            ).toLocaleLowerCase()}
                                         </TableCell>
                                         <TableCell className="text-center font-medium dark:text-neutral-200">
                                             {item.unit_count}
