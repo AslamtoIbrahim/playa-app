@@ -126,9 +126,13 @@ test('the whole invoice is sold to one customer at the invoiced price', function
     // Both lines are fully distributed at the invoiced price: no difference.
     expect((float) $saleItems[0]->unit_count)->toBe(10.0)
         ->and((float) $saleItems[0]->real_price)->toBe(20.0)
+        ->and($saleItems[0]->is_with_tax)->toBeFalse()
+        ->and((float) $saleItems[0]->tax)->toBe(0.0)
         ->and($saleItems[0]->difference_id)->toBeNull()
         ->and((float) $saleItems[1]->unit_count)->toBe(5.0)
         ->and((float) $saleItems[1]->real_price)->toBe(40.0)
+        ->and($saleItems[1]->is_with_tax)->toBeFalse()
+        ->and((float) $saleItems[1]->tax)->toBe(0.0)
         ->and($saleItems[1]->difference_id)->toBeNull();
 
     // Sale totals: 200 + 200, weight 315, 15 boxes.
@@ -137,6 +141,22 @@ test('the whole invoice is sold to one customer at the invoiced price', function
     expect((float) $sale->amount)->toBe(400.0)
         ->and((float) $sale->weight)->toBe(315.0)
         ->and((int) $sale->boxes)->toBe(15);
+});
+
+test('the whole invoice can be sold with tax', function () {
+    $context = createInvoiceSellContext();
+
+    $this->actingAs($context['user'])
+        ->post(route('invoices.sell', $context['invoice']), [
+            'customer_id' => $context['client']->id,
+            'is_with_tax' => true,
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect(SaleItem::count())->toBe(2)
+        ->and(SaleItem::orderBy('id')->first()->is_with_tax)->toBeTrue()
+        ->and((float) SaleItem::orderBy('id')->first()->tax)->toBe(6.0)
+        ->and((float) SaleItem::orderBy('id')->skip(1)->first()->tax)->toBe(6.0);
 });
 
 test('a sale is created for the customer when none exists in the session', function () {

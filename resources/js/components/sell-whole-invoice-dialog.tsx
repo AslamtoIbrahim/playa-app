@@ -29,6 +29,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import {
     Popover,
@@ -100,6 +101,7 @@ export default function SellWholeInvoiceDialog({
     const [clientComboOpen, setClientComboOpen] = useState<boolean>(false);
     const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
     const [clientSearch, setClientSearch] = useState<string>('');
+    const [isWithTax, setIsWithTax] = useState<boolean>(true);
 
     // Totals of the quantity still sellable: already-sold lines are excluded.
     const remaining = computeInvoiceRemainingTotals(invoice);
@@ -144,6 +146,7 @@ export default function SellWholeInvoiceDialog({
             setSelectedCustomerId('');
             setClientComboOpen(false);
             setClientSearch('');
+            setIsWithTax(true);
         }
     };
 
@@ -217,7 +220,11 @@ export default function SellWholeInvoiceDialog({
                             </span>
 
                             <p className="mt-1 text-sm font-black text-slate-900 dark:text-neutral-100">
-                                {formatCurrency(remaining.amount)}
+                                {formatCurrency(
+                                    isWithTax
+                                        ? remaining.amount
+                                        : remaining.amountWithoutTax,
+                                )}
                             </p>
                         </div>
 
@@ -282,6 +289,11 @@ export default function SellWholeInvoiceDialog({
                                 type="hidden"
                                 name="customer_id"
                                 value={selectedCustomerId}
+                            />
+                            <input
+                                type="hidden"
+                                name="is_with_tax"
+                                value={isWithTax ? '1' : '0'}
                             />
 
                             <div className="grid gap-2">
@@ -427,6 +439,19 @@ export default function SellWholeInvoiceDialog({
 
                                 <InputError message={errors.customer_id} />
                             </div>
+
+                            <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700 select-none dark:text-neutral-300">
+                                <Checkbox
+                                    checked={isWithTax}
+                                    onCheckedChange={(checked) => {
+                                        setIsWithTax(checked === true);
+                                    }}
+                                />
+                                <span>
+                                    Inclure la taxe de 3 % et les frais de
+                                    caisses
+                                </span>
+                            </label>
 
                             <div className="flex justify-end gap-3 pt-2">
                                 <Button

@@ -243,6 +243,7 @@ class InvoiceController extends Controller
     {
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
+            'is_with_tax' => 'sometimes|boolean',
         ], [
             'customer_id.required' => 'Veuillez choisir le client vendeur.',
             'customer_id.exists' => "Ce client n'existe pas.",
@@ -305,7 +306,7 @@ class InvoiceController extends Controller
                     'sale_price' => $invoiceItem->unit_price,
                     // Prix facturé : total_diff = 0, aucune différence.
                     'real_price' => $invoiceItem->unit_price,
-                    'is_with_tax' => false,
+                    'is_with_tax' => $validated['is_with_tax'] ?? false,
                 ]);
             }
 

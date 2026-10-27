@@ -68,9 +68,7 @@ export function computeInvoiceItemRemainingCount(
  * `total_diff` est lu depuis le Difference associé à la vente, il n'est pas
  * recalculé par la vente.
  */
-export function computeSaleItemValue(
-    item: Pick<SaleItem, 'amount'>,
-): number {
+export function computeSaleItemValue(item: Pick<SaleItem, 'amount'>): number {
     return Number(item.amount) || 0;
 }
 
@@ -302,6 +300,9 @@ export interface InvoiceRemainingTotals {
     /** Net amount of the remainder (HT + 3 % tax + 1 DH per box). */
     amount: number;
 
+    /** Base amount without the 3 % tax or box fees. */
+    amountWithoutTax: number;
+
     /** Weight of the remainder, prorated per line. */
     weight: number;
 
@@ -354,13 +355,15 @@ export function computeInvoiceRemainingTotals(
 
     const roundedWeight = Math.round(weight * 100) / 100;
     const roundedBoxes = Math.round(boxes * 100) / 100;
+    const amountWithoutTax = remainingHt;
     const amount =
-        remainingHt +
+        amountWithoutTax +
         computeSaleTax(remainingHt) +
         computeSaleBoxesFee(roundedBoxes);
 
     return {
         amount: Math.round(amount * 100) / 100,
+        amountWithoutTax: Math.round(amountWithoutTax * 100) / 100,
         weight: roundedWeight,
         boxes: roundedBoxes,
         remainingLines,
