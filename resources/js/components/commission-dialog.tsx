@@ -2,7 +2,6 @@ import {
     Dialog,
     DialogContent,
     DialogDescription,
-    DialogFooter,
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
@@ -23,12 +22,11 @@ import type { CommissionDraft } from '@/hooks/use-commission-row';
 import type { Page } from '@inertiajs/core';
 import { Customer } from '@/types/customer';
 import { router } from '@inertiajs/react';
-import { CircleDollarSign, Loader2, Plus, Ship } from 'lucide-react';
+import { CircleDollarSign, Loader2, Ship } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { CommissionRow } from './commission-row';
 import { Badge } from './ui/badge';
-import { Button } from './ui/button';
 
 /**
  * A commission already saved, sent back by the report so it can be edited or
@@ -67,8 +65,6 @@ interface Props {
     beneficiaries: Customer[];
     boatName?: string;
     ownerName?: string;
-    /** The boat owner is a company: no negative receipt can be written. */
-    ownerIsCompany?: boolean;
     /** Commissions already saved for this boat. */
     commissions?: ExistingCommission[];
 }
@@ -126,7 +122,6 @@ export function CommissionDialog({
     beneficiaries,
     boatName,
     ownerName,
-    ownerIsCompany,
     commissions = [],
 }: Props) {
     /**
@@ -248,16 +243,8 @@ export function CommissionDialog({
      * block the save. A line holding values but missing some of them is still
      * refused, otherwise a half filled commission would be created silently.
      */
-    const handleSave = (): void => {
+    const handleSave = (closeIfEmpty = false): void => {
         if (saving) {
-            return;
-        }
-
-        const rowsToSave = drafts.filter((row) => !isDraftRowEmpty(row));
-
-        if (rowsToSave.length === 0) {
-            toast.info('Renseignez au moins une commission.');
-
             return;
         }
 
@@ -271,6 +258,20 @@ export function CommissionDialog({
             toast.error(
                 'Une commission enregistrée ne peut pas être vidée : utilisez la poubelle pour la supprimer.',
             );
+
+            return;
+        }
+
+        const rowsToSave = drafts.filter((row) => !isDraftRowEmpty(row));
+
+        if (rowsToSave.length === 0) {
+            if (closeIfEmpty) {
+                onOpenChange(false);
+
+                return;
+            }
+
+            toast.info('Renseignez au moins une commission.');
 
             return;
         }
@@ -376,8 +377,45 @@ export function CommissionDialog({
         saveRow(0);
     };
 
+    const handleDialogOpenChange = (nextOpen: boolean): void => {
+        if (nextOpen) {
+            onOpenChange(true);
+
+            return;
+        }
+
+        if (saving || deletingRowKey !== null) {
+            return;
+        }
+
+        const hasSavedRows = drafts.some(
+            (row) => row.commission_id !== undefined,
+        );
+        const rowsToSave = drafts.filter((row) => !isDraftRowEmpty(row));
+        const hasInvalidRows = rowsToSave.some((row) => {
+            return !isCommissionDraftValid(row);
+        });
+        const hasEmptiedSavedRow = drafts.some((row) => {
+            return row.commission_id !== undefined && isDraftRowEmpty(row);
+        });
+
+        if (!hasSavedRows && rowsToSave.length === 0) {
+            onOpenChange(false);
+
+            return;
+        }
+
+        if (hasInvalidRows || hasEmptiedSavedRow) {
+            onOpenChange(false);
+
+            return;
+        }
+
+        handleSave(true);
+    };
+
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
+        <Dialog open={open} onOpenChange={handleDialogOpenChange}>
             <DialogContent className="flex max-h-[90vh] w-[95vw] max-w-3xl flex-col gap-0 overflow-hidden border border-slate-200 p-0 shadow-lg dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100">
                 <DialogHeader className="shrink-0 gap-3 border-b border-slate-300 bg-slate-50/50 p-6 pb-4 dark:border-neutral-800 dark:bg-neutral-900/50">
                     <div className="flex items-center justify-between pr-8">
@@ -391,25 +429,35 @@ export function CommissionDialog({
                             )}
                         </DialogTitle>
 
-                        <Badge
-                            variant="secondary"
-                            className="flex items-center gap-1.5 border-slate-200 bg-slate-100 px-2.5 py-1 text-slate-700 shadow-sm dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300"
-                        >
-                            <Ship className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                            <span className="text-[12px] font-bold tracking-wide uppercase">
-                                {ownerName ?? 'Sans propriétaire'}
-                            </span>
-                        </Badge>
+                        <div className="flex shrink-0 flex-col items-end gap-2">
+                            <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-neutral-400">
+                                {saving && (
+                                    <>
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                        <span>Enregistrement...</span>
+                                    </>
+                                )}
+                                Total:
+                                <span className="font-black text-amber-600 tabular-nums dark:text-amber-400">
+                                    {total.toFixed(2)} DH
+                                </span>
+                            </div>
+
+                            <Badge
+                                variant="secondary"
+                                className="flex items-center gap-1.5 border-slate-200 bg-slate-100 px-2.5 py-1 text-slate-700 shadow-sm dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300"
+                            >
+                                <Ship className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                                <span className="text-[12px] font-bold tracking-wide uppercase">
+                                    {ownerName ?? 'Sans propriétaire'}
+                                </span>
+                            </Badge>
+                        </div>
                     </div>
 
                     <DialogDescription className="text-sm text-slate-500 dark:text-neutral-400">
-                        Modifiez les lignes existantes puis enregistrez, ou
-                        ajoutez-en de nouvelles avec le bouton{' '}
-                        <Plus className="inline h-3.5 w-3.5" />. La poubelle
-                        supprime définitivement une commission.{' '}
-                        {ownerIsCompany
-                            ? `Le propriétaire du bateau (${ownerName ?? 'société'}) est une société : seule la part du bénéficiaire sera enregistrée.`
-                            : `Le propriétaire du bateau (${ownerName ?? 'client'}) sera débité automatiquement.`}
+                        Complétez les lignes, puis appuyez sur Entrée ou fermez
+                        la fenêtre pour enregistrer.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -450,6 +498,9 @@ export function CommissionDialog({
                                     onDraftChange={(data) => {
                                         handleDraftChange(row.rowKey, data);
                                     }}
+                                    onDraftEnter={() => {
+                                        handleSave();
+                                    }}
                                     onAddLine={handleAddRow}
                                     onDeleteRow={() => {
                                         handleDeleteRow(row);
@@ -459,30 +510,6 @@ export function CommissionDialog({
                         </TableBody>
                     </Table>
                 </div>
-
-                <DialogFooter className="flex-row items-center justify-end gap-3 border-t border-slate-300 bg-slate-50/50 p-4 sm:justify-end dark:border-neutral-800 dark:bg-neutral-900/50">
-                    <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-neutral-400">
-                        Total:
-                        <span className="font-black text-amber-600 tabular-nums dark:text-amber-400">
-                            {total.toFixed(2)} DH
-                        </span>
-                    </div>
-
-                    <Button
-                        type="button"
-                        size="sm"
-                        onClick={handleSave}
-                        disabled={saving || deletingRowKey !== null}
-                        className="h-9 gap-2 text-xs"
-                    >
-                        {saving ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                            <CircleDollarSign className="h-3.5 w-3.5" />
-                        )}
-                        Enregistrer
-                    </Button>
-                </DialogFooter>
             </DialogContent>
         </Dialog>
     );

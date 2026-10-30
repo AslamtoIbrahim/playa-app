@@ -37,6 +37,8 @@ interface CommissionRowProps {
      * dialog, which saves all the lines at once.
      */
     onDraftChange?: (data: CommissionDraft) => void;
+    /** Saves the complete draft set when Enter is pressed in draft mode. */
+    onDraftEnter?: () => void;
     /** Adds a new empty line to the dialog (draft mode). */
     onAddLine?: () => void;
     /** Saved line: highlighted in the grid and deletable. */
@@ -56,6 +58,7 @@ export function CommissionRow({
     commission,
     initialDraft,
     onDraftChange,
+    onDraftEnter,
     onAddLine,
     isPersisted,
     isDeleting = false,
@@ -79,6 +82,7 @@ export function CommissionRow({
         onSuccess,
         initialDraft,
         onDraftChange,
+        onDraftEnter,
     });
 
     const isExisting = !!commission;

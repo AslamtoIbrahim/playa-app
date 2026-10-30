@@ -353,7 +353,6 @@ export default function DifferenceShow({
                     beneficiaries={customers}
                     boatName={boat.name}
                     ownerName={boat.owner_name ?? undefined}
-                    ownerIsCompany={boat.owner_is_company}
                     commissions={boat.commissions}
                 />
             )}

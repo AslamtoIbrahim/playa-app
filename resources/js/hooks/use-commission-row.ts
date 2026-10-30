@@ -23,6 +23,8 @@ interface UseCommissionRowProps {
      * parent (the report commissions dialog).
      */
     onDraftChange?: (data: CommissionDraft) => void;
+    /** Draft mode: asks the parent to save the complete set of lines. */
+    onDraftEnter?: () => void;
 }
 
 /**
@@ -57,6 +59,7 @@ export function useCommissionRow({
     commission,
     initialDraft,
     onDraftChange,
+    onDraftEnter,
 }: UseCommissionRowProps) {
     const [loading, setLoading] = useState<boolean>(false);
 
@@ -285,6 +288,14 @@ export function useCommissionRow({
             if (e.key === 'Enter') {
                 {
                     e.preventDefault();
+
+                    if (isDraft) {
+                        {
+                            onDraftEnter?.();
+
+                            return;
+                        }
+                    }
 
                     if (isReadyToSave(data)) {
                         {
