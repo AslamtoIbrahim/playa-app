@@ -106,7 +106,7 @@ export function InvoiceCategoryBreakdownDialog({
         >
             <DialogTrigger asChild>
                 <button type="button" className="w-full cursor-pointer text-left lg:order-4">
-                    <Card className="group overflow-hidden border-emerald-200/80 bg-linear-to-br from-white to-emerald-50/70 py-2 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-emerald-900 dark:from-neutral-900 dark:to-emerald-950/20">
+                    <Card className="group h-full overflow-hidden border-emerald-200/80 bg-linear-to-br from-white to-emerald-50/70 py-2 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-emerald-900 dark:from-neutral-900 dark:to-emerald-950/20">
                         <CardContent className="flex min-h-16 items-center justify-between gap-3 p-3">
                             <div className="min-w-0 flex-1">
                                 <p className="text-xs font-semibold tracking-wide text-slate-500 dark:text-neutral-400">
