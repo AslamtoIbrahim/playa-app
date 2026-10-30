@@ -16,6 +16,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 import InputError from '@/components/input-error';
+import MissingCustomerPopup from '@/components/missing-customer-popup';
 import SessionZoneBadge from '@/components/receipt-session-zone-badge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -91,6 +92,10 @@ export default function AddReceiptDialog({
     const [open, setOpen] = useState<boolean>(false);
 
     const [customerComboOpen, setCustomerComboOpen] = useState<boolean>(false);
+    const [customerSearch, setCustomerSearch] = useState<string>('');
+    const [pendingCustomerName, setPendingCustomerName] = useState<
+        string | null
+    >(null);
     const [sessionZoneComboOpen, setSessionZoneComboOpen] =
         useState<boolean>(false);
     const [boatComboOpen, setBoatComboOpen] = useState<boolean>(false);
@@ -104,6 +109,16 @@ export default function AddReceiptDialog({
     );
     const [selectedBoatId, setSelectedBoatId] = useState<string>('');
     const [date, setDate] = useState<Date>(new Date());
+
+    const newlyCreatedCustomer = pendingCustomerName
+        ? customers.find(
+              (item) =>
+                  item.name.trim().toLowerCase() ===
+                  pendingCustomerName.toLowerCase(),
+          )
+        : undefined;
+    const activeCustomerId =
+        newlyCreatedCustomer?.id.toString() ?? selectedCustomerId;
 
     const isSessionZoneLocked = Boolean(lockedSessionZoneIds?.length);
     const isDateLocked = Boolean(lockedDate);
@@ -183,6 +198,7 @@ export default function AddReceiptDialog({
 
                         setOpen(false);
                         setSelectedCustomerId('');
+                        setPendingCustomerName(null);
                         setSelectedBoatId('');
                         resetContextState();
                     }}
@@ -193,7 +209,7 @@ export default function AddReceiptDialog({
                             <input
                                 type="hidden"
                                 name="customer_id"
-                                value={selectedCustomerId}
+                                value={activeCustomerId}
                             />
                             <input
                                 type="hidden"
@@ -410,7 +426,13 @@ export default function AddReceiptDialog({
                                 </Label>
                                 <Popover
                                     open={customerComboOpen}
-                                    onOpenChange={setCustomerComboOpen}
+                                    onOpenChange={(nextOpen) => {
+                                        setCustomerComboOpen(nextOpen);
+
+                                        if (!nextOpen) {
+                                            setCustomerSearch('');
+                                        }
+                                    }}
                                 >
                                     <PopoverTrigger asChild>
                                         <Button
@@ -418,17 +440,17 @@ export default function AddReceiptDialog({
                                             role="combobox"
                                             className={cn(
                                                 'w-full justify-between font-medium dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50',
-                                                !selectedCustomerId &&
+                                                !activeCustomerId &&
                                                     'text-muted-foreground',
                                                 errors.customer_id &&
                                                     'border-destructive',
                                             )}
                                         >
-                                            {selectedCustomerId
+                                            {activeCustomerId
                                                 ? customers.find(
                                                       (c) =>
                                                           c.id.toString() ===
-                                                          selectedCustomerId,
+                                                          activeCustomerId,
                                                   )?.name
                                                 : 'Sélectionner un client...'}
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -436,10 +458,41 @@ export default function AddReceiptDialog({
                                     </PopoverTrigger>
                                     <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                         <Command>
-                                            <CommandInput placeholder="Rechercher un client..." />
+                                            <CommandInput
+                                                placeholder="Rechercher un client..."
+                                                value={customerSearch}
+                                                onValueChange={
+                                                    setCustomerSearch
+                                                }
+                                            />
                                             <CommandList>
                                                 <CommandEmpty>
-                                                    Aucun client trouvé.
+                                                    <div className="flex flex-col items-center gap-2">
+                                                        <span>
+                                                            Aucun client trouvé.
+                                                        </span>
+                                                        {customerSearch.trim() && (
+                                                            <MissingCustomerPopup
+                                                                initialName={customerSearch.trim()}
+                                                                onCreated={(
+                                                                    name,
+                                                                ) => {
+                                                                    setSelectedCustomerId(
+                                                                        '',
+                                                                    );
+                                                                    setPendingCustomerName(
+                                                                        name,
+                                                                    );
+                                                                    setCustomerSearch(
+                                                                        '',
+                                                                    );
+                                                                    setCustomerComboOpen(
+                                                                        false,
+                                                                    );
+                                                                }}
+                                                            />
+                                                        )}
+                                                    </div>
                                                 </CommandEmpty>
                                                 <CommandGroup>
                                                     {customers.map(
@@ -458,6 +511,12 @@ export default function AddReceiptDialog({
                                                                     setSelectedCustomerId(
                                                                         customer.id.toString(),
                                                                     );
+                                                                    setPendingCustomerName(
+                                                                        null,
+                                                                    );
+                                                                    setCustomerSearch(
+                                                                        '',
+                                                                    );
                                                                     setCustomerComboOpen(
                                                                         false,
                                                                     );
@@ -466,7 +525,7 @@ export default function AddReceiptDialog({
                                                                 <Check
                                                                     className={cn(
                                                                         'mr-2 h-4 w-4',
-                                                                        selectedCustomerId ===
+                                                                        activeCustomerId ===
                                                                             customer.id.toString()
                                                                             ? 'opacity-100'
                                                                             : 'opacity-0',

@@ -13,6 +13,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 import InputError from '@/components/input-error';
+import MissingCustomerPopup from '@/components/missing-customer-popup';
 import SessionZoneBadge from '@/components/receipt-session-zone-badge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -83,6 +84,10 @@ export default function EditReceiptDialog({
 }: Props) {
     const [open, setOpen] = useState<boolean>(false);
     const [customerComboOpen, setCustomerComboOpen] = useState<boolean>(false);
+    const [customerSearch, setCustomerSearch] = useState<string>('');
+    const [pendingCustomerName, setPendingCustomerName] = useState<
+        string | null
+    >(null);
     const [sessionZoneComboOpen, setSessionZoneComboOpen] =
         useState<boolean>(false);
     const [boatComboOpen, setBoatComboOpen] = useState<boolean>(false);
@@ -100,6 +105,16 @@ export default function EditReceiptDialog({
     );
 
     const [date, setDate] = useState<Date>(parseISO(receipt.date));
+
+    const newlyCreatedCustomer = pendingCustomerName
+        ? customers.find(
+              (item) =>
+                  item.name.trim().toLowerCase() ===
+                  pendingCustomerName.toLowerCase(),
+          )
+        : undefined;
+    const activeCustomerId =
+        newlyCreatedCustomer?.id.toString() ?? selectedCustomerId;
 
     const isSessionZoneLocked = Boolean(lockedSessionZoneIds?.length);
     const isDateLocked = Boolean(lockedDate);
@@ -180,7 +195,7 @@ export default function EditReceiptDialog({
                             <input
                                 type="hidden"
                                 name="customer_id"
-                                value={selectedCustomerId}
+                                value={activeCustomerId}
                             />
                             <input
                                 type="hidden"
@@ -378,7 +393,13 @@ export default function EditReceiptDialog({
                                 </Label>
                                 <Popover
                                     open={customerComboOpen}
-                                    onOpenChange={setCustomerComboOpen}
+                                    onOpenChange={(nextOpen) => {
+                                        setCustomerComboOpen(nextOpen);
+
+                                        if (!nextOpen) {
+                                            setCustomerSearch('');
+                                        }
+                                    }}
                                 >
                                     <PopoverTrigger asChild>
                                         <Button
@@ -390,11 +411,11 @@ export default function EditReceiptDialog({
                                                     'border-destructive',
                                             )}
                                         >
-                                            {selectedCustomerId
+                                            {activeCustomerId
                                                 ? customers.find(
                                                       (c) =>
                                                           c.id.toString() ===
-                                                          selectedCustomerId,
+                                                          activeCustomerId,
                                                   )?.name
                                                 : 'Sélectionner un client...'}
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -402,10 +423,41 @@ export default function EditReceiptDialog({
                                     </PopoverTrigger>
                                     <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                         <Command>
-                                            <SearchInput placeholder="Rechercher..." />
+                                            <SearchInput
+                                                placeholder="Rechercher..."
+                                                value={customerSearch}
+                                                onValueChange={
+                                                    setCustomerSearch
+                                                }
+                                            />
                                             <CommandList>
                                                 <CommandEmpty>
-                                                    Aucun client trouvé.
+                                                    <div className="flex flex-col items-center gap-2">
+                                                        <span>
+                                                            Aucun client trouvé.
+                                                        </span>
+                                                        {customerSearch.trim() && (
+                                                            <MissingCustomerPopup
+                                                                initialName={customerSearch.trim()}
+                                                                onCreated={(
+                                                                    name,
+                                                                ) => {
+                                                                    setSelectedCustomerId(
+                                                                        '',
+                                                                    );
+                                                                    setPendingCustomerName(
+                                                                        name,
+                                                                    );
+                                                                    setCustomerSearch(
+                                                                        '',
+                                                                    );
+                                                                    setCustomerComboOpen(
+                                                                        false,
+                                                                    );
+                                                                }}
+                                                            />
+                                                        )}
+                                                    </div>
                                                 </CommandEmpty>
                                                 <CommandGroup>
                                                     {customers.map(
@@ -421,6 +473,12 @@ export default function EditReceiptDialog({
                                                                     setSelectedCustomerId(
                                                                         customer.id.toString(),
                                                                     );
+                                                                    setPendingCustomerName(
+                                                                        null,
+                                                                    );
+                                                                    setCustomerSearch(
+                                                                        '',
+                                                                    );
                                                                     setCustomerComboOpen(
                                                                         false,
                                                                     );
@@ -429,7 +487,7 @@ export default function EditReceiptDialog({
                                                                 <Check
                                                                     className={cn(
                                                                         'mr-2 h-4 w-4',
-                                                                        selectedCustomerId ===
+                                                                        activeCustomerId ===
                                                                             customer.id.toString()
                                                                             ? 'opacity-100'
                                                                             : 'opacity-0',
