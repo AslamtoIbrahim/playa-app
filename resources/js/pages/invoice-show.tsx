@@ -423,16 +423,14 @@ export default function InvoiceShow({
         const rowIds = getRowIds(localItems);
 
         const fillDown = (event: KeyboardEvent) => {
-            const cell = (event.target as HTMLElement).closest<HTMLElement>(
-                '[data-invoice-cell][data-invoice-row]',
-            );
+            const isArrowKey = [
+                'ArrowUp',
+                'ArrowDown',
+                'ArrowLeft',
+                'ArrowRight',
+            ].includes(event.key);
 
-            if (
-                cell &&
-                ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(
-                    event.key,
-                )
-            ) {
+            if (isArrowKey && !event.shiftKey) {
                 const fields = [
                     'boat_id',
                     'category_id',
@@ -444,22 +442,46 @@ export default function InvoiceShow({
                     'amount',
                     'difference',
                 ];
-                const rowIndex = rowIds.indexOf(
-                    Number(cell.dataset.invoiceRow),
+                const target =
+                    event.target instanceof HTMLElement ? event.target : null;
+                const cell = target?.closest<HTMLElement>(
+                    '[data-invoice-cell][data-invoice-row]',
                 );
-                const columnIndex = fields.indexOf(
-                    cell.dataset.invoiceCell ?? '',
-                );
+                const canUseSelection =
+                    document.activeElement === document.body ||
+                    document.activeElement === document.documentElement;
+                const currentRowId = cell
+                    ? Number(cell.dataset.invoiceRow)
+                    : canUseSelection
+                      ? cellSelection?.rowId
+                      : undefined;
+                const currentField = cell
+                    ? (cell.dataset.invoiceCell ?? '')
+                    : canUseSelection
+                      ? (cellSelection?.field ?? '')
+                      : '';
+                const rowIndex =
+                    currentRowId === undefined
+                        ? -1
+                        : rowIds.indexOf(currentRowId);
+                const columnIndex = fields.indexOf(currentField);
+                const hasCurrentCell = rowIndex >= 0 && columnIndex >= 0;
+                const shouldMoveFocus = !event.defaultPrevented;
+
+                if (hasCurrentCell && shouldMoveFocus) {
+                    event.preventDefault();
+                }
+
                 let nextRow = rowIndex;
                 let nextColumn = columnIndex;
 
-                if (event.key === 'ArrowUp') {
+                if (hasCurrentCell && event.key === 'ArrowUp') {
                     nextRow -= 1;
-                } else if (event.key === 'ArrowDown') {
+                } else if (hasCurrentCell && event.key === 'ArrowDown') {
                     nextRow += 1;
-                } else if (event.key === 'ArrowLeft') {
+                } else if (hasCurrentCell && event.key === 'ArrowLeft') {
                     nextColumn -= 1;
-                } else {
+                } else if (hasCurrentCell && event.key === 'ArrowRight') {
                     nextColumn += 1;
                 }
 
@@ -481,21 +503,23 @@ export default function InvoiceShow({
                             targetRow?.[targetField as keyof InvoiceItem] ?? '',
                         );
 
-                    if (event.shiftKey && event.key.startsWith('Arrow')) {
-                        if (
-                            event.key === 'ArrowUp' ||
-                            event.key === 'ArrowDown'
-                        ) {
-                            event.preventDefault();
-                            extendSelection(targetRowId, targetField, value);
+                    setCellSelection({
+                        rowId: targetRowId,
+                        field: targetField,
+                        value,
+                        anchorId: targetRowId,
+                    });
+
+                    if (shouldMoveFocus) {
+                        const focusTarget = targetCell?.querySelector<
+                            HTMLInputElement | HTMLButtonElement
+                        >('input:not(:disabled), button:not(:disabled)');
+
+                        if (focusTarget) {
+                            focusTarget.focus();
+                        } else {
+                            targetCell?.focus();
                         }
-                    } else {
-                        setCellSelection({
-                            rowId: targetRowId,
-                            field: targetField,
-                            value,
-                            anchorId: targetRowId,
-                        });
                     }
                 }
             }

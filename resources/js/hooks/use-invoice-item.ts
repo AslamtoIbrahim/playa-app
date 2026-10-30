@@ -4,12 +4,9 @@ import { router } from '@inertiajs/react';
 import { FocusEvent, KeyboardEvent, useEffect, useRef, useState } from 'react';
 
 /**
- * Délai d'inactivité avant l'enregistrement automatique d'une modification.
- * Assez long pour ne pas déclencher une requête à chaque frappe, assez court
- * pour qu'aucune saisie ne soit perdue si l'utilisateur oublie « Entrée ».
+ * Inactivity delay before automatically saving edits to an existing row.
  */
 const AUTO_SAVE_DELAY = 700;
-const NEW_ITEM_AUTO_SAVE_DELAY = 10000;
 
 /** Délai de reprise quand une requête est déjà en vol. */
 const AUTO_SAVE_RETRY_DELAY = 200;
@@ -313,12 +310,10 @@ export function useInvoiceItem({
     };
 
     const scheduleSave = (delay = AUTO_SAVE_DELAY) => {
-        if (isNew && !hasDataToSave()) {
+        if (isNew) {
             clearSaveTimer();
 
-            {
-                return;
-            }
+            return;
         }
 
         clearSaveTimer();
@@ -328,7 +323,7 @@ export function useInvoiceItem({
                 saveTimerRef.current = null;
                 flushSave();
             },
-            isNew ? NEW_ITEM_AUTO_SAVE_DELAY : delay,
+            delay,
         );
     };
 
@@ -401,7 +396,7 @@ export function useInvoiceItem({
     flushSaveRef.current = flushSave;
     saveDraftOnLeaveRef.current = saveDraftOnLeave;
 
-    // Existing rows save on blur; new-row typing is left to the longer debounce.
+    // New rows save when the user leaves the row, not while they are still editing.
     const handleBlur = () => {
         if (!isNew) {
             flushSave();
@@ -510,9 +505,9 @@ export function useInvoiceItem({
                 }
 
                 const focusElement = (el: Element | null) => {
-                    const target = el?.querySelector(
-                        'input, button, select',
-                    ) as HTMLElement;
+                    const target = el?.querySelector<HTMLElement>(
+                        'input:not(:disabled), button:not(:disabled), select:not(:disabled)',
+                    );
 
                     if (target) {
                         {
@@ -524,6 +519,8 @@ export function useInvoiceItem({
                                 }
                             }
                         }
+                    } else if (el instanceof HTMLElement) {
+                        el.focus();
                     }
                 };
 

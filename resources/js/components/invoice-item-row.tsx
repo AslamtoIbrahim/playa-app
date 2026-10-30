@@ -14,7 +14,7 @@ import {
     formatDifferenceAmount,
 } from '@/lib/differences';
 import { Check, Loader2, GripVertical } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useEffect } from 'react';
 
 // Drag & Drop
@@ -101,6 +101,30 @@ export default function InvoiceItemRow({
      */
     const rowId = item?.id ?? (isNew ? NEW_INVOICE_ITEM_ROW_ID : undefined);
     const [isUnitSelectOpen, setIsUnitSelectOpen] = useState(false);
+    const previousLoadingRef = useRef(loading);
+    const restoreFocusFieldRef = useRef<string | null>(null);
+
+    useEffect(() => {
+        if (previousLoadingRef.current && !loading && isNew) {
+            const field = restoreFocusFieldRef.current;
+            restoreFocusFieldRef.current = null;
+
+            if (field && rowId !== undefined) {
+                requestAnimationFrame(() => {
+                    const cell = document.querySelector<HTMLElement>(
+                        `[data-invoice-row="${rowId}"][data-invoice-cell="${field}"]`,
+                    );
+                    const control = cell?.querySelector<HTMLElement>(
+                        'input:not(:disabled), button:not(:disabled)',
+                    );
+
+                    (control ?? cell)?.focus();
+                });
+            }
+        }
+
+        previousLoadingRef.current = loading;
+    }, [isNew, loading, rowId]);
 
     useEffect(() => {
         const closeUnitSelect = () => setIsUnitSelectOpen(false);
@@ -144,6 +168,7 @@ export default function InvoiceItemRow({
     const cellProps = (field: string, value: string | number) => ({
         'data-invoice-cell': field,
         'data-invoice-row': rowId,
+        tabIndex: -1,
         onMouseDownCapture: (event: React.MouseEvent) => {
             if (rowId !== undefined) {
                 onCellSelect?.(rowId, field, String(value), event.shiftKey);
@@ -255,6 +280,22 @@ export default function InvoiceItemRow({
             ref={setNodeRef}
             style={style}
             onBlurCapture={handleRowBlur}
+            onKeyDownCapture={(event) => {
+                if (
+                    isNew &&
+                    event.key === 'Enter' &&
+                    !openBoat &&
+                    !openItem &&
+                    !isUnitSelectOpen
+                ) {
+                    restoreFocusFieldRef.current =
+                        (event.target as HTMLElement)
+                            .closest<HTMLElement>(
+                                '[data-invoice-cell][data-invoice-row]',
+                            )
+                            ?.dataset.invoiceCell ?? null;
+                }
+            }}
             className={cn(
                 'group border-b border-slate-100 dark:border-neutral-800',
                 isNew
