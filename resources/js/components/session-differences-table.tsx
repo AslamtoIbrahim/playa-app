@@ -12,7 +12,10 @@ import {
 } from '@/components/ui/table';
 import { formatDateDisplay } from '@/lib/date';
 import type { DifferenceReport } from '@/lib/differences';
-import { groupDifferencesByReport, toDateOnly } from '@/lib/differences';
+import {
+    groupDifferencesByReport,
+    groupSessionDifferencesByReport,
+} from '@/lib/differences';
 import { report as differenceReport } from '@/routes/differences';
 import type { Difference } from '@/types/difference';
 import type { Receipt } from '@/types/receipt';
@@ -70,43 +73,10 @@ export function SessionDifferencesTable({
     const [filters, setFilters] =
         useState<SessionDifferenceFilters>(initialFilters);
     const reports = useMemo(() => {
-        const allReports = groupDifferencesByReport(differences);
-        const commissionTotals = new Map<string, number>();
-
-        receipts.forEach((receipt) => {
-            if (!receipt.boat_id) {
-                return;
-            }
-
-            const invoiceDate = toDateOnly(receipt.date);
-
-            if (!invoiceDate) {
-                return;
-            }
-
-            const key = `${receipt.customer_id}-${invoiceDate}-${receipt.boat_id}`;
-            const commissionTotal = (receipt.items ?? [])
-                .filter((item) => item.type === 'commission')
-                .reduce(
-                    (total, item) =>
-                        total +
-                        Number(item.unit_count) * Number(item.real_price),
-                    0,
-                );
-
-            if (commissionTotal !== 0) {
-                commissionTotals.set(
-                    key,
-                    (commissionTotals.get(key) ?? 0) + commissionTotal,
-                );
-            }
-        });
-
-        const reportsWithCommissions = allReports.map((report) => ({
-            ...report,
-            totalDiff:
-                report.totalDiff + (commissionTotals.get(report.key) ?? 0),
-        }));
+        const reportsWithCommissions = groupSessionDifferencesByReport(
+            differences,
+            receipts,
+        );
         const query = filters.search.trim().toLocaleLowerCase('fr');
 
         return reportsWithCommissions.filter((report) => {

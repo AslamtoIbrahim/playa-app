@@ -2,6 +2,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { SessionPurchaseTab } from '../hooks/use-session-tabs';
 import { cn } from '@/lib/utils';
 import { ArrowLeftRight, FileText, PackageCheck, Users } from 'lucide-react';
+import { groupSessionDifferencesByReport } from '@/lib/differences';
 import type { Attendance } from '@/types/attendance';
 import type { SessionGroupData } from '@/types/daily-session';
 
@@ -57,10 +58,10 @@ export function SessionPurchasesTab({
         (sum, receipt) => sum + Number(receipt.total_amount ?? 0),
         0,
     );
-    const differencesTotal = purchaseData.differences.reduce(
-        (sum, difference) => sum + Number(difference.total_diff ?? 0),
-        0,
-    );
+    const differencesTotal = groupSessionDifferencesByReport(
+        purchaseData.differences,
+        purchaseData.receipts,
+    ).reduce((sum, report) => sum + report.totalDiff, 0);
     const attendancesTotal = attendances.reduce(
         (sum, attendance) => sum + Number(attendance.total_wage ?? 0),
         0,

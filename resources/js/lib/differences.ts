@@ -1,5 +1,6 @@
 import type { Difference } from '@/types/difference';
 import type { InvoiceItem } from '@/types/invoice-item';
+import type { Receipt } from '@/types/receipt';
 
 /**
  * Un rapport d'écarts regroupe les différences d'un même client, bateau et
@@ -74,6 +75,50 @@ export function groupDifferencesByReport(
     });
 
     return Array.from(groups.values());
+}
+
+/**
+ * Groups session differences by report and applies commissions from matching
+ * receipts, using the same customer / date / boat key as the session table.
+ */
+export function groupSessionDifferencesByReport(
+    differences: Difference[],
+    receipts: Receipt[],
+): DifferenceReport[] {
+    const commissionTotals = new Map<string, number>();
+
+    receipts.forEach((receipt) => {
+        if (!receipt.boat_id) {
+            return;
+        }
+
+        const invoiceDate = toDateOnly(receipt.date);
+
+        if (!invoiceDate) {
+            return;
+        }
+
+        const key = `${receipt.customer_id}-${invoiceDate}-${receipt.boat_id}`;
+        const commissionTotal = (receipt.items ?? [])
+            .filter((item) => item.type === 'commission')
+            .reduce(
+                (total, item) =>
+                    total + Number(item.unit_count) * Number(item.real_price),
+                0,
+            );
+
+        if (commissionTotal !== 0) {
+            commissionTotals.set(
+                key,
+                (commissionTotals.get(key) ?? 0) + commissionTotal,
+            );
+        }
+    });
+
+    return groupDifferencesByReport(differences).map((report) => ({
+        ...report,
+        totalDiff: report.totalDiff + (commissionTotals.get(report.key) ?? 0),
+    }));
 }
 /**
  * Total de la répartition d'un svelte de facture, tel qu'il est présenté par le
