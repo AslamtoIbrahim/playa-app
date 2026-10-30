@@ -9,6 +9,7 @@ use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Item;
+use App\Models\ReceiptItem;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\SessionZone;
@@ -165,6 +166,20 @@ class InvoiceController extends Controller
             ? Sale::where('session_id', $session->id)->with(['customer', 'items.item'])->latest('id')->get()
             : Sale::whereRaw('1 = 0')->get();
 
+        $commissionTotal = 0.0;
+        $boatIds = $invoice->items->pluck('boat_id')->unique();
+
+        if ($invoice->billable instanceof Customer && $boatIds->isNotEmpty()) {
+            $commissionTotal = (float) ReceiptItem::query()
+                ->where('type', 'commission')
+                ->whereHas('receipt', function ($query) use ($invoice, $boatIds) {
+                    $query->where('customer_id', $invoice->billable_id)
+                        ->whereDate('date', $invoice->date)
+                        ->whereIn('boat_id', $boatIds);
+                })
+                ->sum(DB::raw('unit_count * real_price'));
+        }
+
         $availableStockByCategory = [];
         $globalSoldCountByInvoiceItem = [];
 
@@ -229,6 +244,7 @@ class InvoiceController extends Controller
             'globalSoldCountByInvoiceItem' => $globalSoldCountByInvoiceItem,
             'session' => $session,
             'backUrl' => $backUrl,
+            'commissionTotal' => $commissionTotal,
         ]);
     }
 

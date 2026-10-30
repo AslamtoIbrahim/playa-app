@@ -15,4 +15,6 @@ export interface Stats {
     }[];
     totalDifference?: number;
     formattedTotalDifference?: string;
+    commissionTotal: number;
+    formattedCommissionTotal: string;
 }

@@ -12,9 +12,10 @@ import {
 } from '@/components/ui/table';
 import { formatDateDisplay } from '@/lib/date';
 import type { DifferenceReport } from '@/lib/differences';
-import { groupDifferencesByReport } from '@/lib/differences';
+import { groupDifferencesByReport, toDateOnly } from '@/lib/differences';
 import { report as differenceReport } from '@/routes/differences';
 import type { Difference } from '@/types/difference';
+import type { Receipt } from '@/types/receipt';
 import {
     SessionDifferenceColumnFilter,
     SessionDifferenceColumnTotals,
@@ -52,6 +53,7 @@ const getFilterValue = (
 
 export interface SessionDifferencesTableProps {
     differences: Difference[];
+    receipts: Receipt[];
     formatCurrency: (amount: number) => string;
     emptyMessage: string;
     sessionId: number;
@@ -59,6 +61,7 @@ export interface SessionDifferencesTableProps {
 
 export function SessionDifferencesTable({
     differences,
+    receipts,
     formatCurrency,
     emptyMessage,
     sessionId,
@@ -68,9 +71,45 @@ export function SessionDifferencesTable({
         useState<SessionDifferenceFilters>(initialFilters);
     const reports = useMemo(() => {
         const allReports = groupDifferencesByReport(differences);
+        const commissionTotals = new Map<string, number>();
+
+        receipts.forEach((receipt) => {
+            if (!receipt.boat_id) {
+                return;
+            }
+
+            const invoiceDate = toDateOnly(receipt.date);
+
+            if (!invoiceDate) {
+                return;
+            }
+
+            const key = `${receipt.customer_id}-${invoiceDate}-${receipt.boat_id}`;
+            const commissionTotal = (receipt.items ?? [])
+                .filter((item) => item.type === 'commission')
+                .reduce(
+                    (total, item) =>
+                        total +
+                        Number(item.unit_count) * Number(item.real_price),
+                    0,
+                );
+
+            if (commissionTotal !== 0) {
+                commissionTotals.set(
+                    key,
+                    (commissionTotals.get(key) ?? 0) + commissionTotal,
+                );
+            }
+        });
+
+        const reportsWithCommissions = allReports.map((report) => ({
+            ...report,
+            totalDiff:
+                report.totalDiff + (commissionTotals.get(report.key) ?? 0),
+        }));
         const query = filters.search.trim().toLocaleLowerCase('fr');
 
-        return allReports.filter((report) => {
+        return reportsWithCommissions.filter((report) => {
             const matchesSearch =
                 !query ||
                 [
@@ -113,7 +152,7 @@ export function SessionDifferencesTable({
 
             return matchesSearch && matchesColumns;
         });
-    }, [differences, filters, formatCurrency]);
+    }, [differences, receipts, filters, formatCurrency]);
     const activeFilterCount = Object.values(filters.columns).filter((filter) =>
         Boolean(filter?.values?.length || filter?.min || filter?.max),
     ).length;

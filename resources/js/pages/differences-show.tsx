@@ -255,44 +255,52 @@ export default function DifferenceShow({
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {details.map((item) => (
-                                    <TableRow
-                                        key={item.id}
-                                        className="hover:bg-transparent dark:hover:bg-transparent"
-                                    >
-                                        <TableCell className="font-semibold text-neutral-700 capitalize dark:text-neutral-200">
-                                            {(
-                                                item.invoice_item?.item?.name ??
-                                                item.item?.name ??
-                                                item.invoice_item?.category
-                                                    ?.name ??
-                                                '—'
-                                            ).toLocaleLowerCase()}
-                                        </TableCell>
-                                        <TableCell className="text-center font-medium dark:text-neutral-200">
-                                            {item.unit_count}
-                                        </TableCell>
-                                        <TableCell className="text-right font-semibold tabular-nums dark:text-neutral-200">
-                                            {Number(item.real_price).toFixed(2)}
-                                        </TableCell>
-                                        <TableCell className="text-right text-muted-foreground tabular-nums dark:text-neutral-400">
-                                            {Number(
-                                                item.invoice_item?.unit_price,
-                                            ).toFixed(2)}
-                                        </TableCell>
+                                {details.map((item) => {
+                                    const articleName = (
+                                        item.invoice_item?.item?.name ??
+                                        item.item?.name ??
+                                        item.invoice_item?.category?.name ??
+                                        '—'
+                                    ).toLocaleLowerCase();
 
-                                        <TableCell
-                                            className={`text-right font-bold tabular-nums ${Number(item.total_diff) < 0 ? 'text-red-500' : Number(item.total_diff) > 0 ? 'text-green-700 dark:text-green-400' : 'text-neutral-700 dark:text-neutral-200'}`}
+                                    return (
+                                        <TableRow
+                                            key={item.id}
+                                            className="hover:bg-transparent dark:hover:bg-transparent"
                                         >
-                                            {Number(item.total_diff) > 0
-                                                ? '+'
-                                                : ''}
-                                            {Number(
-                                                item.total_diff,
-                                            ).toLocaleString()}
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
+                                            <TableCell className="font-semibold text-neutral-700 capitalize dark:text-neutral-200">
+                                                {articleName === 'commission'
+                                                    ? ''
+                                                    : articleName}
+                                            </TableCell>
+                                            <TableCell className="text-center font-medium dark:text-neutral-200">
+                                                {item.unit_count}
+                                            </TableCell>
+                                            <TableCell className="text-right font-semibold tabular-nums dark:text-neutral-200">
+                                                {Number(
+                                                    item.real_price,
+                                                ).toFixed(2)}
+                                            </TableCell>
+                                            <TableCell className="text-right text-muted-foreground tabular-nums dark:text-neutral-400">
+                                                {Number(
+                                                    item.invoice_item
+                                                        ?.unit_price,
+                                                ).toFixed(2)}
+                                            </TableCell>
+
+                                            <TableCell
+                                                className={`text-right font-bold tabular-nums ${Number(item.total_diff) < 0 ? 'text-red-500' : Number(item.total_diff) > 0 ? 'text-green-700 dark:text-green-400' : 'text-neutral-700 dark:text-neutral-200'}`}
+                                            >
+                                                {Number(item.total_diff) > 0
+                                                    ? '+'
+                                                    : ''}
+                                                {Number(
+                                                    item.total_diff,
+                                                ).toLocaleString()}
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })}
                             </TableBody>
                         </Table>
                     </div>

@@ -102,6 +102,7 @@ interface Props {
     session: DailySession | null;
     /** URL de retour explicite fournie par le backend (journée liée ou liste). */
     backUrl: string;
+    commissionTotal: number;
 }
 
 /**
@@ -126,6 +127,7 @@ export default function InvoiceShow({
     globalSoldCountByInvoiceItem,
     session,
     backUrl,
+    commissionTotal,
 }: Props) {
     // --- State Management (Manual Synchronization) ---
     const [localItems, setLocalItems] = useState<InvoiceItem[]>(
@@ -539,7 +541,7 @@ export default function InvoiceShow({
     }, [cellSelection, extendSelection, localItems, rowIds, setCellSelection]);
 
     // الحسابات
-    const stats = useInvoiceCalculations(invoice);
+    const stats = useInvoiceCalculations(invoice, commissionTotal);
 
     // Sensors لعملية الـ Drag & Drop
     const sensors = useSensors(

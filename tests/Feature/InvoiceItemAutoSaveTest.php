@@ -245,3 +245,33 @@ test('la facture expose les différences et les commissions de chaque svelte', f
             ->where('invoice.items.0.receipt_items.0.type', 'commission')
         );
 });
+
+test('the invoice deducts commissions from the matching report', function () {
+    $context = createAutoSaveContext();
+
+    $receipt = Receipt::create([
+        'date' => $context['invoice']->date,
+        'customer_id' => $context['client']->id,
+        'boat_id' => $context['boat']->id,
+        'session_zone_id' => $context['invoice']->session_zone_id,
+    ]);
+
+    ReceiptItem::create([
+        'receipt_id' => $receipt->id,
+        'item_id' => null,
+        'invoice_item_id' => null,
+        'boat_id' => $context['boat']->id,
+        'unit_count' => 10,
+        'real_price' => -6,
+        'box' => 0,
+        'type' => 'commission',
+    ]);
+
+    $this->actingAs($context['user'])
+        ->get(route('invoices.show', $context['invoice']->id))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('invoice-show')
+            ->where('commissionTotal', -60)
+        );
+});

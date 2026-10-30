@@ -2,7 +2,10 @@ import { Invoice } from '@/types/invoice';
 import { formatNumber } from '@/lib/utils';
 import { useMemo } from 'react';
 
-export const useInvoiceCalculations = (invoice: Invoice) => {
+export const useInvoiceCalculations = (
+    invoice: Invoice,
+    commissionTotal = 0,
+) => {
     return useMemo(() => {
         const netToPay = Number(invoice.amount || 0);
         const tvaAmount = Number(invoice.tva || 0);
@@ -35,13 +38,13 @@ export const useInvoiceCalculations = (invoice: Invoice) => {
         const differences = invoiceItems.flatMap(
             (item) => item.differences ?? [],
         );
+        const differenceTotal = differences.reduce(
+            (sum, difference) => sum + Number(difference.total_diff || 0),
+            0,
+        );
         const totalDifference =
-            differences.length > 0
-                ? differences.reduce(
-                      (sum, difference) =>
-                          sum + Number(difference.total_diff || 0),
-                      0,
-                  )
+            differences.length > 0 || commissionTotal !== 0
+                ? differenceTotal + commissionTotal
                 : undefined;
         // الحساب ديال HT
         const totalHT = netToPay - tvaAmount - totalBoxes;
@@ -72,6 +75,8 @@ export const useInvoiceCalculations = (invoice: Invoice) => {
                 totalDifference === undefined
                     ? undefined
                     : formatNumber(totalDifference),
+            commissionTotal,
+            formattedCommissionTotal: formatNumber(commissionTotal),
         };
     }, [
         invoice.amount,
@@ -79,5 +84,6 @@ export const useInvoiceCalculations = (invoice: Invoice) => {
         invoice.boxes,
         invoice.weight,
         invoice.items,
+        commissionTotal,
     ]);
 };

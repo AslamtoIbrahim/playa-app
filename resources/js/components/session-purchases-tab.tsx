@@ -180,6 +180,7 @@ export function SessionPurchasesTab({
             <TabsContent value="differences" className="mt-0">
                 <SessionDifferencesTable
                     differences={purchaseData.differences}
+                    receipts={purchaseData.receipts}
                     formatCurrency={formatCurrency}
                     emptyMessage="Aucune différence trouvée pour cette session."
                     sessionId={sessionId}

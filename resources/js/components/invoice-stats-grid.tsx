@@ -117,6 +117,11 @@ export function InvoiceStatsGrid({
                                     DH
                                 </span>
                             </p>
+                            {stats.commissionTotal !== 0 && (
+                                <p className="mt-1 text-[10px] font-medium text-rose-600 dark:text-rose-400">
+                                    {stats.formattedCommissionTotal} DH
+                                </p>
+                            )}
                         </div>
                         <div className="rounded-xl bg-rose-100 p-1.5 text-rose-700 transition-transform group-hover:scale-110 dark:bg-rose-400/10 dark:text-rose-300">
                             <Diff className="h-5 w-5" />
