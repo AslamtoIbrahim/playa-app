@@ -9,8 +9,8 @@ export interface Owner {
 export interface Boat {
     id: number;
     name: string;
-    owner_id: number;
-    owner_type: string;
+    owner_id: number | null;
+    owner_type: string | null;
     created_at: string;
-    owner?: Owner;
+    owner?: Owner | null;
 }

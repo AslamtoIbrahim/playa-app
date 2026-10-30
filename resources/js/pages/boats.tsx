@@ -68,7 +68,9 @@ export default function Boats({ boats, owners }: Props) {
                         <TableBody>
                             {boats.length > 0 ? (
                                 boats.map((boat: Boat) => {
-                                    const isCompany = boat.owner_type.includes('Company');
+                                    const isCompany =
+                                        boat.owner_type?.includes('Company') ?? false;
+                                    const hasOwner = Boolean(boat.owner_type);
 
                                     return (
                                         <TableRow
@@ -89,33 +91,35 @@ export default function Boats({ boats, owners }: Props) {
                                             <TableCell className="text-sm font-medium text-slate-600 dark:text-neutral-300">
                                                 <div className="flex flex-col gap-1.5">
                                                     <div className="flex items-center gap-2">
-                                                        {isCompany ? (
+                                                        {hasOwner && isCompany ? (
                                                             <Building2 className="h-4 w-4 text-slate-400 dark:text-neutral-500" />
-                                                        ) : (
+                                                        ) : hasOwner ? (
                                                             <User className="h-4 w-4 text-slate-400 dark:text-neutral-500" />
-                                                        )}
+                                                        ) : null}
                                                         <span className="font-medium text-slate-700 dark:text-neutral-200">
                                                             {boat.owner?.name || 'Non assigné'}
                                                         </span>
                                                     </div>
 
-                                                    <div>
-                                                        {isCompany ? (
-                                                            <Badge
-                                                                variant="secondary"
-                                                                className="border-amber-200 bg-amber-50 px-1.5 py-0 text-[10px] font-bold uppercase text-amber-700 hover:bg-amber-50 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-400"
-                                                            >
-                                                                Société
-                                                            </Badge>
-                                                        ) : (
-                                                            <Badge
-                                                                variant="secondary"
-                                                                className="border-blue-200 bg-blue-50 px-1.5 py-0 text-[10px] font-bold uppercase text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-400"
-                                                            >
-                                                                Client
-                                                            </Badge>
-                                                        )}
-                                                    </div>
+                                                    {hasOwner && (
+                                                        <div>
+                                                            {isCompany ? (
+                                                                <Badge
+                                                                    variant="secondary"
+                                                                    className="border-amber-200 bg-amber-50 px-1.5 py-0 text-[10px] font-bold uppercase text-amber-700 hover:bg-amber-50 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-400"
+                                                                >
+                                                                    Société
+                                                                </Badge>
+                                                            ) : (
+                                                                <Badge
+                                                                    variant="secondary"
+                                                                    className="border-blue-200 bg-blue-50 px-1.5 py-0 text-[10px] font-bold uppercase text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-400"
+                                                                >
+                                                                    Client
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </TableCell>
 

@@ -125,7 +125,7 @@ export default function EditBoatDialog({ boat, owners }: Props) {
                                                         o.id.toString() === selectedOwnerId &&
                                                         o.type === selectedOwnerType
                                                 )?.name
-                                                : 'Choisir un propriétaire...'}
+                                                : 'Choisir un propriétaire (optionnel)...'}
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
                                     </PopoverTrigger>
@@ -141,6 +141,17 @@ export default function EditBoatDialog({ boat, owners }: Props) {
                                                     Aucun propriétaire trouvé.
                                                 </CommandEmpty>
                                                 <CommandGroup>
+                                                    <CommandItem
+                                                        className={commandItemClass}
+                                                        value="aucun propriétaire"
+                                                        onSelect={() => {
+                                                            setSelectedOwnerId('');
+                                                            setSelectedOwnerType('');
+                                                            setPopoverOpen(false);
+                                                        }}
+                                                    >
+                                                        Aucun propriétaire
+                                                    </CommandItem>
                                                     {owners.map((owner) => (
                                                         <CommandItem
                                                             className={commandItemClass}

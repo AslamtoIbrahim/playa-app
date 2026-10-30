@@ -20,24 +20,24 @@ class BoatController extends Controller
         $boats = Boat::with('owner')->latest()->get();
 
         // جلب الزبناء
-        $customers = Customer::select('id', 'name')->get()->map(fn($c) => [
-            'id'   => $c->id,
+        $customers = Customer::select('id', 'name')->get()->map(fn ($c) => [
+            'id' => $c->id,
             'name' => $c->name,
             'type' => Customer::class,
-            'label' => 'Client: ' . $c->name
+            'label' => 'Client: '.$c->name,
         ]);
 
         // جلب الشركات
-        $companies = Company::select('id', 'name')->get()->map(fn($c) => [
-            'id'   => $c->id,
+        $companies = Company::select('id', 'name')->get()->map(fn ($c) => [
+            'id' => $c->id,
             'name' => $c->name,
             'type' => Company::class,
-            'label' => 'Société: ' . $c->name
+            'label' => 'Société: '.$c->name,
         ]);
 
         return Inertia::render('boats', [
-            'boats'  => $boats,
-            'owners' => $customers->concat($companies)
+            'boats' => $boats,
+            'owners' => $customers->concat($companies),
         ]);
     }
 
@@ -51,35 +51,42 @@ class BoatController extends Controller
             'name' => strtolower(trim($request->name)),
         ]);
 
+        $validated = $request->validate([
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('boats', 'name')->whereNull('deleted_at'),
+            ],
+            'owner_id' => 'nullable|required_with:owner_type|integer',
+            'owner_type' => 'nullable|required_with:owner_id|string|in:App\Models\Customer,App\Models\Company',
+        ], [
+            'name.required' => 'Le nom du bateau est obligatoire.',
+            'name.unique' => 'Ce bateau existe déjà.',
+            'owner_id.required_with' => 'Veuillez choisir un propriétaire.',
+            'owner_type.required_with' => 'Le type de propriétaire est obligatoire.',
+            'owner_type.in' => 'Le type de propriétaire est invalide.',
+        ]);
+
         // 2. البحث في الأرشيف (بما في ذلك المحذوفين)
         $existingBoat = Boat::withTrashed()->where('name', $request->name)->first();
 
         if ($existingBoat) {
-            if (!$existingBoat->trashed()) {
+            if (! $existingBoat->trashed()) {
                 // تكرار حقيقي: المركب موجود وخدام
                 return back()->withErrors(['name' => 'Ce bateau existe déjà.']);
             }
 
             // Unarchive: المركب موجود في الأرشيف، نقوم باسترجاعه وتحديث بياناته
             $existingBoat->update([
-                'owner_id'   => $request->owner_id,
-                'owner_type' => $request->owner_type,
+                'owner_id' => $validated['owner_id'] ?? null,
+                'owner_type' => $validated['owner_type'] ?? null,
             ]);
-            
+
             $existingBoat->restore();
 
             return back()->with('success', 'Bateau récupéré de l\'archive avec succès ! ⚓');
         }
-
-        // 3. إذا لم يوجد نهائياً، نقوم بالتحقق والكارنية
-        $validated = $request->validate([
-            'name'       => 'required|string|max:255|unique:boats,name',
-            'owner_id'   => 'required|integer',
-            'owner_type' => 'required|string|in:App\Models\Customer,App\Models\Company',
-        ], [
-            'name.unique' => 'Ce bateau existe déjà.',
-            'name.required' => 'Le nom du bateau est obligatoire.',
-        ]);
 
         Boat::create($validated);
 
@@ -98,8 +105,8 @@ class BoatController extends Controller
                 ->filter(fn ($boat) => is_array($boat))
                 ->map(fn ($boat) => [
                     'name' => strtolower(trim((string) ($boat['name'] ?? ''))),
-                    'owner_id' => $boat['owner_id'] ?? null,
-                    'owner_type' => $boat['owner_type'] ?? null,
+                    'owner_id' => blank($boat['owner_id'] ?? null) ? null : $boat['owner_id'],
+                    'owner_type' => blank($boat['owner_type'] ?? null) ? null : $boat['owner_type'],
                 ])
                 ->reject(fn ($boat) => $boat['name'] === '' && blank($boat['owner_id']) && blank($boat['owner_type']))
                 ->unique(fn ($boat) => $boat['name'])
@@ -111,15 +118,15 @@ class BoatController extends Controller
         $validated = $request->validate([
             'boats' => 'required|array|min:1',
             'boats.*.name' => 'required|string|max:255',
-            'boats.*.owner_id' => 'required|integer',
-            'boats.*.owner_type' => 'required|string|in:App\Models\Customer,App\Models\Company',
+            'boats.*.owner_id' => 'nullable|required_with:boats.*.owner_type|integer',
+            'boats.*.owner_type' => 'nullable|required_with:boats.*.owner_id|string|in:App\Models\Customer,App\Models\Company',
         ], [
             'boats.required' => 'Ajoutez au moins un bateau.',
             'boats.min' => 'Ajoutez au moins un bateau.',
             'boats.*.name.required' => 'Le nom du bateau est obligatoire.',
             'boats.*.name.max' => 'Le nom du bateau ne peut pas dépasser 255 caractères.',
-            'boats.*.owner_id.required' => 'Veuillez choisir un propriétaire.',
-            'boats.*.owner_type.required' => 'Le type de propriétaire est obligatoire.',
+            'boats.*.owner_id.required_with' => 'Veuillez choisir un propriétaire.',
+            'boats.*.owner_type.required_with' => 'Le type de propriétaire est obligatoire.',
             'boats.*.owner_type.in' => 'Le type de propriétaire est invalide.',
         ]);
 
@@ -173,7 +180,6 @@ class BoatController extends Controller
         return redirect()->back()->with('success', $message.'. ✅');
     }
 
-
     /**
      * Mettre à jour les informations du bateau
      */
@@ -193,10 +199,13 @@ class BoatController extends Controller
                     ->ignore($boat->id)
                     ->whereNull('deleted_at'),
             ],
-            'owner_id'   => 'required|integer',
-            'owner_type' => 'required|string|in:App\Models\Customer,App\Models\Company',
+            'owner_id' => 'nullable|required_with:owner_type|integer',
+            'owner_type' => 'nullable|required_with:owner_id|string|in:App\Models\Customer,App\Models\Company',
         ], [
             'name.unique' => 'Ce bateau existe déjà.',
+            'owner_id.required_with' => 'Veuillez choisir un propriétaire.',
+            'owner_type.required_with' => 'Le type de propriétaire est obligatoire.',
+            'owner_type.in' => 'Le type de propriétaire est invalide.',
         ]);
 
         $boat->update($validated);

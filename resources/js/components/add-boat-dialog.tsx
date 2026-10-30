@@ -184,7 +184,7 @@ function BoatRowFields({
                             >
                                 <span className="truncate">
                                     {selectedOwner?.name ??
-                                        'Choisir un propriétaire...'}
+                                        'Choisir un propriétaire (optionnel)...'}
                                 </span>
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
@@ -282,14 +282,14 @@ export default function AddBoatDialog({ owners }: Props) {
     const [rows, setRows] = useState<BoatRow[]>([createBoatRow()]);
     const [formKey, setFormKey] = useState(0);
 
-    const readyRows = rows.filter(
-        (row) => row.name.trim() !== '' && row.ownerId !== '',
-    );
+    const readyRows = rows.filter((row) => row.name.trim() !== '');
 
     const filledCount = readyRows.length;
 
     const hasIncompleteRow = rows.some(
-        (row) => (row.name.trim() === '') !== (row.ownerId === ''),
+        (row) =>
+            row.name.trim() === '' &&
+            (row.ownerId !== '' || row.ownerType !== ''),
     );
 
     const addRow = () => {
@@ -337,8 +337,8 @@ export default function AddBoatDialog({ owners }: Props) {
                     <DialogTitle>Nouveaux bateaux</DialogTitle>
                     <DialogDescription>
                         Ajoutez un ou plusieurs bateaux d&apos;un coup, chacun
-                        avec son propriétaire. Les bateaux déjà existants sont
-                        ignorés automatiquement.
+                        avec ou sans propriétaire. Les bateaux déjà existants
+                        sont ignorés automatiquement.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -355,7 +355,7 @@ export default function AddBoatDialog({ owners }: Props) {
                     onBefore={() => {
                         if (filledCount === 0) {
                             toast.error(
-                                'Ajoutez au moins un bateau avec son propriétaire.',
+                                'Ajoutez au moins un bateau.',
                             );
 
                             return false;
@@ -363,7 +363,7 @@ export default function AddBoatDialog({ owners }: Props) {
 
                         if (hasIncompleteRow) {
                             toast.error(
-                                'Chaque bateau doit avoir un nom et un propriétaire.',
+                                'Chaque bateau doit avoir un nom.',
                             );
 
                             return false;
@@ -392,7 +392,7 @@ export default function AddBoatDialog({ owners }: Props) {
                             <div className="grid gap-3">
                                 <div className="flex items-center justify-between gap-2">
                                     <Label htmlFor="boat-name-0">
-                                        Bateau et propriétaire
+                                        Bateau
                                     </Label>
 
                                     <span className="text-xs font-bold text-slate-500 dark:text-slate-400">

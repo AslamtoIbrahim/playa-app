@@ -115,7 +115,39 @@ test('la création multiple de bateaux est refusée quand la liste est vide', fu
     expect(Boat::count())->toBe(0);
 });
 
-test('la création multiple de bateaux est refusée quand un propriétaire manque', function () {
+test('accepts ownerless boats during bulk creation', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->from(route('boats'))
+        ->post(route('boats.bulkStore'), [
+            'boats' => [
+                ['name' => 'Black Pearl', 'owner_id' => '', 'owner_type' => ''],
+            ],
+        ])
+        ->assertRedirect(route('boats'));
+
+    expect(Boat::count())->toBe(1)
+        ->and(Boat::first()->owner_id)->toBeNull()
+        ->and(Boat::first()->owner_type)->toBeNull();
+});
+
+test('creates an ownerless boat through the single create endpoint', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->post(route('boats.store'), [
+            'name' => 'Black Pearl',
+            'owner_id' => '',
+            'owner_type' => '',
+        ])
+        ->assertRedirect();
+
+    expect(Boat::first()->owner_id)->toBeNull()
+        ->and(Boat::first()->owner_type)->toBeNull();
+});
+
+test('rejects partially specified owners during bulk creation', function () {
     $user = User::factory()->create();
     $customer = Customer::create(['name' => 'Client Un']);
 
@@ -123,13 +155,11 @@ test('la création multiple de bateaux est refusée quand un propriétaire manqu
         ->from(route('boats'))
         ->post(route('boats.bulkStore'), [
             'boats' => [
-                ['name' => 'Black Pearl', 'owner_id' => $customer->id, 'owner_type' => Customer::class],
-                ['name' => 'Golden Ray', 'owner_id' => '', 'owner_type' => ''],
+                ['name' => 'Black Pearl', 'owner_id' => $customer->id, 'owner_type' => ''],
             ],
         ])
-        ->assertSessionHasErrors(['boats.1.owner_id', 'boats.1.owner_type']);
+        ->assertSessionHasErrors('boats.0.owner_type');
 
-    // Aucun bateau n'est créé quand la validation échoue.
     expect(Boat::count())->toBe(0);
 });
 
@@ -149,6 +179,26 @@ test('la création multiple de bateaux est refusée quand le type de propriétai
     expect(Boat::count())->toBe(0);
 });
 
+test('allows a boat to be updated without an owner', function () {
+    $user = User::factory()->create();
+    $customer = Customer::create(['name' => 'Client Un']);
+    $boat = Boat::create([
+        'name' => 'Black Pearl',
+        'owner_id' => $customer->id,
+        'owner_type' => Customer::class,
+    ]);
+
+    $this->actingAs($user)
+        ->patch(route('boats.update', $boat), [
+            'name' => 'Black Pearl',
+            'owner_id' => '',
+            'owner_type' => '',
+        ])
+        ->assertRedirect();
+
+    expect($boat->fresh()->owner_id)->toBeNull()
+        ->and($boat->fresh()->owner_type)->toBeNull();
+});
 
 test('le message du toast des bateaux est fourni par le backend (flash.success)', function () {
     $user = User::factory()->create();
@@ -185,4 +235,3 @@ test('la création multiple de bateaux reste interdite aux visiteurs', function 
 
     expect(Boat::count())->toBe(0);
 });
-
