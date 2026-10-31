@@ -58,10 +58,14 @@ export function SessionPurchasesTab({
         (sum, receipt) => sum + Number(receipt.total_amount ?? 0),
         0,
     );
-    const differencesTotal = groupSessionDifferencesByReport(
+    const differenceReports = groupSessionDifferencesByReport(
         purchaseData.differences,
         purchaseData.receipts,
-    ).reduce((sum, report) => sum + report.totalDiff, 0);
+    );
+    const differencesTotal = differenceReports.reduce(
+        (sum, report) => sum + report.totalDiff,
+        0,
+    );
     const attendancesTotal = attendances.reduce(
         (sum, attendance) => sum + Number(attendance.total_wage ?? 0),
         0,
@@ -137,7 +141,7 @@ export function SessionPurchasesTab({
                                 Différences
                             </span>
                             <span className="rounded-full bg-slate-200/70 px-2 py-0.5 text-[11px] text-slate-600 tabular-nums dark:bg-neutral-800 dark:text-neutral-300">
-                                {purchaseData.differences.length}
+                                {differenceReports.length}
                             </span>
                         </TabsTrigger>
                     </SessionTabTotalHint>
