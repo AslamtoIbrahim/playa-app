@@ -1,6 +1,7 @@
 import AddZoneDialog from '@/components/add-zone-dialog';
 import DeleteZoneDialog from '@/components/delete-zone-dialog';
 import EditZoneDialog from '@/components/edit-zone-dialog';
+import { ZoneColumnFilter, ZoneSearch } from '@/components/zone-filters';
 import {
     Table,
     TableBody,
@@ -9,16 +10,22 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useZoneFilters } from '@/hooks/use-zone-filters';
 import { formatDateDisplay } from '@/lib/date';
 import type { Zone } from '@/types/zone';
 import { Head, router } from '@inertiajs/react';
 import { CalendarDays, MapPin } from 'lucide-react';
+import { useState } from 'react';
 
 interface Props {
     zones: Zone[];
 }
 
 export default function Zones({ zones }: Props) {
+    const [showColumnFilters, setShowColumnFilters] = useState(false);
+    const { filters, setFilters, filteredZones, activeFilterCount } =
+        useZoneFilters(zones);
+
     return (
         <>
             <Head title="Zones" />
@@ -39,30 +46,96 @@ export default function Zones({ zones }: Props) {
                 </div>
 
                 <div className="flex-1 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900/90">
+                    <div className="flex min-h-14 items-center justify-between gap-3 border-b border-neutral-200 bg-neutral-50/50 px-4 py-2 dark:border-neutral-800 dark:bg-neutral-800/50">
+                        <ZoneSearch
+                            value={filters.search}
+                            onChange={(search) =>
+                                setFilters((current) => ({
+                                    ...current,
+                                    search,
+                                }))
+                            }
+                            showColumnFilters={showColumnFilters}
+                            activeFilterCount={activeFilterCount}
+                            onToggleColumnFilters={() =>
+                                setShowColumnFilters((current) => !current)
+                            }
+                        />
+                        <span className="shrink-0 text-xs font-medium text-muted-foreground">
+                            {filteredZones.length} / {zones.length} zones
+                        </span>
+                    </div>
                     <Table>
-                        <TableHeader className="bg-neutral-50/50 dark:bg-neutral-800/50">
+                        <TableHeader
+                            className={`bg-neutral-50/50 dark:bg-neutral-800/50 ${showColumnFilters ? '' : '**:data-column-filter-trigger:hidden'}`}
+                        >
                             <TableRow className="border-b border-neutral-200 text-sm hover:bg-transparent dark:border-neutral-800">
-                                <TableHead className="w-24 font-bold text-neutral-800 dark:text-neutral-200">ID</TableHead>
-                                <TableHead className="font-bold text-neutral-800 dark:text-neutral-200">Nom</TableHead>
-                                <TableHead className="font-bold text-neutral-800 dark:text-neutral-200">Date de création</TableHead>
-                                <TableHead className="w-20 text-center font-bold text-neutral-800 dark:text-neutral-200">Actions</TableHead>
+                                <TableHead className="w-24 font-bold text-neutral-800 dark:text-neutral-200">
+                                    <span className="inline-flex items-center">
+                                        ID
+                                        <ZoneColumnFilter
+                                            column="id"
+                                            title="ID"
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
+                                </TableHead>
+                                <TableHead className="font-bold text-neutral-800 dark:text-neutral-200">
+                                    <span className="inline-flex items-center">
+                                        Nom
+                                        <ZoneColumnFilter
+                                            column="name"
+                                            title="Nom"
+                                            options={[
+                                                ...new Set(
+                                                    zones.map(
+                                                        (zone) => zone.name,
+                                                    ),
+                                                ),
+                                            ].sort((a, b) =>
+                                                a.localeCompare(b, 'fr'),
+                                            )}
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
+                                </TableHead>
+                                <TableHead className="font-bold text-neutral-800 dark:text-neutral-200">
+                                    <span className="inline-flex items-center">
+                                        Date de création
+                                        <ZoneColumnFilter
+                                            column="created_at"
+                                            title="Date de création"
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
+                                </TableHead>
+                                <TableHead className="w-20 text-center font-bold text-neutral-800 dark:text-neutral-200">
+                                    Actions
+                                </TableHead>
                             </TableRow>
                         </TableHeader>
 
                         <TableBody>
-                            {zones.length > 0 ? (
-                                zones.map((zone) => {
+                            {filteredZones.length > 0 ? (
+                                filteredZones.map((zone) => {
                                     return (
                                         <TableRow
                                             key={zone.id}
                                             className="group cursor-pointer border-b border-slate-100 bg-white transition-all last:border-0 hover:bg-slate-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800/70"
-                                            onClick={() => router.visit(`/zones/${zone.id}`)}
+                                            onClick={() =>
+                                                router.visit(
+                                                    `/zones/${zone.id}`,
+                                                )
+                                            }
                                         >
                                             <TableCell className="font-mono text-sm font-bold text-slate-700 dark:text-neutral-300">
                                                 #{zone.id}
                                             </TableCell>
 
-                                            <TableCell className="font-semibold capitalize text-slate-900 dark:text-neutral-100">
+                                            <TableCell className="font-semibold text-slate-900 capitalize dark:text-neutral-100">
                                                 <div className="flex items-center gap-2">
                                                     <MapPin className="h-4 w-4 text-slate-400 dark:text-neutral-500" />
                                                     {zone.name}
@@ -72,13 +145,17 @@ export default function Zones({ zones }: Props) {
                                             <TableCell className="text-sm font-medium text-slate-600 dark:text-neutral-300">
                                                 <div className="flex items-center gap-2">
                                                     <CalendarDays className="h-4 w-4 text-slate-400 dark:text-neutral-500" />
-                                                    {formatDateDisplay(zone.created_at)}
+                                                    {formatDateDisplay(
+                                                        zone.created_at,
+                                                    )}
                                                 </div>
                                             </TableCell>
 
                                             <TableCell
                                                 className="text-center"
-                                                onClick={(e) => e.stopPropagation()}
+                                                onClick={(e) =>
+                                                    e.stopPropagation()
+                                                }
                                             >
                                                 <div className="flex justify-center gap-2">
                                                     <EditZoneDialog
@@ -127,4 +204,3 @@ Zones.layout = {
         },
     ],
 };
-
