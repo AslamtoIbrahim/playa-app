@@ -8,8 +8,14 @@ import {
     ShieldCheck,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { useState } from 'react';
 
 // Components
+import {
+    InvoiceColumnFilter,
+    InvoiceFilterSummary,
+    InvoiceSearch,
+} from '@/components/invoice-filters';
 import SessionZoneBadge from '@/components/receipt-session-zone-badge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,6 +28,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { useInvoiceFilters } from '@/hooks/use-invoice-filters';
 import { show } from '@/routes/invoices';
 
 // Types
@@ -47,6 +54,27 @@ const statusStyles: Record<string, string> = {
 };
 
 export default function Invoices({ invoices }: Props) {
+    const [showColumnFilters, setShowColumnFilters] = useState(false);
+    const {
+        filters,
+        setFilters,
+        filteredInvoices,
+        filterOptions,
+        activeFilterCount,
+        clearColumnFilters,
+    } = useInvoiceFilters(invoices.data);
+
+    const toggleColumnFilters = () => {
+        if (showColumnFilters) {
+            clearColumnFilters();
+            setShowColumnFilters(false);
+
+            return;
+        }
+
+        setShowColumnFilters(true);
+    };
+
     const handleRowClick = (invoiceId: number): void => {
         router.visit(show.url(invoiceId));
     };
@@ -69,42 +97,139 @@ export default function Invoices({ invoices }: Props) {
 
                 {/* Table Card */}
                 <div className="flex-1 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+                    <div className="flex min-h-14 items-center justify-between gap-3 border-b border-slate-200 bg-slate-50/50 px-4 py-2 dark:border-neutral-800 dark:bg-neutral-800/50">
+                        <InvoiceSearch
+                            value={filters.search}
+                            onChange={(search) =>
+                                setFilters((current) => ({
+                                    ...current,
+                                    search,
+                                }))
+                            }
+                            showColumnFilters={showColumnFilters}
+                            activeFilterCount={activeFilterCount}
+                            onToggleColumnFilters={toggleColumnFilters}
+                        />
+                    </div>
                     <Table>
-                        <TableHeader className="bg-slate-50/50 dark:bg-neutral-800/50">
+                        <TableHeader
+                            className={`bg-slate-50/50 dark:bg-neutral-800/50 ${showColumnFilters ? '' : '**:data-column-filter-trigger:hidden'}`}
+                        >
+                            <InvoiceFilterSummary
+                                invoices={filteredInvoices}
+                                totalInvoices={invoices.data.length}
+                            />
                             <TableRow className="border-b border-slate-200 text-sm hover:bg-transparent dark:border-neutral-800">
                                 <TableHead className="w-24 font-bold text-slate-800 dark:text-neutral-200">
-                                    N°
+                                    <span className="inline-flex items-center">
+                                        N°
+                                        <InvoiceColumnFilter
+                                            column="invoice_number"
+                                            title="N°"
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="font-bold text-slate-800 dark:text-neutral-200">
-                                    Type
+                                    <span className="inline-flex items-center">
+                                        Type
+                                        <InvoiceColumnFilter
+                                            column="type"
+                                            title="Type"
+                                            options={filterOptions.type}
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="font-bold text-slate-800 dark:text-neutral-200">
-                                    Date
+                                    <span className="inline-flex items-center">
+                                        Date
+                                        <InvoiceColumnFilter
+                                            column="date"
+                                            title="Date"
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="text-center font-bold text-slate-800 dark:text-neutral-200">
-                                    Zone Journée
+                                    <span className="inline-flex items-center">
+                                        Zone Journée
+                                        <InvoiceColumnFilter
+                                            column="session_zone"
+                                            title="Zone Journée"
+                                            options={filterOptions.session_zone}
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="font-bold text-slate-800 dark:text-neutral-200">
-                                    Bénéficiaire
+                                    <span className="inline-flex items-center">
+                                        Bénéficiaire
+                                        <InvoiceColumnFilter
+                                            column="billable"
+                                            title="Bénéficiaire"
+                                            options={filterOptions.billable}
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="font-bold text-slate-800 dark:text-neutral-200">
-                                    Caution
+                                    <span className="inline-flex items-center">
+                                        Caution
+                                        <InvoiceColumnFilter
+                                            column="caution"
+                                            title="Caution"
+                                            options={filterOptions.caution}
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="text-center font-bold text-slate-800 dark:text-neutral-200">
-                                    NC
+                                    <span className="inline-flex items-center">
+                                        NC
+                                        <InvoiceColumnFilter
+                                            column="boxes"
+                                            title="NC"
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="text-right font-bold text-slate-800 dark:text-neutral-200">
-                                    Total (DH)
+                                    <span className="inline-flex items-center">
+                                        Total (DH)
+                                        <InvoiceColumnFilter
+                                            column="amount"
+                                            title="Total (DH)"
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="text-center font-bold text-slate-800 dark:text-neutral-200">
-                                    Statut
+                                    <span className="inline-flex items-center">
+                                        Statut
+                                        <InvoiceColumnFilter
+                                            column="status"
+                                            title="Statut"
+                                            options={filterOptions.status}
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                             </TableRow>
                         </TableHeader>
 
                         <TableBody>
-                            {invoices.data.length > 0 ? (
-                                invoices.data.map((invoice) => (
+                            {filteredInvoices.length > 0 ? (
+                                filteredInvoices.map((invoice) => (
                                     <TableRow
                                         key={invoice.id}
                                         onClick={() => {
@@ -233,7 +358,7 @@ export default function Invoices({ invoices }: Props) {
                                         colSpan={9}
                                         className="py-24 text-center font-medium text-muted-foreground italic"
                                     >
-                                        Aucun bon enregistré pour le moment.
+                                        Aucun résultat.
                                     </TableCell>
                                 </TableRow>
                             )}
