@@ -1,7 +1,9 @@
 import AddBoatDialog from '@/components/add-boat-dialog';
+import { BoatColumnFilter, BoatSearch } from '@/components/boat-filters';
 import DeleteBoatDialog from '@/components/delete-boat-dialog';
 import EditBoatDialog from '@/components/edit-boat-dialog';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
     Table,
     TableBody,
@@ -10,12 +12,20 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useBoatFilters } from '@/hooks/use-boat-filters';
 import { formatDateDisplay } from '@/lib/date';
+import { cn } from '@/lib/utils';
 import type { Boat, Owner } from '@/types/boat';
 import { Head } from '@inertiajs/react';
-import { Ship, User, Building2 } from 'lucide-react';
-
- 
+import {
+    Building2,
+    ChevronLeft,
+    ChevronRight,
+    FileText,
+    Ship,
+    User,
+} from 'lucide-react';
+import { useState } from 'react';
 
 interface Props {
     boats: Boat[];
@@ -23,6 +33,25 @@ interface Props {
 }
 
 export default function Boats({ boats, owners }: Props) {
+    const [showColumnFilters, setShowColumnFilters] = useState(false);
+    const {
+        filters,
+        setFilters,
+        filteredBoats,
+        paginatedBoats,
+        activeFilterCount,
+        currentPage,
+        pageCount,
+        setPage,
+        clearFilters,
+    } = useBoatFilters(boats);
+    const boatNames = [...new Set(boats.map((boat) => boat.name))].sort(
+        (a, b) => a.localeCompare(b, 'fr'),
+    );
+    const ownerNames = [
+        ...new Set(boats.map((boat) => boat.owner?.name || 'Non assigné')),
+    ].sort((a, b) => a.localeCompare(b, 'fr'));
+
     return (
         <>
             <Head title="Bateaux" />
@@ -30,7 +59,7 @@ export default function Boats({ boats, owners }: Props) {
             <div className="flex h-full flex-1 flex-col gap-4 p-4 lg:p-8">
                 <div className="flex flex-col justify-between gap-4 px-2 sm:flex-row sm:items-center">
                     <div>
-                        <h1 className="flex items-center gap-2 text-2xl font-black uppercase tracking-tight text-neutral-900 dark:text-neutral-100">
+                        <h1 className="flex items-center gap-2 text-2xl font-black tracking-tight text-neutral-900 uppercase dark:text-neutral-100">
                             <Ship className="h-6 w-6 text-blue-600" />
                             Flotte des Bateaux
                         </h1>
@@ -44,20 +73,77 @@ export default function Boats({ boats, owners }: Props) {
                 </div>
 
                 <div className="flex-1 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900/90">
+                    <div className="flex min-h-14 items-center justify-between gap-3 border-b border-neutral-200 bg-neutral-50/50 px-4 py-2 dark:border-neutral-800 dark:bg-neutral-800/50">
+                        <BoatSearch
+                            value={filters.search}
+                            onChange={(search) =>
+                                setFilters((current) => ({
+                                    ...current,
+                                    search,
+                                }))
+                            }
+                            showColumnFilters={showColumnFilters}
+                            activeFilterCount={activeFilterCount}
+                            onToggleColumnFilters={() =>
+                                setShowColumnFilters((current) => !current)
+                            }
+                            onClearFilters={clearFilters}
+                        />
+                        <span className="shrink-0 text-xs font-medium text-muted-foreground">
+                            {filteredBoats.length} / {boats.length} bateaux
+                        </span>
+                    </div>
+
                     <Table>
-                        <TableHeader className="bg-neutral-50/50 dark:bg-neutral-800/50">
+                        <TableHeader
+                            className={`bg-neutral-50/50 dark:bg-neutral-800/50 ${showColumnFilters ? '' : '**:data-column-filter-trigger:hidden'}`}
+                        >
                             <TableRow className="border-b border-neutral-200 text-sm hover:bg-transparent dark:border-neutral-800">
                                 <TableHead className="w-24 font-bold text-neutral-800 dark:text-neutral-200">
-                                    ID
+                                    <span className="inline-flex items-center">
+                                        ID
+                                        <BoatColumnFilter
+                                            column="id"
+                                            title="ID"
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="font-bold text-neutral-800 dark:text-neutral-200">
-                                    Bateau
+                                    <span className="inline-flex items-center">
+                                        Bateau
+                                        <BoatColumnFilter
+                                            column="name"
+                                            title="Bateau"
+                                            options={boatNames}
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="font-bold text-neutral-800 dark:text-neutral-200">
-                                    Propriétaire
+                                    <span className="inline-flex items-center">
+                                        Propriétaire
+                                        <BoatColumnFilter
+                                            column="owner"
+                                            title="Propriétaire"
+                                            options={ownerNames}
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="font-bold text-neutral-800 dark:text-neutral-200">
-                                    Date d'ajout
+                                    <span className="inline-flex items-center">
+                                        Date d'ajout
+                                        <BoatColumnFilter
+                                            column="created_at"
+                                            title="Date d'ajout"
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="w-20 text-center font-bold text-neutral-800 dark:text-neutral-200">
                                     Actions
@@ -66,10 +152,11 @@ export default function Boats({ boats, owners }: Props) {
                         </TableHeader>
 
                         <TableBody>
-                            {boats.length > 0 ? (
-                                boats.map((boat: Boat) => {
+                            {paginatedBoats.length > 0 ? (
+                                paginatedBoats.map((boat) => {
                                     const isCompany =
-                                        boat.owner_type?.includes('Company') ?? false;
+                                        boat.owner_type?.includes('Company') ??
+                                        false;
                                     const hasOwner = Boolean(boat.owner_type);
 
                                     return (
@@ -81,7 +168,7 @@ export default function Boats({ boats, owners }: Props) {
                                                 #{boat.id}
                                             </TableCell>
 
-                                            <TableCell className="font-semibold capitalize text-slate-900 dark:text-neutral-100">
+                                            <TableCell className="font-semibold text-slate-900 capitalize dark:text-neutral-100">
                                                 <div className="flex items-center gap-2">
                                                     <Ship className="h-4 w-4 text-slate-400 dark:text-neutral-500" />
                                                     {boat.name}
@@ -91,13 +178,15 @@ export default function Boats({ boats, owners }: Props) {
                                             <TableCell className="text-sm font-medium text-slate-600 dark:text-neutral-300">
                                                 <div className="flex flex-col gap-1.5">
                                                     <div className="flex items-center gap-2">
-                                                        {hasOwner && isCompany ? (
+                                                        {hasOwner &&
+                                                        isCompany ? (
                                                             <Building2 className="h-4 w-4 text-slate-400 dark:text-neutral-500" />
                                                         ) : hasOwner ? (
                                                             <User className="h-4 w-4 text-slate-400 dark:text-neutral-500" />
                                                         ) : null}
                                                         <span className="font-medium text-slate-700 dark:text-neutral-200">
-                                                            {boat.owner?.name || 'Non assigné'}
+                                                            {boat.owner?.name ||
+                                                                'Non assigné'}
                                                         </span>
                                                     </div>
 
@@ -106,14 +195,14 @@ export default function Boats({ boats, owners }: Props) {
                                                             {isCompany ? (
                                                                 <Badge
                                                                     variant="secondary"
-                                                                    className="border-amber-200 bg-amber-50 px-1.5 py-0 text-[10px] font-bold uppercase text-amber-700 hover:bg-amber-50 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-400"
+                                                                    className="border-amber-200 bg-amber-50 px-1.5 py-0 text-[10px] font-bold text-amber-700 uppercase hover:bg-amber-50 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-400"
                                                                 >
                                                                     Société
                                                                 </Badge>
                                                             ) : (
                                                                 <Badge
                                                                     variant="secondary"
-                                                                    className="border-blue-200 bg-blue-50 px-1.5 py-0 text-[10px] font-bold uppercase text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-400"
+                                                                    className="border-blue-200 bg-blue-50 px-1.5 py-0 text-[10px] font-bold text-blue-700 uppercase hover:bg-blue-50 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-400"
                                                                 >
                                                                     Client
                                                                 </Badge>
@@ -126,12 +215,28 @@ export default function Boats({ boats, owners }: Props) {
                                             <TableCell className="text-sm font-medium text-slate-600 dark:text-neutral-300">
                                                 <div className="flex items-center gap-2">
                                                     <span className="inline-flex h-4 w-4 items-center justify-center rounded-sm bg-slate-100 text-slate-500 dark:bg-neutral-800 dark:text-neutral-400">
-                                                        <svg viewBox="0 0 24 24" fill="none" className="h-3 w-3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                            <rect x="3" y="4" width="18" height="18" rx="2" />
+                                                        <svg
+                                                            viewBox="0 0 24 24"
+                                                            fill="none"
+                                                            className="h-3 w-3"
+                                                            stroke="currentColor"
+                                                            strokeWidth="2"
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                        >
+                                                            <rect
+                                                                x="3"
+                                                                y="4"
+                                                                width="18"
+                                                                height="18"
+                                                                rx="2"
+                                                            />
                                                             <path d="M8 2v4M16 2v4M3 10h18" />
                                                         </svg>
                                                     </span>
-                                                    {formatDateDisplay(boat.created_at)}
+                                                    {formatDateDisplay(
+                                                        boat.created_at,
+                                                    )}
                                                 </div>
                                             </TableCell>
 
@@ -157,7 +262,9 @@ export default function Boats({ boats, owners }: Props) {
                                         colSpan={5}
                                         className="py-24 text-center font-medium text-muted-foreground italic dark:text-neutral-400"
                                     >
-                                        Aucun bateau trouvé dans la flotte.
+                                        {boats.length > 0
+                                            ? 'Aucun bateau ne correspond aux filtres.'
+                                            : 'Aucun bateau trouvé dans la flotte.'}
                                     </TableCell>
                                 </TableRow>
                             )}
@@ -165,9 +272,64 @@ export default function Boats({ boats, owners }: Props) {
                     </Table>
 
                     <div className="flex items-center justify-between border-t border-neutral-200 bg-neutral-50/50 px-6 py-4 dark:border-neutral-800 dark:bg-neutral-800/50">
-                        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-neutral-500 dark:text-neutral-400">
-                            <Ship className="h-4 w-4" />
-                            {boats.length} Bateaux au total
+                        <div className="flex items-center gap-2 text-xs font-bold tracking-widest text-neutral-500 uppercase dark:text-neutral-400">
+                            <FileText className="h-4 w-4" />
+                            {filteredBoats.length} Bateaux au total
+                        </div>
+
+                        <div className="flex gap-2">
+                            {currentPage > 1 && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    aria-label="Page précédente"
+                                    className="h-9 min-w-9 text-xs font-bold shadow-none transition-all dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+                                    onClick={() => setPage(currentPage - 1)}
+                                >
+                                    <ChevronLeft className="h-4 w-4" />
+                                </Button>
+                            )}
+                            {Array.from(
+                                { length: pageCount },
+                                (_, index) => index + 1,
+                            ).map((page) => (
+                                <Button
+                                    key={page}
+                                    type="button"
+                                    variant={
+                                        page === currentPage
+                                            ? 'default'
+                                            : 'outline'
+                                    }
+                                    size="sm"
+                                    aria-current={
+                                        page === currentPage
+                                            ? 'page'
+                                            : undefined
+                                    }
+                                    className={cn(
+                                        'h-9 min-w-9 text-xs font-bold shadow-none transition-all dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700',
+                                        page === currentPage &&
+                                            'scale-105 shadow-md dark:bg-primary dark:text-primary-foreground',
+                                    )}
+                                    onClick={() => setPage(page)}
+                                >
+                                    {page}
+                                </Button>
+                            ))}
+                            {currentPage < pageCount && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    aria-label="Page suivante"
+                                    className="h-9 min-w-9 text-xs font-bold shadow-none transition-all dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+                                    onClick={() => setPage(currentPage + 1)}
+                                >
+                                    <ChevronRight className="h-4 w-4" />
+                                </Button>
+                            )}
                         </div>
                     </div>
                 </div>
