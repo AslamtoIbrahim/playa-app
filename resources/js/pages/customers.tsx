@@ -1,6 +1,11 @@
 import AddAccountDialog from '@/components/add-customer-dialog';
+import {
+    CustomerColumnFilter,
+    CustomerSearch,
+} from '@/components/customer-filters';
 import DeleteCustomerDialog from '@/components/delete-customer-dialog';
 import EditCustomerDialog from '@/components/edit-customer-dialog';
+import { Button } from '@/components/ui/button';
 import {
     Table,
     TableBody,
@@ -9,16 +14,41 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useCustomerFilters } from '@/hooks/use-customer-filters';
 import { formatDateDisplay } from '@/lib/date';
 import type { Customer } from '@/types/customer';
 import { Head } from '@inertiajs/react';
-import { CalendarDays, Users } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, Users } from 'lucide-react';
 
 interface Props {
     customers: Customer[];
 }
 
 export default function Customers({ customers }: Props) {
+    const {
+        filters,
+        setFilters,
+        filteredCustomers,
+        paginatedCustomers,
+        activeFilterCount,
+        currentPage,
+        pageCount,
+        pageSize,
+        setPage,
+        setPageSize,
+        clearFilters,
+    } = useCustomerFilters(customers);
+    const customerNames = [
+        ...new Set(customers.map((customer) => customer.name)),
+    ].sort((a, b) => a.localeCompare(b, 'fr'));
+    const firstCustomer = filteredCustomers.length
+        ? (currentPage - 1) * pageSize + 1
+        : 0;
+    const lastCustomer = Math.min(
+        currentPage * pageSize,
+        filteredCustomers.length,
+    );
+
     return (
         <>
             <Head title="Clients" />
@@ -39,19 +69,69 @@ export default function Customers({ customers }: Props) {
                 </div>
 
                 <div className="flex-1 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900/90">
+                    <div className="flex min-h-14 items-center justify-between gap-3 border-b border-neutral-200 bg-neutral-50/50 px-4 py-2 dark:border-neutral-800 dark:bg-neutral-800/50">
+                        <CustomerSearch
+                            value={filters.search}
+                            onChange={(search) =>
+                                setFilters((current) => ({
+                                    ...current,
+                                    search,
+                                }))
+                            }
+                            activeFilterCount={activeFilterCount}
+                            onResetFilters={clearFilters}
+                        />
+                        <span className="shrink-0 text-xs font-medium text-muted-foreground">
+                            {filteredCustomers.length} / {customers.length}{' '}
+                            clients
+                        </span>
+                    </div>
                     <Table>
                         <TableHeader className="bg-neutral-50/50 dark:bg-neutral-800/50">
                             <TableRow className="border-b border-neutral-200 text-sm hover:bg-transparent dark:border-neutral-800">
-                                <TableHead className="w-24 font-bold text-neutral-800 dark:text-neutral-200">ID</TableHead>
-                                <TableHead className="font-bold text-neutral-800 dark:text-neutral-200">Nom</TableHead>
-                                <TableHead className="font-bold text-neutral-800 dark:text-neutral-200">Date de création</TableHead>
-                                <TableHead className="w-20 text-center font-bold text-neutral-800 dark:text-neutral-200">Actions</TableHead>
+                                <TableHead className="w-24 font-bold text-neutral-800 dark:text-neutral-200">
+                                    <span className="inline-flex items-center">
+                                        ID
+                                        <CustomerColumnFilter
+                                            column="id"
+                                            title="ID"
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
+                                </TableHead>
+                                <TableHead className="font-bold text-neutral-800 dark:text-neutral-200">
+                                    <span className="inline-flex items-center">
+                                        Nom
+                                        <CustomerColumnFilter
+                                            column="name"
+                                            title="Nom"
+                                            options={customerNames}
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
+                                </TableHead>
+                                <TableHead className="font-bold text-neutral-800 dark:text-neutral-200">
+                                    <span className="inline-flex items-center">
+                                        Date de création
+                                        <CustomerColumnFilter
+                                            column="created_at"
+                                            title="Date de création"
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
+                                </TableHead>
+                                <TableHead className="w-20 text-center font-bold text-neutral-800 dark:text-neutral-200">
+                                    Actions
+                                </TableHead>
                             </TableRow>
                         </TableHeader>
 
                         <TableBody>
-                            {customers.length > 0 ? (
-                                customers.map((customer) => (
+                            {paginatedCustomers.length > 0 ? (
+                                paginatedCustomers.map((customer) => (
                                     <TableRow
                                         key={customer.id}
                                         className="group border-b border-slate-100 bg-white transition-all last:border-0 hover:bg-slate-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800/70"
@@ -60,7 +140,7 @@ export default function Customers({ customers }: Props) {
                                             #{customer.id}
                                         </TableCell>
 
-                                        <TableCell className="font-semibold capitalize text-slate-900 dark:text-neutral-100">
+                                        <TableCell className="font-semibold text-slate-900 capitalize dark:text-neutral-100">
                                             <div className="flex items-center gap-2">
                                                 <Users className="h-4 w-4 text-slate-400 dark:text-neutral-500" />
                                                 {customer.name}
@@ -70,13 +150,17 @@ export default function Customers({ customers }: Props) {
                                         <TableCell className="text-sm font-medium text-slate-600 dark:text-neutral-300">
                                             <div className="flex items-center gap-2">
                                                 <CalendarDays className="h-4 w-4 text-slate-400 dark:text-neutral-500" />
-                                                {formatDateDisplay(customer.created_at)}
+                                                {formatDateDisplay(
+                                                    customer.created_at,
+                                                )}
                                             </div>
                                         </TableCell>
 
                                         <TableCell className="text-center">
                                             <div className="flex justify-center gap-2">
-                                                <EditCustomerDialog customer={customer} />
+                                                <EditCustomerDialog
+                                                    customer={customer}
+                                                />
 
                                                 <DeleteCustomerDialog
                                                     customerId={customer.id}
@@ -92,7 +176,9 @@ export default function Customers({ customers }: Props) {
                                         colSpan={4}
                                         className="py-24 text-center font-medium text-muted-foreground italic dark:text-neutral-400"
                                     >
-                                        Aucun client enregistré.
+                                        {customers.length > 0
+                                            ? 'Aucun client ne correspond aux filtres.'
+                                            : 'Aucun client enregistré.'}
                                     </TableCell>
                                 </TableRow>
                             )}
@@ -102,7 +188,66 @@ export default function Customers({ customers }: Props) {
                     <div className="flex items-center justify-between border-t border-neutral-200 bg-neutral-50/50 px-6 py-4 dark:border-neutral-800 dark:bg-neutral-800/50">
                         <div className="flex items-center gap-2 text-xs font-bold tracking-widest text-neutral-500 uppercase dark:text-neutral-400">
                             <Users className="h-4 w-4" />
-                            {customers.length} Clients au total
+                            <span>
+                                {firstCustomer}–{lastCustomer} sur{' '}
+                                {filteredCustomers.length} clients
+                            </span>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                            <label className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                                Par page
+                                <select
+                                    aria-label="Nombre de clients par page"
+                                    value={pageSize}
+                                    onChange={(event) =>
+                                        setPageSize(Number(event.target.value))
+                                    }
+                                    className="h-8 rounded-md border border-input bg-background px-2 text-sm text-foreground"
+                                >
+                                    {[10, 25, 50].map((size) => (
+                                        <option key={size} value={size}>
+                                            {size}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+
+                            <span className="text-xs font-medium text-muted-foreground">
+                                Page {currentPage} sur {pageCount}
+                            </span>
+                            <div className="flex items-center gap-1">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    aria-label="Page précédente"
+                                    disabled={currentPage <= 1}
+                                    onClick={() =>
+                                        setPage((current) =>
+                                            Math.max(1, current - 1),
+                                        )
+                                    }
+                                    className="size-8"
+                                >
+                                    <ChevronLeft className="size-4" />
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    aria-label="Page suivante"
+                                    disabled={currentPage >= pageCount}
+                                    onClick={() =>
+                                        setPage((current) =>
+                                            Math.min(pageCount, current + 1),
+                                        )
+                                    }
+                                    className="size-8"
+                                >
+                                    <ChevronRight className="size-4" />
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 </div>
