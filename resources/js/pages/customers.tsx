@@ -16,15 +16,24 @@ import {
 } from '@/components/ui/table';
 import { useCustomerFilters } from '@/hooks/use-customer-filters';
 import { formatDateDisplay } from '@/lib/date';
+import { cn } from '@/lib/utils';
 import type { Customer } from '@/types/customer';
 import { Head } from '@inertiajs/react';
-import { CalendarDays, ChevronLeft, ChevronRight, Users } from 'lucide-react';
+import {
+    CalendarDays,
+    ChevronLeft,
+    ChevronRight,
+    FileText,
+    Users,
+} from 'lucide-react';
+import { useState } from 'react';
 
 interface Props {
     customers: Customer[];
 }
 
 export default function Customers({ customers }: Props) {
+    const [showColumnFilters, setShowColumnFilters] = useState(false);
     const {
         filters,
         setFilters,
@@ -33,21 +42,12 @@ export default function Customers({ customers }: Props) {
         activeFilterCount,
         currentPage,
         pageCount,
-        pageSize,
         setPage,
-        setPageSize,
         clearFilters,
     } = useCustomerFilters(customers);
     const customerNames = [
         ...new Set(customers.map((customer) => customer.name)),
     ].sort((a, b) => a.localeCompare(b, 'fr'));
-    const firstCustomer = filteredCustomers.length
-        ? (currentPage - 1) * pageSize + 1
-        : 0;
-    const lastCustomer = Math.min(
-        currentPage * pageSize,
-        filteredCustomers.length,
-    );
 
     return (
         <>
@@ -78,8 +78,12 @@ export default function Customers({ customers }: Props) {
                                     search,
                                 }))
                             }
+                            showColumnFilters={showColumnFilters}
                             activeFilterCount={activeFilterCount}
-                            onResetFilters={clearFilters}
+                            onToggleColumnFilters={() =>
+                                setShowColumnFilters((current) => !current)
+                            }
+                            onClearFilters={clearFilters}
                         />
                         <span className="shrink-0 text-xs font-medium text-muted-foreground">
                             {filteredCustomers.length} / {customers.length}{' '}
@@ -87,7 +91,9 @@ export default function Customers({ customers }: Props) {
                         </span>
                     </div>
                     <Table>
-                        <TableHeader className="bg-neutral-50/50 dark:bg-neutral-800/50">
+                        <TableHeader
+                            className={`bg-neutral-50/50 dark:bg-neutral-800/50 ${showColumnFilters ? '' : '**:data-column-filter-trigger:hidden'}`}
+                        >
                             <TableRow className="border-b border-neutral-200 text-sm hover:bg-transparent dark:border-neutral-800">
                                 <TableHead className="w-24 font-bold text-neutral-800 dark:text-neutral-200">
                                     <span className="inline-flex items-center">
@@ -187,67 +193,63 @@ export default function Customers({ customers }: Props) {
 
                     <div className="flex items-center justify-between border-t border-neutral-200 bg-neutral-50/50 px-6 py-4 dark:border-neutral-800 dark:bg-neutral-800/50">
                         <div className="flex items-center gap-2 text-xs font-bold tracking-widest text-neutral-500 uppercase dark:text-neutral-400">
-                            <Users className="h-4 w-4" />
-                            <span>
-                                {firstCustomer}–{lastCustomer} sur{' '}
-                                {filteredCustomers.length} clients
-                            </span>
+                            <FileText className="h-4 w-4" />
+                            {filteredCustomers.length} Clients au total
                         </div>
 
-                        <div className="flex items-center gap-3">
-                            <label className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                                Par page
-                                <select
-                                    aria-label="Nombre de clients par page"
-                                    value={pageSize}
-                                    onChange={(event) =>
-                                        setPageSize(Number(event.target.value))
-                                    }
-                                    className="h-8 rounded-md border border-input bg-background px-2 text-sm text-foreground"
-                                >
-                                    {[10, 25, 50].map((size) => (
-                                        <option key={size} value={size}>
-                                            {size}
-                                        </option>
-                                    ))}
-                                </select>
-                            </label>
-
-                            <span className="text-xs font-medium text-muted-foreground">
-                                Page {currentPage} sur {pageCount}
-                            </span>
-                            <div className="flex items-center gap-1">
+                        <div className="flex gap-2">
+                            {currentPage > 1 && (
                                 <Button
                                     type="button"
                                     variant="outline"
-                                    size="icon"
+                                    size="sm"
                                     aria-label="Page précédente"
-                                    disabled={currentPage <= 1}
-                                    onClick={() =>
-                                        setPage((current) =>
-                                            Math.max(1, current - 1),
-                                        )
-                                    }
-                                    className="size-8"
+                                    className="h-9 min-w-9 text-xs font-bold shadow-none transition-all dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+                                    onClick={() => setPage(currentPage - 1)}
                                 >
-                                    <ChevronLeft className="size-4" />
+                                    <ChevronLeft className="h-4 w-4" />
                                 </Button>
+                            )}
+                            {Array.from(
+                                { length: pageCount },
+                                (_, index) => index + 1,
+                            ).map((page) => (
+                                <Button
+                                    key={page}
+                                    type="button"
+                                    variant={
+                                        page === currentPage
+                                            ? 'default'
+                                            : 'outline'
+                                    }
+                                    size="sm"
+                                    aria-current={
+                                        page === currentPage
+                                            ? 'page'
+                                            : undefined
+                                    }
+                                    className={cn(
+                                        'h-9 min-w-9 text-xs font-bold shadow-none transition-all dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700',
+                                        page === currentPage &&
+                                            'scale-105 shadow-md dark:bg-primary dark:text-primary-foreground',
+                                    )}
+                                    onClick={() => setPage(page)}
+                                >
+                                    {page}
+                                </Button>
+                            ))}
+                            {currentPage < pageCount && (
                                 <Button
                                     type="button"
                                     variant="outline"
-                                    size="icon"
+                                    size="sm"
                                     aria-label="Page suivante"
-                                    disabled={currentPage >= pageCount}
-                                    onClick={() =>
-                                        setPage((current) =>
-                                            Math.min(pageCount, current + 1),
-                                        )
-                                    }
-                                    className="size-8"
+                                    className="h-9 min-w-9 text-xs font-bold shadow-none transition-all dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+                                    onClick={() => setPage(currentPage + 1)}
                                 >
-                                    <ChevronRight className="size-4" />
+                                    <ChevronRight className="h-4 w-4" />
                                 </Button>
-                            </div>
+                            )}
                         </div>
                     </div>
                 </div>

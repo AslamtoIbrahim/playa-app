@@ -18,18 +18,20 @@ import type { Dispatch, SetStateAction } from 'react';
 interface CustomerSearchProps {
     value: string;
     onChange: (value: string) => void;
+    showColumnFilters: boolean;
     activeFilterCount: number;
-    onResetFilters: () => void;
+    onToggleColumnFilters: () => void;
+    onClearFilters: () => void;
 }
 
 export function CustomerSearch({
     value,
     onChange,
+    showColumnFilters,
     activeFilterCount,
-    onResetFilters,
+    onToggleColumnFilters,
+    onClearFilters,
 }: CustomerSearchProps) {
-    const hasActiveFilters = activeFilterCount > 0 || Boolean(value);
-
     return (
         <div className="flex w-full max-w-sm items-center gap-2">
             <div className="relative min-w-0 flex-1">
@@ -54,14 +56,25 @@ export function CustomerSearch({
             </div>
             <Button
                 type="button"
-                variant={hasActiveFilters ? 'secondary' : 'outline'}
+                variant={
+                    showColumnFilters || activeFilterCount > 0
+                        ? 'secondary'
+                        : 'outline'
+                }
                 size="icon"
-                aria-label="Réinitialiser les filtres"
-                aria-pressed={hasActiveFilters}
-                onClick={onResetFilters}
+                aria-label={
+                    showColumnFilters
+                        ? 'Masquer les filtres de colonnes'
+                        : 'Afficher les filtres de colonnes'
+                }
+                aria-pressed={showColumnFilters}
+                onClick={() => {
+                    onClearFilters();
+                    onToggleColumnFilters();
+                }}
                 className={cn(
                     'relative size-9 shrink-0 rounded-full',
-                    hasActiveFilters &&
+                    (showColumnFilters || activeFilterCount > 0) &&
                         'border-primary/30 bg-primary/10 text-primary hover:bg-primary/15',
                 )}
             >
