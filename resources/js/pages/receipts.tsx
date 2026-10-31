@@ -5,8 +5,14 @@ import {
     ChevronRight,
     FileText,
 } from 'lucide-react';
+import { useState } from 'react';
 
 // Components
+import {
+    ReceiptColumnFilter,
+    ReceiptFilterSummary,
+    ReceiptSearch,
+} from '@/components/receipt-filters';
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -18,11 +24,16 @@ import {
 } from '@/components/ui/table';
 import { formatDateDisplay } from '@/lib/date';
 import { cn } from '@/lib/utils';
+import { useReceiptFilters } from '@/hooks/use-receipt-filters';
 
 // Types
 import type { ReceiptsIndexProps } from '@/types/receipt';
 
 export default function Receipts({ receipts }: ReceiptsIndexProps) {
+    const [showColumnFilters, setShowColumnFilters] = useState(false);
+    const { filters, setFilters, filteredReceipts, activeFilterCount } =
+        useReceiptFilters(receipts.data);
+
     const handleRowClick = (receiptId: number) => {
         router.visit(`/receipts/${receiptId}`);
     };
@@ -43,35 +54,146 @@ export default function Receipts({ receipts }: ReceiptsIndexProps) {
                 </div>
 
                 <div className="flex-1 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900/90">
+                    <div className="flex min-h-14 items-center justify-between gap-3 border-b border-neutral-200 bg-neutral-50/50 px-4 py-2 dark:border-neutral-800 dark:bg-neutral-800/50">
+                        <ReceiptSearch
+                            value={filters.search}
+                            onChange={(search) =>
+                                setFilters((current) => ({
+                                    ...current,
+                                    search,
+                                }))
+                            }
+                            showColumnFilters={showColumnFilters}
+                            activeFilterCount={activeFilterCount}
+                            onToggleColumnFilters={() =>
+                                setShowColumnFilters((current) => !current)
+                            }
+                            onClearFilters={() =>
+                                setFilters({ search: '', columns: {} })
+                            }
+                        />
+                    </div>
                     <Table>
-                        <TableHeader className="bg-neutral-50/50 dark:bg-neutral-800/50">
+                        <TableHeader
+                            className={`bg-neutral-50/50 dark:bg-neutral-800/50 ${showColumnFilters ? '' : '**:data-column-filter-trigger:hidden'}`}
+                        >
+                            <ReceiptFilterSummary
+                                receipts={filteredReceipts}
+                                totalReceipts={receipts.data.length}
+                            />
                             <TableRow className="border-b border-neutral-200 text-sm hover:bg-transparent dark:border-neutral-800">
                                 <TableHead className="w-24 font-bold text-neutral-800 dark:text-neutral-200">
-                                    ID
+                                    <span className="inline-flex items-center">
+                                        ID
+                                        <ReceiptColumnFilter
+                                            column="id"
+                                            title="ID"
+                                            kind="number"
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="font-bold text-neutral-800 dark:text-neutral-200">
-                                    Date
+                                    <span className="inline-flex items-center">
+                                        Date
+                                        <ReceiptColumnFilter
+                                            column="date"
+                                            title="Date"
+                                            kind="date"
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="font-bold text-neutral-800 dark:text-neutral-200">
-                                    Client
+                                    <span className="inline-flex items-center">
+                                        Client
+                                        <ReceiptColumnFilter
+                                            column="customer"
+                                            title="Client"
+                                            kind="text"
+                                            options={[
+                                                ...new Set(
+                                                    receipts.data.map(
+                                                        (receipt) =>
+                                                            receipt.customer
+                                                                ?.name || '---',
+                                                    ),
+                                                ),
+                                            ].sort((a, b) =>
+                                                a.localeCompare(b, 'fr'),
+                                            )}
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="font-bold text-neutral-800 dark:text-neutral-200">
-                                    Journée
+                                    <span className="inline-flex items-center">
+                                        Journée
+                                        <ReceiptColumnFilter
+                                            column="session_date"
+                                            title="Journée"
+                                            kind="date"
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="font-bold text-neutral-800 dark:text-neutral-200">
-                                    Zone
+                                    <span className="inline-flex items-center">
+                                        Zone
+                                        <ReceiptColumnFilter
+                                            column="zone"
+                                            title="Zone"
+                                            kind="text"
+                                            options={[
+                                                ...new Set(
+                                                    receipts.data.map(
+                                                        (receipt) =>
+                                                            receipt.session_zone
+                                                                ?.zone?.name ||
+                                                            '-',
+                                                    ),
+                                                ),
+                                            ].sort((a, b) =>
+                                                a.localeCompare(b, 'fr'),
+                                            )}
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="text-right font-bold text-neutral-800 dark:text-neutral-200">
-                                    Total (DH)
+                                    <span className="inline-flex items-center">
+                                        Total (DH)
+                                        <ReceiptColumnFilter
+                                            column="total_amount"
+                                            title="Total (DH)"
+                                            kind="number"
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="text-right font-bold text-neutral-800 dark:text-neutral-200">
-                                    Caisses
+                                    <span className="inline-flex items-center">
+                                        Caisses
+                                        <ReceiptColumnFilter
+                                            column="total_boxes"
+                                            title="Caisses"
+                                            kind="number"
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {receipts.data.length > 0 ? (
-                                receipts.data.map((receipt) => (
+                            {filteredReceipts.length > 0 ? (
+                                filteredReceipts.map((receipt) => (
                                     <TableRow
                                         key={receipt.id}
                                         className="group cursor-pointer border-b border-slate-100 bg-white transition-all last:border-0 hover:bg-slate-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800/70"
