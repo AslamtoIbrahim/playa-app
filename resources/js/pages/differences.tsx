@@ -1,3 +1,8 @@
+import {
+    DifferenceColumnFilter,
+    DifferenceFilterSummary,
+    DifferenceSearch,
+} from '@/components/difference-filters';
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -7,9 +12,9 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useDifferenceFilters } from '@/hooks/use-difference-filters';
 import { formatDateDisplay } from '@/lib/date';
 import { cn } from '@/lib/utils';
-import type { Customer } from '@/types/customer';
 import { Head, router } from '@inertiajs/react';
 import {
     CalendarDays,
@@ -17,20 +22,11 @@ import {
     ChevronRight,
     TrendingUp,
 } from 'lucide-react';
-
-interface Report {
-    id: number;
-    customer_id: number;
-    invoice_date: string;
-    boat_id: number;
-    total_diff_amount: number;
-    items_count: number;
-    boat_name?: string;
-    customer?: Customer;
-}
+import { useState } from 'react';
+import type { DifferenceReport } from '@/hooks/use-difference-filters';
 
 interface ReportsPaginator {
-    data: Report[];
+    data: DifferenceReport[];
     links: {
         url: string | null;
         label: string;
@@ -44,6 +40,10 @@ interface Props {
 }
 
 export default function Differences({ reports }: Props) {
+    const [showColumnFilters, setShowColumnFilters] = useState(false);
+    const { filters, setFilters, filteredReports, activeFilterCount } =
+        useDifferenceFilters(reports.data);
+
     const viewReport = (
         customerId: number,
         date: string,
@@ -53,6 +53,15 @@ export default function Differences({ reports }: Props) {
             `/differences/report?customer_id=${customerId}&date=${date}&boat_id=${boatId}`,
         );
     };
+
+    const customerOptions = [
+        ...new Set(
+            reports.data.map((report) => report.customer?.name || '---'),
+        ),
+    ].sort((a, b) => a.localeCompare(b, 'fr'));
+    const boatOptions = [
+        ...new Set(reports.data.map((report) => report.boat_name || '---')),
+    ].sort((a, b) => a.localeCompare(b, 'fr'));
 
     return (
         <>
@@ -72,29 +81,101 @@ export default function Differences({ reports }: Props) {
                 </div>
 
                 <div className="flex-1 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900/90">
+                    <div className="flex min-h-14 items-center justify-between gap-3 border-b border-neutral-200 bg-neutral-50/50 px-4 py-2 dark:border-neutral-800 dark:bg-neutral-800/50">
+                        <DifferenceSearch
+                            value={filters.search}
+                            onChange={(search) =>
+                                setFilters((current) => ({
+                                    ...current,
+                                    search,
+                                }))
+                            }
+                            showColumnFilters={showColumnFilters}
+                            activeFilterCount={activeFilterCount}
+                            onToggleColumnFilters={() =>
+                                setShowColumnFilters((current) => !current)
+                            }
+                            onClearFilters={() =>
+                                setFilters({ search: '', columns: {} })
+                            }
+                        />
+                    </div>
                     <Table>
-                        <TableHeader className="bg-neutral-50/50 dark:bg-neutral-800/50">
+                        <TableHeader
+                            className={`bg-neutral-50/50 dark:bg-neutral-800/50 ${showColumnFilters ? '' : '**:data-column-filter-trigger:hidden'}`}
+                        >
+                            <DifferenceFilterSummary
+                                reports={filteredReports}
+                                totalReports={reports.data.length}
+                            />
                             <TableRow className="border-b border-neutral-200 text-sm hover:bg-transparent dark:border-neutral-800">
                                 <TableHead className="w-24 font-bold text-neutral-800 dark:text-neutral-200">
-                                    ID
+                                    <span className="inline-flex items-center">
+                                        ID
+                                        <DifferenceColumnFilter
+                                            column="id"
+                                            title="ID"
+                                            kind="number"
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="font-bold text-neutral-800 dark:text-neutral-200">
-                                    Date Facture
+                                    <span className="inline-flex items-center">
+                                        Date Facture
+                                        <DifferenceColumnFilter
+                                            column="invoice_date"
+                                            title="Date Facture"
+                                            kind="date"
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="font-bold text-neutral-800 dark:text-neutral-200">
-                                    Client
+                                    <span className="inline-flex items-center">
+                                        Client
+                                        <DifferenceColumnFilter
+                                            column="customer"
+                                            title="Client"
+                                            kind="text"
+                                            options={customerOptions}
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="font-bold text-neutral-800 dark:text-neutral-200">
-                                    Bateau
+                                    <span className="inline-flex items-center">
+                                        Bateau
+                                        <DifferenceColumnFilter
+                                            column="boat"
+                                            title="Bateau"
+                                            kind="text"
+                                            options={boatOptions}
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="text-right font-bold text-neutral-800 dark:text-neutral-200">
-                                    Total Écart
+                                    <span className="inline-flex items-center">
+                                        Total Écart
+                                        <DifferenceColumnFilter
+                                            column="total_diff_amount"
+                                            title="Total Écart"
+                                            kind="number"
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {reports.data.length > 0 ? (
-                                reports.data.map((item) => (
+                            {filteredReports.length > 0 ? (
+                                filteredReports.map((item) => (
                                     <TableRow
                                         key={item.id}
                                         className="group cursor-pointer border-b border-slate-100 bg-white transition-all last:border-0 hover:bg-slate-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800/70"
