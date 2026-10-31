@@ -2,6 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     SessionColumnFilter,
+    SessionFilterSummary,
     SessionSearch,
 } from '@/components/session-filters';
 import {
@@ -93,15 +94,15 @@ export default function Sessions({ sessions }: SessionsIndexProps) {
                             activeFilterCount={activeFilterCount}
                             onToggleColumnFilters={toggleColumnFilters}
                         />
-                        <span className="shrink-0 text-xs font-medium text-muted-foreground">
-                            {filteredSessions.length} / {sessions.data.length}{' '}
-                            sur cette page
-                        </span>
                     </div>
                     <Table>
                         <TableHeader
                             className={`bg-neutral-50/50 dark:bg-neutral-800/50 ${showColumnFilters ? '' : '**:data-column-filter-trigger:hidden'}`}
                         >
+                            <SessionFilterSummary
+                                sessions={filteredSessions}
+                                totalSessions={sessions.data.length}
+                            />
                             <TableRow className="border-b border-neutral-200 text-sm hover:bg-transparent dark:border-neutral-800">
                                 <TableHead className="w-24 font-bold text-neutral-800 dark:text-neutral-200">
                                     <span className="inline-flex items-center">

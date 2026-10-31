@@ -6,11 +6,13 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
+import { TableHead, TableRow } from '@/components/ui/table';
 import type {
     SessionFilterColumn,
     SessionFilters,
 } from '@/hooks/use-session-filters';
 import { cn } from '@/lib/utils';
+import type { DailySession } from '@/types/daily-session';
 import { Filter, Search, X } from 'lucide-react';
 import { useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
@@ -81,6 +83,62 @@ export function SessionSearch({
                 )}
             </Button>
         </div>
+    );
+}
+
+interface SessionFilterSummaryProps {
+    sessions: DailySession[];
+    totalSessions: number;
+}
+
+export function SessionFilterSummary({
+    sessions,
+    totalSessions,
+}: SessionFilterSummaryProps) {
+    const totals = sessions.reduce(
+        (result, session) => ({
+            buy: result.buy + Number(session.total_buy || 0),
+            sell: result.sell + Number(session.total_sell || 0),
+        }),
+        { buy: 0, sell: 0 },
+    );
+    const margin = totals.sell - totals.buy;
+    const formatCurrency = (amount: number) =>
+        new Intl.NumberFormat('fr-FR', {
+            style: 'currency',
+            currency: 'MAD',
+        }).format(amount);
+
+    return (
+        <TableRow
+            aria-label="Résumé des sessions filtrées"
+            className="border-b border-neutral-200 bg-neutral-50/70 text-sm hover:bg-neutral-50/70 dark:border-neutral-800 dark:bg-neutral-800/30 dark:hover:bg-neutral-800/30"
+        >
+            <TableHead
+                colSpan={3}
+                className="font-semibold text-muted-foreground"
+            >
+                {sessions.length} / {totalSessions} sur cette page
+            </TableHead>
+            <TableHead className="text-right font-semibold text-muted-foreground">
+                Total Achat :{' '}
+                <span className="font-mono text-foreground">
+                    {formatCurrency(totals.buy)}
+                </span>
+            </TableHead>
+            <TableHead className="text-right font-semibold text-muted-foreground">
+                Total Vente :{' '}
+                <span className="font-mono text-foreground">
+                    {formatCurrency(totals.sell)}
+                </span>
+            </TableHead>
+            <TableHead className="text-right font-semibold text-muted-foreground">
+                Marge :{' '}
+                <span className="font-mono text-foreground">
+                    {formatCurrency(margin)}
+                </span>
+            </TableHead>
+        </TableRow>
     );
 }
 
