@@ -1,6 +1,10 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
+    SessionColumnFilter,
+    SessionSearch,
+} from '@/components/session-filters';
+import {
     Table,
     TableBody,
     TableCell,
@@ -9,6 +13,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { formatDateDisplay } from '@/lib/date';
+import { useSessionFilters } from '@/hooks/use-session-filters';
 import { cn } from '@/lib/utils';
 import type { SessionsIndexProps } from '@/types/daily-session';
 import { Head, router } from '@inertiajs/react';
@@ -20,8 +25,29 @@ import {
     Unlock,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { useState } from 'react';
 
 export default function Sessions({ sessions }: SessionsIndexProps) {
+    const [showColumnFilters, setShowColumnFilters] = useState(false);
+    const {
+        filters,
+        setFilters,
+        filteredSessions,
+        activeFilterCount,
+        clearColumnFilters,
+    } = useSessionFilters(sessions.data);
+
+    const toggleColumnFilters = () => {
+        if (showColumnFilters) {
+            clearColumnFilters();
+            setShowColumnFilters(false);
+
+            return;
+        }
+
+        setShowColumnFilters(true);
+    };
+
     const calculateMargin = (sell: number, buy: number) => {
         return sell - buy;
     };
@@ -54,33 +80,111 @@ export default function Sessions({ sessions }: SessionsIndexProps) {
                 </div>
 
                 <div className="flex-1 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900/90">
+                    <div className="flex min-h-14 items-center justify-between gap-3 border-b border-neutral-200 bg-neutral-50/50 px-4 py-2 dark:border-neutral-800 dark:bg-neutral-800/50">
+                        <SessionSearch
+                            value={filters.search}
+                            onChange={(search) =>
+                                setFilters((current) => ({
+                                    ...current,
+                                    search,
+                                }))
+                            }
+                            showColumnFilters={showColumnFilters}
+                            activeFilterCount={activeFilterCount}
+                            onToggleColumnFilters={toggleColumnFilters}
+                        />
+                        <span className="shrink-0 text-xs font-medium text-muted-foreground">
+                            {filteredSessions.length} / {sessions.data.length}{' '}
+                            sur cette page
+                        </span>
+                    </div>
                     <Table>
-                        <TableHeader className="bg-neutral-50/50 dark:bg-neutral-800/50">
+                        <TableHeader
+                            className={`bg-neutral-50/50 dark:bg-neutral-800/50 ${showColumnFilters ? '' : '**:data-column-filter-trigger:hidden'}`}
+                        >
                             <TableRow className="border-b border-neutral-200 text-sm hover:bg-transparent dark:border-neutral-800">
                                 <TableHead className="w-24 font-bold text-neutral-800 dark:text-neutral-200">
-                                    ID
+                                    <span className="inline-flex items-center">
+                                        ID
+                                        <SessionColumnFilter
+                                            column="id"
+                                            title="ID"
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="font-bold text-neutral-800 dark:text-neutral-200">
-                                    Date de Journée
+                                    <span className="inline-flex items-center">
+                                        Date de Journée
+                                        <SessionColumnFilter
+                                            column="session_date"
+                                            title="Date de Journée"
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="font-bold text-neutral-800 dark:text-neutral-200">
-                                    Status
+                                    <span className="inline-flex items-center">
+                                        Status
+                                        <SessionColumnFilter
+                                            column="status"
+                                            title="Status"
+                                            options={[
+                                                {
+                                                    label: 'Ouverte',
+                                                    value: 'open',
+                                                },
+                                                {
+                                                    label: 'Clôturée',
+                                                    value: 'closed',
+                                                },
+                                            ]}
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="text-right font-bold text-neutral-800 dark:text-neutral-200">
-                                    Total Achat
+                                    <span className="inline-flex items-center">
+                                        Total Achat
+                                        <SessionColumnFilter
+                                            column="total_buy"
+                                            title="Total Achat"
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="text-right font-bold text-neutral-800 dark:text-neutral-200">
-                                    Total Vente
+                                    <span className="inline-flex items-center">
+                                        Total Vente
+                                        <SessionColumnFilter
+                                            column="total_sell"
+                                            title="Total Vente"
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="text-right font-bold text-neutral-800 dark:text-neutral-200">
-                                    Marge
+                                    <span className="inline-flex items-center">
+                                        Marge
+                                        <SessionColumnFilter
+                                            column="margin"
+                                            title="Marge"
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                             </TableRow>
                         </TableHeader>
 
                         <TableBody>
-                            {sessions.data.length > 0 ? (
-                                sessions.data.map((session) => {
+                            {filteredSessions.length > 0 ? (
+                                filteredSessions.map((session) => {
                                     const margin = calculateMargin(
                                         session.total_sell,
                                         session.total_buy,
