@@ -1,7 +1,13 @@
 import { Head, router } from '@inertiajs/react';
 import { CalendarDays, ChevronLeft, ChevronRight, Users } from 'lucide-react';
+import { useState } from 'react';
 
 // Components
+import {
+    AttendanceColumnFilter,
+    AttendanceFilterSummary,
+    AttendanceSearch,
+} from '@/components/attendance-filters';
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -13,11 +19,20 @@ import {
 } from '@/components/ui/table';
 import { formatDateDisplay } from '@/lib/date';
 import { cn } from '@/lib/utils';
+import {
+    formatAttendanceCurrency,
+    getAttendanceFilterOptions,
+    useAttendanceFilters,
+} from '@/hooks/use-attendance-filters';
 
 // Types
 import type { AttendancesIndexProps } from '@/types/attendance';
 
 export default function Attendances({ attendances }: AttendancesIndexProps) {
+    const [showColumnFilters, setShowColumnFilters] = useState(false);
+    const { filters, setFilters, filteredAttendances, activeFilterCount } =
+        useAttendanceFilters(attendances.data);
+
     const handleRowClick = (attendanceId: number) => {
         router.visit(`/attendances/${attendanceId}`);
     };
@@ -39,29 +54,101 @@ export default function Attendances({ attendances }: AttendancesIndexProps) {
                 </div>
 
                 <div className="flex-1 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900/90">
+                    <div className="flex min-h-14 items-center justify-between gap-3 border-b border-neutral-200 bg-neutral-50/50 px-4 py-2 dark:border-neutral-800 dark:bg-neutral-800/50">
+                        <AttendanceSearch
+                            value={filters.search}
+                            onChange={(search) =>
+                                setFilters((current) => ({
+                                    ...current,
+                                    search,
+                                }))
+                            }
+                            showColumnFilters={showColumnFilters}
+                            activeFilterCount={activeFilterCount}
+                            onToggleColumnFilters={() => {
+                                setFilters({ search: '', columns: {} });
+                                setShowColumnFilters((current) => !current);
+                            }}
+                        />
+                    </div>
                     <Table>
-                        <TableHeader className="bg-neutral-50/50 dark:bg-neutral-800/50">
+                        <TableHeader
+                            className={`bg-neutral-50/50 dark:bg-neutral-800/50 ${showColumnFilters ? '' : '**:data-column-filter-trigger:hidden'}`}
+                        >
+                            <AttendanceFilterSummary
+                                attendances={filteredAttendances}
+                                totalAttendances={attendances.data.length}
+                            />
                             <TableRow className="border-b border-neutral-200 text-sm hover:bg-transparent dark:border-neutral-800">
                                 <TableHead className="w-24 font-bold text-neutral-800 dark:text-neutral-200">
-                                    ID
+                                    <span className="inline-flex items-center">
+                                        ID
+                                        <AttendanceColumnFilter
+                                            column="id"
+                                            title="ID"
+                                            kind="number"
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="font-bold text-neutral-800 dark:text-neutral-200">
-                                    Date du Pointage
+                                    <span className="inline-flex items-center">
+                                        Date du Pointage
+                                        <AttendanceColumnFilter
+                                            column="date"
+                                            title="Date du Pointage"
+                                            kind="date"
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="font-bold text-neutral-800 dark:text-neutral-200">
-                                    Journée
+                                    <span className="inline-flex items-center">
+                                        Journée
+                                        <AttendanceColumnFilter
+                                            column="session_date"
+                                            title="Journée"
+                                            kind="date"
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="font-bold text-neutral-800 dark:text-neutral-200">
-                                    Zone
+                                    <span className="inline-flex items-center">
+                                        Zone
+                                        <AttendanceColumnFilter
+                                            column="zone"
+                                            title="Zone"
+                                            kind="text"
+                                            options={getAttendanceFilterOptions(
+                                                attendances.data,
+                                                'zone',
+                                            )}
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="text-right font-bold text-neutral-800 dark:text-neutral-200">
-                                    Masse Salariale
+                                    <span className="inline-flex items-center">
+                                        Masse Salariale
+                                        <AttendanceColumnFilter
+                                            column="total_wage"
+                                            title="Masse Salariale"
+                                            kind="number"
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {attendances.data.length > 0 ? (
-                                attendances.data.map((attendance) => (
+                            {filteredAttendances.length > 0 ? (
+                                filteredAttendances.map((attendance) => (
                                     <TableRow
                                         key={attendance.id}
                                         className="group cursor-pointer border-b border-slate-100 bg-white transition-all last:border-0 hover:bg-slate-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800/70"
@@ -101,10 +188,7 @@ export default function Attendances({ attendances }: AttendancesIndexProps) {
                                         </TableCell>
 
                                         <TableCell className="text-right font-mono text-sm font-semibold text-slate-900 dark:text-neutral-100">
-                                            {new Intl.NumberFormat('fr-FR', {
-                                                style: 'currency',
-                                                currency: 'MAD',
-                                            }).format(
+                                            {formatAttendanceCurrency(
                                                 Number(attendance.total_wage),
                                             )}
                                         </TableCell>
@@ -116,7 +200,9 @@ export default function Attendances({ attendances }: AttendancesIndexProps) {
                                         colSpan={5}
                                         className="py-24 text-center font-medium text-muted-foreground italic dark:text-neutral-400"
                                     >
-                                        Aucune feuille de pointage enregistrée.
+                                        {filters.search || activeFilterCount > 0
+                                            ? 'Aucun résultat pour les filtres sélectionnés.'
+                                            : 'Aucune feuille de pointage enregistrée.'}
                                     </TableCell>
                                 </TableRow>
                             )}
