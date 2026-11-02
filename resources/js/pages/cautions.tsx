@@ -1,7 +1,12 @@
 import AddCautionDialog from '@/components/add-caution-dialog';
+import {
+    CautionColumnFilter,
+    CautionSearch,
+} from '@/components/caution-filters';
 import DeleteCautionDialog from '@/components/delete-caution-dialog';
 import EditCautionDialog from '@/components/edit-caution-dialog';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
     Table,
     TableBody,
@@ -10,10 +15,20 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useCautionFilters } from '@/hooks/use-caution-filters';
 import { formatDateDisplay } from '@/lib/date';
+import { cn } from '@/lib/utils';
 import type { Caution, Owner } from '@/types/caution';
 import { Head } from '@inertiajs/react';
-import { Building2, CalendarDays, ShieldCheck, User } from 'lucide-react';
+import {
+    Building2,
+    CalendarDays,
+    ChevronLeft,
+    ChevronRight,
+    ShieldCheck,
+    User,
+} from 'lucide-react';
+import { useState } from 'react';
 
 interface Props {
     cautions: Caution[];
@@ -21,6 +36,25 @@ interface Props {
 }
 
 export default function Cautions({ cautions, owners }: Props) {
+    const [showColumnFilters, setShowColumnFilters] = useState(false);
+    const {
+        filters,
+        setFilters,
+        filteredCautions,
+        paginatedCautions,
+        activeFilterCount,
+        currentPage,
+        pageCount,
+        setPage,
+        clearFilters,
+    } = useCautionFilters(cautions);
+    const cautionNames = [
+        ...new Set(cautions.map((caution) => caution.name)),
+    ].sort((a, b) => a.localeCompare(b, 'fr'));
+    const ownerNames = [
+        ...new Set(cautions.map((caution) => caution.owner?.name || 'Inconnu')),
+    ].sort((a, b) => a.localeCompare(b, 'fr'));
+
     return (
         <>
             <Head title="Cautions" />
@@ -33,7 +67,8 @@ export default function Cautions({ cautions, owners }: Props) {
                         </h1>
 
                         <p className="text-sm font-medium text-muted-foreground dark:text-neutral-400">
-                            Suivez les cautions déposées par les clients et les sociétés.
+                            Suivez les cautions déposées par les clients et les
+                            sociétés.
                         </p>
                     </div>
 
@@ -41,20 +76,78 @@ export default function Cautions({ cautions, owners }: Props) {
                 </div>
 
                 <div className="flex-1 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900/90">
+                    <div className="flex min-h-14 items-center justify-between gap-3 border-b border-neutral-200 bg-neutral-50/50 px-4 py-2 dark:border-neutral-800 dark:bg-neutral-800/50">
+                        <CautionSearch
+                            value={filters.search}
+                            onChange={(search) =>
+                                setFilters((current) => ({
+                                    ...current,
+                                    search,
+                                }))
+                            }
+                            showColumnFilters={showColumnFilters}
+                            activeFilterCount={activeFilterCount}
+                            onToggleColumnFilters={() =>
+                                setShowColumnFilters((current) => !current)
+                            }
+                            onClearFilters={clearFilters}
+                        />
+                        <span className="shrink-0 text-xs font-medium text-muted-foreground">
+                            {filteredCautions.length} / {cautions.length}{' '}
+                            cautions
+                        </span>
+                    </div>
+
                     <Table>
-                        <TableHeader className="bg-neutral-50/50 dark:bg-neutral-800/50">
+                        <TableHeader
+                            className={`bg-neutral-50/50 dark:bg-neutral-800/50 ${showColumnFilters ? '' : '**:data-column-filter-trigger:hidden'}`}
+                        >
                             <TableRow className="border-b border-neutral-200 text-sm hover:bg-transparent dark:border-neutral-800">
                                 <TableHead className="w-24 font-bold text-neutral-800 dark:text-neutral-200">
-                                    ID
+                                    <span className="inline-flex items-center">
+                                        ID
+                                        <CautionColumnFilter
+                                            column="id"
+                                            title="ID"
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="font-bold text-neutral-800 dark:text-neutral-200">
-                                    Désignation
+                                    <span className="inline-flex items-center">
+                                        Désignation
+                                        <CautionColumnFilter
+                                            column="name"
+                                            title="Désignation"
+                                            options={cautionNames}
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="font-bold text-neutral-800 dark:text-neutral-200">
-                                    Propriétaire
+                                    <span className="inline-flex items-center">
+                                        Propriétaire
+                                        <CautionColumnFilter
+                                            column="owner"
+                                            title="Propriétaire"
+                                            options={ownerNames}
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="font-bold text-neutral-800 dark:text-neutral-200">
-                                    Date de création
+                                    <span className="inline-flex items-center">
+                                        Date de création
+                                        <CautionColumnFilter
+                                            column="created_at"
+                                            title="Date de création"
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="w-20 text-center font-bold text-neutral-800 dark:text-neutral-200">
                                     Actions
@@ -63,9 +156,10 @@ export default function Cautions({ cautions, owners }: Props) {
                         </TableHeader>
 
                         <TableBody>
-                            {cautions.length > 0 ? (
-                                cautions.map((caution: Caution) => {
-                                    const isCompany = caution.owner_type.includes('Company');
+                            {paginatedCautions.length > 0 ? (
+                                paginatedCautions.map((caution: Caution) => {
+                                    const isCompany =
+                                        caution.owner_type.includes('Company');
 
                                     return (
                                         <TableRow
@@ -76,7 +170,7 @@ export default function Cautions({ cautions, owners }: Props) {
                                                 #{caution.id}
                                             </TableCell>
 
-                                            <TableCell className="font-semibold capitalize text-slate-900 dark:text-neutral-100">
+                                            <TableCell className="font-semibold text-slate-900 capitalize dark:text-neutral-100">
                                                 <div className="flex items-center gap-2">
                                                     <ShieldCheck className="h-4 w-4 text-slate-400 dark:text-neutral-500" />
                                                     {caution.name}
@@ -92,7 +186,9 @@ export default function Cautions({ cautions, owners }: Props) {
                                                             <User className="h-4 w-4 text-slate-400 dark:text-neutral-500" />
                                                         )}
                                                         <span className="font-medium text-slate-700 dark:text-neutral-200">
-                                                            {caution.owner?.name || 'Inconnu'}
+                                                            {caution.owner
+                                                                ?.name ||
+                                                                'Inconnu'}
                                                         </span>
                                                     </div>
 
@@ -100,14 +196,14 @@ export default function Cautions({ cautions, owners }: Props) {
                                                         {isCompany ? (
                                                             <Badge
                                                                 variant="secondary"
-                                                                className="border-amber-200 bg-amber-50 px-1.5 py-0 text-[10px] font-bold uppercase text-amber-700 hover:bg-amber-50 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-400"
+                                                                className="border-amber-200 bg-amber-50 px-1.5 py-0 text-[10px] font-bold text-amber-700 uppercase hover:bg-amber-50 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-400"
                                                             >
                                                                 Société
                                                             </Badge>
                                                         ) : (
                                                             <Badge
                                                                 variant="secondary"
-                                                                className="border-blue-200 bg-blue-50 px-1.5 py-0 text-[10px] font-bold uppercase text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-400"
+                                                                className="border-blue-200 bg-blue-50 px-1.5 py-0 text-[10px] font-bold text-blue-700 uppercase hover:bg-blue-50 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-400"
                                                             >
                                                                 Client
                                                             </Badge>
@@ -119,7 +215,9 @@ export default function Cautions({ cautions, owners }: Props) {
                                             <TableCell className="text-sm font-medium text-slate-600 dark:text-neutral-300">
                                                 <div className="flex items-center gap-2">
                                                     <CalendarDays className="h-4 w-4 text-slate-400 dark:text-neutral-500" />
-                                                    {formatDateDisplay(caution.created_at)}
+                                                    {formatDateDisplay(
+                                                        caution.created_at,
+                                                    )}
                                                 </div>
                                             </TableCell>
 
@@ -132,7 +230,9 @@ export default function Cautions({ cautions, owners }: Props) {
 
                                                     <DeleteCautionDialog
                                                         cautionId={caution.id}
-                                                        cautionName={caution.name}
+                                                        cautionName={
+                                                            caution.name
+                                                        }
                                                     />
                                                 </div>
                                             </TableCell>
@@ -145,7 +245,9 @@ export default function Cautions({ cautions, owners }: Props) {
                                         colSpan={5}
                                         className="py-24 text-center font-medium text-muted-foreground italic dark:text-neutral-400"
                                     >
-                                        Aucune caution trouvée.
+                                        {cautions.length > 0
+                                            ? 'Aucune caution ne correspond aux filtres.'
+                                            : 'Aucune caution trouvée.'}
                                     </TableCell>
                                 </TableRow>
                             )}
@@ -155,7 +257,62 @@ export default function Cautions({ cautions, owners }: Props) {
                     <div className="flex items-center justify-between border-t border-neutral-200 bg-neutral-50/50 px-6 py-4 dark:border-neutral-800 dark:bg-neutral-800/50">
                         <div className="flex items-center gap-2 text-xs font-bold tracking-widest text-neutral-500 uppercase dark:text-neutral-400">
                             <ShieldCheck className="h-4 w-4" />
-                            {cautions.length} Cautions au total
+                            {filteredCautions.length} Cautions au total
+                        </div>
+
+                        <div className="flex gap-2">
+                            {currentPage > 1 && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    aria-label="Page précédente"
+                                    className="h-9 min-w-9 text-xs font-bold shadow-none transition-all dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+                                    onClick={() => setPage(currentPage - 1)}
+                                >
+                                    <ChevronLeft className="h-4 w-4" />
+                                </Button>
+                            )}
+                            {Array.from(
+                                { length: pageCount },
+                                (_, index) => index + 1,
+                            ).map((page) => (
+                                <Button
+                                    key={page}
+                                    type="button"
+                                    variant={
+                                        page === currentPage
+                                            ? 'default'
+                                            : 'outline'
+                                    }
+                                    size="sm"
+                                    aria-current={
+                                        page === currentPage
+                                            ? 'page'
+                                            : undefined
+                                    }
+                                    className={cn(
+                                        'h-9 min-w-9 text-xs font-bold shadow-none transition-all dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700',
+                                        page === currentPage &&
+                                            'scale-105 shadow-md dark:bg-primary dark:text-primary-foreground',
+                                    )}
+                                    onClick={() => setPage(page)}
+                                >
+                                    {page}
+                                </Button>
+                            ))}
+                            {currentPage < pageCount && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    aria-label="Page suivante"
+                                    className="h-9 min-w-9 text-xs font-bold shadow-none transition-all dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+                                    onClick={() => setPage(currentPage + 1)}
+                                >
+                                    <ChevronRight className="h-4 w-4" />
+                                </Button>
+                            )}
                         </div>
                     </div>
                 </div>
