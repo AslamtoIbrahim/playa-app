@@ -1,11 +1,5 @@
 import { Form } from '@inertiajs/react';
-import {
-    Check,
-    Loader2,
-    Trash2,
-    User,
-    X
-} from 'lucide-react';
+import { Check, Loader2, Trash2, User, X } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -38,7 +32,7 @@ export default function AttendanceItemRow({ item }: Props) {
                     </div>
 
                     <div className="flex flex-col">
-                        <span className="font-bold capitalize text-slate-900 dark:text-slate-100">
+                        <span className="font-bold text-slate-900 capitalize dark:text-slate-100">
                             {item.worker?.name}
                         </span>
                     </div>
@@ -64,13 +58,20 @@ export default function AttendanceItemRow({ item }: Props) {
                                         name="wage"
                                         type="number"
                                         autoFocus
-                                        defaultValue={item.wage} 
+                                        defaultValue={item.wage}
                                         onBlur={(e) => {
-                                            if (!e.currentTarget.parentElement?.contains(e.relatedTarget as Node)) {
+                                            if (
+                                                !e.currentTarget.parentElement?.contains(
+                                                    e.relatedTarget as Node,
+                                                )
+                                            ) {
                                                 setIsEditing(false);
                                             }
                                         }}
-                                        className={cn("h-8 w-24 border-blue-400 text-sm font-bold focus-visible:ring-blue-100 dark:border-blue-500 dark:bg-slate-900 dark:text-slate-100 dark:focus-visible:ring-blue-900", removeInputArraws)}
+                                        className={cn(
+                                            'h-8 w-24 border-blue-400 text-sm font-bold focus-visible:ring-blue-100 dark:border-blue-500 dark:bg-slate-900 dark:text-slate-100 dark:focus-visible:ring-blue-900',
+                                            removeInputArraws,
+                                        )}
                                     />
 
                                     <Button
@@ -80,7 +81,11 @@ export default function AttendanceItemRow({ item }: Props) {
                                         disabled={processing}
                                         className="h-8 w-8 text-green-600 hover:bg-green-100 hover:text-green-700 dark:text-green-400 dark:hover:bg-green-950/50 dark:hover:text-green-300"
                                     >
-                                        {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                                        {processing ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                            <Check className="h-4 w-4" />
+                                        )}
                                     </Button>
 
                                     <Button
@@ -105,21 +110,32 @@ export default function AttendanceItemRow({ item }: Props) {
                             setIsEditing(true);
                         }}
                     >
-                        {item.wage} <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500">DH</span>
+                        {item.wage}{' '}
+                        <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500">
+                            DH
+                        </span>
                     </div>
                 )}
             </TableCell>
 
             {/* Statut */}
             <TableCell>
-                <Badge variant="secondary" className="border-green-100 bg-green-50 text-[10px] font-bold tracking-widest text-green-700 uppercase dark:border-green-900 dark:bg-green-950/50 dark:text-green-400">
-                    Présent
+                <Badge
+                    variant="secondary"
+                    className={cn(
+                        'text-[10px] font-bold tracking-widest uppercase',
+                        item.is_present
+                            ? 'border-green-100 bg-green-50 text-green-700 dark:border-green-900 dark:bg-green-950/50 dark:text-green-400'
+                            : 'border-neutral-200 bg-neutral-100 text-neutral-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300',
+                    )}
+                >
+                    {item.is_present ? 'Présent' : 'Absent'}
                 </Badge>
             </TableCell>
 
             {/* Actions */}
             <TableCell className="text-right">
-                <div className="flex justify-end items-center gap-1">
+                <div className="flex items-center justify-end gap-1">
                     {/* Delete Form */}
                     <Form
                         {...destroy.form(item.id)}

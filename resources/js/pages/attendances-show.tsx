@@ -28,12 +28,12 @@ import {
     TableRow,
 } from '@/components/ui/table';
 
-// Types
-import { Attendance } from '@/types/attendance';
-import { Worker } from '@/types/worker';
-
-// Components (غادي نكريوهم من بعد)
-// import EditAttendanceDialog from './edit-attendance-dialog';
+import {
+    AttendanceItemColumnFilter,
+    AttendanceItemFilterSummary,
+    AttendanceItemPagination,
+    AttendanceItemSearch,
+} from '@/components/attendance-item-filters';
 import AddWorkersDialog from '@/components/add-workers-dialog';
 import AttendanceItemRow from '@/components/attendance-item-row';
 import DeleteWorkersDialog from '@/components/delete-workers-dialog';
@@ -45,8 +45,14 @@ import { useScreenshot } from '@/hooks/use-screenshot';
 import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
 import { attendances } from '@/routes';
+import type { Attendance } from '@/types/attendance';
 import type { Customer } from '@/types/customer';
 import type { Sale } from '@/types/sale';
+import type { Worker } from '@/types/worker';
+import {
+    getAttendanceItemFilterOptions,
+    useAttendanceItemFilters,
+} from '@/hooks/use-attendance-item-filters';
 import { format } from 'date-fns/format';
 
 interface Props {
@@ -69,10 +75,29 @@ export default function AttendancesShow({
 }: Props) {
     const [isAddDialogOpen, setIsAddDialogOpen] = useState<boolean>(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [showColumnFilters, setShowColumnFilters] = useState(false);
 
     const { copyToClipboard } = useScreenshot();
 
     const { exportToExcel, exportToCSV, exportToPDF } = useAttendanceExport();
+    const items = attendance.items ?? [];
+    const {
+        filters,
+        setFilters,
+        filteredItems,
+        pageItems,
+        page,
+        setPage,
+        pageCount,
+        pageSize,
+        activeFilterCount,
+        clearFilters,
+    } = useAttendanceItemFilters(items);
+
+    const toggleColumnFilters = () => {
+        clearFilters();
+        setShowColumnFilters((current) => !current);
+    };
 
     const handleScreenshot = () => {
         copyToClipboard('worker-content');
@@ -93,7 +118,7 @@ export default function AttendancesShow({
     };
 
     return (
-        <div className="mx-auto min-h-screen max-w-screen-2xl space-y-6 bg-white p-6 font-sans text-slate-900 dark:bg-neutral-950 dark:text-neutral-100">
+        <div className="mx-auto min-h-screen max-w-7xl space-y-6 bg-white p-6 font-sans text-slate-900 dark:bg-neutral-950 dark:text-neutral-100">
             <Head title={`Pointage #${attendance.id}`} />
 
             <Button
@@ -213,20 +238,31 @@ export default function AttendancesShow({
                 </p>
             </div>
 
-            <div className="flex w-full items-center justify-between">
-                {attendance.items && attendance.items.length > 0 && (
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setDeleteDialogOpen(true)}
-                        className="border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950 print:hidden"
-                    >
-                        <Trash2 className="mr-2 h-4 w-4 text-red-600 dark:text-red-400" />{' '}
-                        Vider la liste
-                    </Button>
-                )}
+            <div className="flex w-full flex-wrap items-center justify-between gap-3 print:hidden">
+                <div className="flex min-w-0 flex-1 items-center gap-3">
+                    <AttendanceItemSearch
+                        value={filters.search}
+                        onChange={(search) =>
+                            setFilters((current) => ({ ...current, search }))
+                        }
+                        showColumnFilters={showColumnFilters}
+                        activeFilterCount={activeFilterCount}
+                        onToggleColumnFilters={toggleColumnFilters}
+                    />
+                    {items.length > 0 && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setDeleteDialogOpen(true)}
+                            className="border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950 print:hidden"
+                        >
+                            <Trash2 className="mr-2 h-4 w-4 text-red-600 dark:text-red-400" />{' '}
+                            Vider la liste
+                        </Button>
+                    )}
+                </div>
 
-                <div className="flex gap-2 print:hidden">
+                <div className="flex gap-2">
                     <Button
                         onClick={handleScreenshot}
                         variant="outline"
@@ -257,16 +293,54 @@ export default function AttendancesShow({
                 className="overflow-hidden border-neutral-200 text-neutral-700 shadow-sm dark:border-neutral-800 dark:text-neutral-200 [&_tbody_[data-slot=badge]]:border-neutral-300 [&_tbody_[data-slot=badge]]:bg-neutral-100 [&_tbody_[data-slot=badge]]:text-neutral-700 dark:[&_tbody_[data-slot=badge]]:border-neutral-700 dark:[&_tbody_[data-slot=badge]]:bg-neutral-800 dark:[&_tbody_[data-slot=badge]]:text-neutral-200 [&_tbody_td]:text-neutral-700 dark:[&_tbody_td]:text-neutral-200 [&_tbody_td_*]:text-inherit [&_tbody_tr]:border-neutral-200 dark:[&_tbody_tr]:border-neutral-800"
             >
                 <Table>
-                    <TableHeader className="bg-neutral-50 dark:bg-neutral-900">
+                    <TableHeader
+                        className={`bg-neutral-50 dark:bg-neutral-900 ${showColumnFilters ? '' : '**:data-column-filter-trigger:hidden'}`}
+                    >
+                        <AttendanceItemFilterSummary
+                            items={filteredItems}
+                            totalItems={items.length}
+                        />
                         <TableRow>
                             <TableHead className="w-[15%] font-bold text-neutral-600 dark:text-neutral-300">
-                                Ouvrier
+                                <span className="inline-flex items-center">
+                                    Ouvrier
+                                    <AttendanceItemColumnFilter
+                                        column="worker"
+                                        title="Ouvrier"
+                                        options={getAttendanceItemFilterOptions(
+                                            items,
+                                            'worker',
+                                        )}
+                                        filters={filters}
+                                        setFilters={setFilters}
+                                    />
+                                </span>
                             </TableHead>
                             <TableHead className="w-[25%] font-bold text-neutral-600 dark:text-neutral-300">
-                                Salaire (DH)
+                                <span className="inline-flex items-center">
+                                    Salaire (DH)
+                                    <AttendanceItemColumnFilter
+                                        column="wage"
+                                        title="Salaire"
+                                        filters={filters}
+                                        setFilters={setFilters}
+                                    />
+                                </span>
                             </TableHead>
                             <TableHead className="w-[5%] font-bold text-neutral-600 dark:text-neutral-300">
-                                Statut
+                                <span className="inline-flex items-center">
+                                    Statut
+                                    <AttendanceItemColumnFilter
+                                        column="status"
+                                        title="Statut"
+                                        options={getAttendanceItemFilterOptions(
+                                            items,
+                                            'status',
+                                        )}
+                                        filters={filters}
+                                        setFilters={setFilters}
+                                    />
+                                </span>
                             </TableHead>
                             <TableHead className="w-[15%] text-right font-bold text-neutral-600 dark:text-neutral-300">
                                 Actions
@@ -275,8 +349,8 @@ export default function AttendancesShow({
                     </TableHeader>
 
                     <TableBody>
-                        {attendance.items && attendance.items.length > 0 ? (
-                            attendance.items.map((item) => {
+                        {pageItems.length > 0 ? (
+                            pageItems.map((item) => {
                                 return (
                                     <AttendanceItemRow
                                         key={item.id}
@@ -290,12 +364,21 @@ export default function AttendancesShow({
                                     colSpan={4}
                                     className="h-32 text-center text-neutral-400 italic dark:text-neutral-600"
                                 >
-                                    Aucun ouvrier pointé pour le moment.
+                                    {filters.search || activeFilterCount > 0
+                                        ? 'Aucun résultat pour les filtres sélectionnés.'
+                                        : 'Aucun ouvrier pointé pour le moment.'}
                                 </TableCell>
                             </TableRow>
                         )}
                     </TableBody>
                 </Table>
+                <AttendanceItemPagination
+                    totalItems={filteredItems.length}
+                    page={page}
+                    pageCount={pageCount}
+                    pageSize={pageSize}
+                    onPageChange={setPage}
+                />
             </Card>
 
             {/* Dialogs */}
