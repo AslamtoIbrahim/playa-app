@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Customer;
 use App\Models\Boat;
+use App\Models\Customer;
 use App\Models\DailySession;
 use App\Models\InvoiceItem;
 use App\Models\Item;
@@ -11,8 +11,8 @@ use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Usine;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class SaleController extends Controller
@@ -178,18 +178,6 @@ class SaleController extends Controller
             'owner_id' => ['required', 'integer', Rule::exists($request->input('type') === 'usine' ? 'usines' : 'customers', 'id')],
             'type' => 'required|in:normal,usine',
         ]);
-
-        if (
-            (
-                (int) $validated['owner_id'] !== (int) $sale->owner_id
-                || ($validated['type'] === 'usine' ? Usine::class : Customer::class) !== $sale->owner_type
-            )
-            && $sale->items()->exists()
-        ) {
-            return back()->withErrors([
-                'owner_id' => 'Le client ou l’usine ne peut pas être modifié tant que la vente contient des répartitions.',
-            ]);
-        }
 
         $sale->update([
             'date' => $validated['date'],

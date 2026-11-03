@@ -12,6 +12,7 @@ use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\SessionZone;
 use App\Models\User;
+use App\Models\Usine;
 use App\Models\Zone;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -271,32 +272,34 @@ test('editing a difference updates its linked sale values directly', function ()
         ->and((float) $context['sale']->fresh()->amount)->toBe(176.0);
 });
 
-test('a sold difference customer can change without changing the sale customer', function () {
+test('a distributed sale owner can be changed without modifying its sale item or source purchase', function () {
     $context = createSaleItemContext();
-    $difference = createSaleDifference($context);
-    $otherClient = Customer::create(['name' => 'Other '.uniqid()]);
-
-    $this->actingAs($context['user'])->post(route('sale-items.store'), [
+    $usine = Usine::create(['name' => 'Usine '.uniqid()]);
+    $saleItem = SaleItem::create([
         'sale_id' => $context['sale']->id,
-        'difference_id' => $difference->id,
+        'invoice_item_id' => $context['invoiceItem']->id,
+        'item_id' => $context['item']->id,
+        'boat_id' => $context['invoiceItem']->boat_id,
+        'unit_count' => 4,
+        'sale_price' => 25,
+        'real_price' => 20,
+        'is_with_tax' => false,
     ]);
-
-    $this->actingAs($context['user'])
-        ->patch(route('differences.update', $difference->id), [
-            'customer_id' => $otherClient->id,
-        ])
-        ->assertSessionHasNoErrors();
+    $originalSaleItem = $saleItem->fresh()->getAttributes();
+    $originalPurchase = $context['invoiceItem']->fresh()->getAttributes();
 
     $this->actingAs($context['user'])
         ->patch(route('sales.update', $context['sale']->id), [
             'date' => '2026-06-01',
-            'owner_id' => $otherClient->id,
-            'type' => 'normal',
+            'owner_id' => $usine->id,
+            'type' => 'usine',
         ])
-        ->assertSessionHasErrors('owner_id');
+        ->assertSessionHasNoErrors();
 
-    expect((int) $difference->fresh()->customer_id)->toBe($otherClient->id)
-        ->and((int) $context['sale']->fresh()->owner_id)->toBe($context['client']->id);
+    expect((int) $context['sale']->fresh()->owner_id)->toBe($usine->id)
+        ->and($context['sale']->fresh()->owner_type)->toBe(Usine::class)
+        ->and($saleItem->fresh()->getAttributes())->toBe($originalSaleItem)
+        ->and($context['invoiceItem']->fresh()->getAttributes())->toBe($originalPurchase);
 });
 
 test('deleting a sale assignment makes the difference available to sell again', function () {

@@ -1,10 +1,13 @@
 <?php
 
+use App\Models\Category;
 use App\Models\Customer;
 use App\Models\DailySession;
+use App\Models\Item;
 use App\Models\Sale;
-use App\Models\Usine;
+use App\Models\SaleItem;
 use App\Models\User;
+use App\Models\Usine;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -76,7 +79,7 @@ test('usine sales are assigned to an usine owner', function () {
         ->and($sale->owner->is($usine))->toBeTrue();
 });
 
-test('a sale owner can be changed to an usine before items are added', function () {
+test('a sale owner can be changed between customers and usines after items are distributed', function () {
     $session = DailySession::create([
         'session_date' => '2026-06-01',
         'status' => 'open',
@@ -84,7 +87,13 @@ test('a sale owner can be changed to an usine before items are added', function 
         'total_sell' => 0,
     ]);
     $customer = Customer::create(['name' => 'Client Vente']);
+    $otherCustomer = Customer::create(['name' => 'Autre Client']);
     $usine = Usine::create(['name' => 'Usine Mise à jour']);
+    $otherUsine = Usine::create(['name' => 'Autre Usine']);
+    $item = Item::create([
+        'name' => 'Article Vente',
+        'category_id' => Category::create(['name' => 'Catégorie Vente'])->id,
+    ]);
     $sale = Sale::create([
         'date' => '2026-06-01',
         'owner_id' => $customer->id,
@@ -92,15 +101,36 @@ test('a sale owner can be changed to an usine before items are added', function 
         'session_id' => $session->id,
         'type' => 'normal',
     ]);
+    $saleItem = SaleItem::create([
+        'sale_id' => $sale->id,
+        'item_id' => $item->id,
+        'unit_count' => 3,
+        'sale_price' => 25,
+        'real_price' => 20,
+        'is_with_tax' => false,
+    ]);
+    $originalSaleItem = $saleItem->fresh()->getAttributes();
 
-    $this->actingAs(User::factory()->create())
-        ->patch(route('sales.update', $sale), [
-            'date' => '2026-06-01',
-            'owner_id' => $usine->id,
-            'type' => 'usine',
-        ])
-        ->assertSessionHasNoErrors();
+    $user = User::factory()->create();
 
-    expect($sale->fresh()->owner_id)->toBe($usine->id)
-        ->and($sale->fresh()->owner_type)->toBe(Usine::class);
+    foreach ([
+        [$otherCustomer->id, 'normal', Customer::class],
+        [$usine->id, 'usine', Usine::class],
+        [$otherUsine->id, 'usine', Usine::class],
+        [$customer->id, 'normal', Customer::class],
+    ] as [$ownerId, $type, $ownerType]) {
+        $this->actingAs($user)
+            ->patch(route('sales.update', $sale), [
+                'date' => '2026-06-01',
+                'owner_id' => $ownerId,
+                'type' => $type,
+            ])
+            ->assertSessionHasNoErrors();
+
+        $sale->refresh();
+
+        expect($sale->owner_id)->toBe($ownerId)
+            ->and($sale->owner_type)->toBe($ownerType)
+            ->and($sale->items()->first()->getAttributes())->toBe($originalSaleItem);
+    }
 });
