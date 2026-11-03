@@ -21,6 +21,7 @@ use App\Http\Controllers\SaleChargeController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SaleItemController;
 use App\Http\Controllers\SaleWorkerController;
+use App\Http\Controllers\UsineController;
 use App\Http\Controllers\WorkerController;
 use App\Http\Controllers\ZoneController;
 use Illuminate\Support\Facades\Route;
@@ -53,6 +54,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/{company}', [CompanyController::class, 'update'])->name('companies.update');
         Route::delete('/{company}', [CompanyController::class, 'destroy'])->name('companies.destroy');
     });
+
+    // --- Usines Routes
+    Route::get('usines', [UsineController::class, 'index'])->name('usines');
+    Route::post('usines', [UsineController::class, 'store'])->name('usines.store');
+    Route::patch('usines/{usine}', [UsineController::class, 'update'])->name('usines.update');
+    Route::delete('usines/{usine}', [UsineController::class, 'destroy'])->name('usines.destroy');
 
     // --- Daily Sessions Routes
     Route::prefix('sessions')->group(function () {

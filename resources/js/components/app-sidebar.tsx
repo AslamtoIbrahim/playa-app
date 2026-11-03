@@ -23,6 +23,7 @@ import {
     receipts,
     sales,
     sessions,
+    usines,
     workers,
     zones,
 } from '@/routes';
@@ -33,6 +34,7 @@ import {
     CalendarClock,
     DoorOpen,
     FileText,
+    Factory,
     LayoutGrid,
     MapPin,
     Package,
@@ -145,6 +147,11 @@ const mainNavGroups: NavGroup[] = [
                 title: 'Bureaux',
                 href: officeRooms(),
                 icon: DoorOpen,
+            },
+            {
+                title: 'Usines',
+                href: usines(),
+                icon: Factory,
             },
         ],
     },
