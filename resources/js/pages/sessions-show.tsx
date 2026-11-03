@@ -22,6 +22,7 @@ import type { Billable } from '@/types/invoice';
 import type { OfficeRoom } from '@/types/office-room';
 import type { SessionSaleData } from '@/types/sale';
 import type { SessionZone } from '@/types/session-zone';
+import type { Usine } from '@/types/usine';
 
 interface Props {
     session: DailySession & { zones?: { id: number; name: string }[] };
@@ -36,6 +37,7 @@ interface Props {
     sessionZones: SessionZone[];
     /** Données nécessaires au dialogue de création de bon de réception (client, bateau). */
     customers: Customer[];
+    usines: Usine[];
     boats: Boat[];
 }
 
@@ -50,6 +52,7 @@ function SessionShow({
     cautions,
     sessionZones,
     customers,
+    usines,
     boats,
 }: Props) {
     const formatCurrency = (amount: number) => {
@@ -60,8 +63,7 @@ function SessionShow({
     };
 
     const totalSalesNetToPay = (saleData.sales ?? []).reduce(
-        (total, sale) =>
-            total + Math.abs(computeSaleNetToPayFromSale(sale)),
+        (total, sale) => total + Math.abs(computeSaleNetToPayFromSale(sale)),
         0,
     );
 
@@ -74,9 +76,10 @@ function SessionShow({
     const sellCustomers: Customer[] = [
         ...new Map(
             (saleData.sales ?? [])
-                .map((sale) => sale.customer)
-                .filter((customer): customer is Customer => Boolean(customer))
-                .map((customer) => [customer.id, customer] as const),
+                .filter((sale) => sale.type === 'normal')
+                .map((sale) => sale.owner)
+                .filter((owner): owner is Customer => Boolean(owner))
+                .map((owner) => [owner.id, owner] as const),
         ).values(),
     ];
 
@@ -104,12 +107,13 @@ function SessionShow({
     };
 
     // Contexte des ventes : la journée et la date étant déjà connues, seuls le
-    // client et le type de vente restent à saisir à la création.
+    // The customer or factory and sale type are the only remaining inputs.
     const saleContext: SessionSaleAddContextInput = {
         sessionId: session.id,
         sessionDate: session.session_date,
         sessionStatus: session.status,
         customers,
+        usines,
     };
 
     // Contexte des feuilles de pointage : la journée et ses zones étant déjà

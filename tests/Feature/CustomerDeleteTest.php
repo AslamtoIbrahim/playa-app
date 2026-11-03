@@ -137,7 +137,8 @@ test('l\'archivage est bloqué quand le client a une vente', function () {
 
     Sale::create([
         'date' => now()->toDateString(),
-        'customer_id' => $context['customer']->id,
+        'owner_id' => $context['customer']->id,
+        'owner_type' => Customer::class,
         'session_id' => $context['session']->id,
         'created_by' => $context['user']->id,
         'type' => 'normal',

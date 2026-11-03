@@ -53,7 +53,8 @@ function createSaleChargeContext(string $date = '2026-06-01'): array
 
     $sale = Sale::create([
         'date' => $date,
-        'customer_id' => $client->id,
+        'owner_id' => $client->id,
+        'owner_type' => Customer::class,
         'session_id' => $session->id,
         'created_by' => $user->id,
     ]);
@@ -71,7 +72,8 @@ function createChargeSale(array $context): Sale
 {
     return Sale::create([
         'date' => '2026-06-01',
-        'customer_id' => $context['client']->id,
+        'owner_id' => $context['client']->id,
+        'owner_type' => Customer::class,
         'session_id' => $context['session']->id,
         'created_by' => $context['user']->id,
     ]);
@@ -216,7 +218,8 @@ test('a charge requires the same session on both sides', function () {
     ]);
     $otherSale = Sale::create([
         'date' => '2026-06-02',
-        'customer_id' => $context['client']->id,
+        'owner_id' => $context['client']->id,
+        'owner_type' => Customer::class,
         'session_id' => $otherSession->id,
         'created_by' => $context['user']->id,
     ]);

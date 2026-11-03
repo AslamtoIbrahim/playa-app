@@ -151,7 +151,7 @@ export default function MissingDialogSale({
                 >
                     <input
                         type="hidden"
-                        name="customer_id"
+                        name="owner_id"
                         value={customerId}
                     />
                     <input type="hidden" name="session_id" value={sessionId} />

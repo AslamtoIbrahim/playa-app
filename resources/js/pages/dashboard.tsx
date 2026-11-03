@@ -404,7 +404,7 @@ export default function Dashboard({
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="font-semibold text-slate-700 dark:text-slate-200">
-                                                    {sale.customer ??
+                                                    {sale.owner ??
                                                         'Client divers'}
                                                 </TableCell>
                                                 <TableCell>
@@ -449,4 +449,3 @@ Dashboard.layout = {
         },
     ],
 };
-

@@ -74,7 +74,8 @@ function createSaleItemContext(string $date = '2026-06-01'): array
 
     $sale = Sale::create([
         'date' => $date,
-        'customer_id' => $client->id,
+        'owner_id' => $client->id,
+        'owner_type' => Customer::class,
         'session_id' => $session->id,
         'created_by' => $user->id,
     ]);
@@ -156,7 +157,8 @@ test('a sale must belong to the same session as the invoice', function () {
     ]);
     $otherSale = Sale::create([
         'date' => '2026-06-02',
-        'customer_id' => $context['client']->id,
+        'owner_id' => $context['client']->id,
+        'owner_type' => Customer::class,
         'session_id' => $otherSession->id,
         'created_by' => $context['user']->id,
     ]);
@@ -177,7 +179,8 @@ test('a difference can be assigned to a sale belonging to another customer', fun
     $otherClient = Customer::create(['name' => 'Other '.uniqid()]);
     $otherSale = Sale::create([
         'date' => '2026-06-01',
-        'customer_id' => $otherClient->id,
+        'owner_id' => $otherClient->id,
+        'owner_type' => Customer::class,
         'session_id' => $context['session']->id,
         'created_by' => $context['user']->id,
     ]);
@@ -207,7 +210,8 @@ test('separate difference rows can be sold to their respective customers', funct
     $secondClient = Customer::create(['name' => 'Second '.uniqid()]);
     $secondSale = Sale::create([
         'date' => '2026-06-01',
-        'customer_id' => $secondClient->id,
+        'owner_id' => $secondClient->id,
+        'owner_type' => Customer::class,
         'session_id' => $context['session']->id,
         'created_by' => $context['user']->id,
     ]);
@@ -286,13 +290,13 @@ test('a sold difference customer can change without changing the sale customer',
     $this->actingAs($context['user'])
         ->patch(route('sales.update', $context['sale']->id), [
             'date' => '2026-06-01',
-            'customer_id' => $otherClient->id,
+            'owner_id' => $otherClient->id,
             'type' => 'normal',
         ])
-        ->assertSessionHasErrors('customer_id');
+        ->assertSessionHasErrors('owner_id');
 
     expect((int) $difference->fresh()->customer_id)->toBe($otherClient->id)
-        ->and((int) $context['sale']->fresh()->customer_id)->toBe($context['client']->id);
+        ->and((int) $context['sale']->fresh()->owner_id)->toBe($context['client']->id);
 });
 
 test('deleting a sale assignment makes the difference available to sell again', function () {

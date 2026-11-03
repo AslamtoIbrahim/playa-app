@@ -33,7 +33,7 @@ function getColumnValue(sale: Sale, column: SaleFilterColumn): string | number {
         case 'date':
             return sale.date.slice(0, 10);
         case 'customer':
-            return sale.customer?.name ?? 'Client Divers';
+            return sale.owner?.name ?? 'Client Divers';
         case 'session':
             return sale.session?.session_date.slice(0, 10) ?? '';
         case 'type':
@@ -55,8 +55,8 @@ function getSearchValues(sale: Sale): (string | number | undefined)[] {
         sale.id,
         sale.date,
         format(new Date(sale.date), 'dd/MM/yyyy'),
-        sale.customer?.name ?? 'Client Divers',
-        sale.customer_id,
+        sale.owner?.name ?? 'Client Divers',
+        sale.owner_id,
         sale.session_id,
         sessionDate,
         sessionDate ? format(new Date(sessionDate), 'dd/MM/yy') : '',

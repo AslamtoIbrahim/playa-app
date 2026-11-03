@@ -19,6 +19,7 @@ import { computeSaleNetToPayFromSale } from '@/lib/sales';
 import type { Customer } from '@/types/customer';
 import type { SessionStatus } from '@/types/daily-session';
 import type { Sale } from '@/types/sale';
+import type { Usine } from '@/types/usine';
 import {
     SessionSaleColumnFilter,
     SessionSaleSearch,
@@ -39,13 +40,14 @@ import {
 /**
  * Context of the current daily session: it feeds the creation dialog and the
  * row actions (edit / delete). The session and its date being already known,
- * only the customer and the sale type remain to be filled in.
+ * only the customer or factory and the sale type remain to be filled in.
  */
 export interface SessionSaleAddContext {
     sessionId: number;
     sessionDate: string;
     sessionStatus: SessionStatus;
-    customers: Customer[];
+    customers: Pick<Customer, 'id' | 'name'>[];
+    usines: Pick<Usine, 'id' | 'name'>[];
 }
 
 export type SessionSaleAddContextInput = SessionSaleAddContext;
@@ -60,7 +62,7 @@ const getSaleFilterValue = (
         case 'number':
             return sale.id;
         case 'client':
-            return sale.customer?.name || '—';
+            return sale.owner?.name || '—';
         case 'amount':
             return Math.abs(computeSaleNetToPayFromSale(sale));
     }
@@ -109,7 +111,7 @@ export function SessionSalesTable({
                 [
                     `#${sale.id}`,
                     sale.id,
-                    sale.customer?.name,
+                    sale.owner?.name,
                     sale.type,
                     amount,
                     formatCurrency(amount),
@@ -223,6 +225,7 @@ export function SessionSalesTable({
                         {canAddSale ? (
                             <AddSaleDialog
                                 customers={saleContext.customers}
+                                usines={saleContext.usines}
                                 lockedSessionId={saleContext.sessionId}
                                 lockedDate={saleContext.sessionDate}
                                 title="Nouvelle Vente"
@@ -265,7 +268,7 @@ export function SessionSalesTable({
                         )}
                         <TableRow>
                             {columnHeader('number', 'ID / N°')}
-                            {columnHeader('client', 'Clients')}
+                            {columnHeader('client', 'Clients / Usines')}
                             {columnHeader('amount', 'Montant', 'text-right')}
 
                             <TableHead className="text-right">
@@ -292,7 +295,7 @@ export function SessionSalesTable({
                                     </TableCell>
 
                                     <TableCell className="font-semibold text-slate-800 dark:text-neutral-200">
-                                        {sale.customer?.name || '—'}
+                                        {sale.owner?.name || '—'}
                                     </TableCell>
 
                                     <TableCell className="text-right font-mono text-sm font-bold text-slate-900 tabular-nums dark:text-neutral-100">
@@ -318,6 +321,7 @@ export function SessionSalesTable({
                                                     customers={
                                                         saleContext.customers
                                                     }
+                                                    usines={saleContext.usines}
                                                     lockedSessionId={
                                                         saleContext.sessionId
                                                     }
@@ -339,7 +343,7 @@ export function SessionSalesTable({
                                                     saleId={sale.id}
                                                     amount={sale.amount}
                                                     customerName={
-                                                        sale.customer?.name ||
+                                                        sale.owner?.name ||
                                                         'Client Inconnu'
                                                     }
                                                     trigger={

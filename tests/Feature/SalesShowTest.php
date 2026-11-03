@@ -3,6 +3,7 @@
 use App\Models\Boat;
 use App\Models\Category;
 use App\Models\Customer;
+use App\Models\Usine;
 use App\Models\DailySession;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
@@ -95,7 +96,8 @@ test('la fiche vente expose la zone et la date de journee de ses lignes', functi
 
     $sale = Sale::create([
         'date' => '2026-06-01',
-        'customer_id' => $customer->id,
+        'owner_id' => $customer->id,
+        'owner_type' => Customer::class,
         'session_id' => $session->id,
         'type' => 'normal',
     ]);
@@ -141,7 +143,8 @@ test('la fiche vente deduplique les zones de ses lignes', function () {
 
     $sale = Sale::create([
         'date' => '2026-06-01',
-        'customer_id' => $customer->id,
+        'owner_id' => $customer->id,
+        'owner_type' => Customer::class,
         'session_id' => $session->id,
         'type' => 'normal',
     ]);
@@ -184,11 +187,12 @@ test('la fiche vente sans ligne n expose aucune zone', function () {
         'total_sell' => 0,
     ]);
 
-    $customer = Customer::create(['name' => 'Client Vide']);
+    $usine = Usine::create(['name' => 'Usine Vide']);
 
     $sale = Sale::create([
         'date' => '2026-06-01',
-        'customer_id' => $customer->id,
+        'owner_id' => $usine->id,
+        'owner_type' => Usine::class,
         'session_id' => $session->id,
         'type' => 'usine',
     ]);

@@ -901,7 +901,7 @@ export function GlobalSaleDialog({
                     <div className="mb-1 flex min-w-0 items-start justify-between gap-2">
                         <div className="min-w-0 truncate pt-1 text-[10px] font-bold tracking-[0.18em] text-amber-700 uppercase dark:text-amber-300">
                             {'Vente \u00b7 '}
-                            {selectedSale?.customer?.name ??
+                            {selectedSale?.owner?.name ??
                                 (selectedSale
                                     ? `Vente #${selectedSale.id}`
                                     : 'Choisissez une vente')}
@@ -1014,7 +1014,7 @@ export function GlobalSaleDialog({
                                 >
                                     {sale ? (
                                         <span className="block truncate px-3 font-medium text-slate-900 dark:text-neutral-100">
-                                            {sale.customer?.name ??
+                                            {sale.owner?.name ??
                                                 `Vente #${sale.id}`}
                                         </span>
                                     ) : (
@@ -1029,7 +1029,7 @@ export function GlobalSaleDialog({
                                                     (option) => ({
                                                         id: option.id,
                                                         name:
-                                                            option.customer
+                                                            option.owner
                                                                 ?.name ??
                                                             `Vente #${option.id}`,
                                                     }),
@@ -1262,7 +1262,7 @@ export function GlobalSaleDialog({
                                             options={sales.map((option) => ({
                                                 id: option.id,
                                                 name:
-                                                    option.customer?.name ??
+                                                    option.owner?.name ??
                                                     `Vente #${option.id}`,
                                             }))}
                                             placeholder="Client..."

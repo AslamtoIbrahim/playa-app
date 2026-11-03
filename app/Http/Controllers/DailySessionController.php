@@ -14,6 +14,7 @@ use App\Models\Invoice;
 use App\Models\OfficeRoom;
 use App\Models\Receipt;
 use App\Models\Sale;
+use App\Models\Usine;
 use App\Models\SessionZone;
 use App\Models\Zone;
 use Carbon\Carbon;
@@ -81,11 +82,11 @@ class DailySessionController extends Controller
                 })->orWhereHas('items.invoiceItem.invoice', function ($q2) {
                     $q2->where('type', 'purchase');
                 });
-            })->with(['items.invoiceItem.invoice', 'customer', 'boat', 'sessionZone.zone', 'saleCharges.sale.customer'])->get();
+            })->with(['items.invoiceItem.invoice', 'customer', 'boat', 'sessionZone.zone', 'saleCharges.sale.owner'])->get();
 
         // 2. Ventes data & tracking
         $sales = Sale::where('session_id', $session->id)
-            ->with(['customer', 'items.invoiceItem.category', 'items.invoiceItem.boat', 'items.item', 'items.boat', 'charges.receipt.boat', 'charges.receipt.customer', 'workers.attendance.sessionZone.zone'])
+            ->with(['owner', 'items.invoiceItem.category', 'items.invoiceItem.boat', 'items.item', 'items.boat', 'charges.receipt.boat', 'charges.receipt.customer', 'workers.attendance.sessionZone.zone'])
             ->get();
 
         $saleInvoices = Invoice::whereIn('session_zone_id', $sessionZoneIds)
@@ -100,11 +101,11 @@ class DailySessionController extends Controller
         $saleReceipts = Receipt::whereIn('session_zone_id', $sessionZoneIds)
             ->whereHas('items.invoiceItem.invoice', function ($q) {
                 $q->where('type', 'sale');
-            })->with(['items.invoiceItem.invoice', 'customer', 'boat', 'sessionZone.zone', 'saleCharges.sale.customer'])->get();
+            })->with(['items.invoiceItem.invoice', 'customer', 'boat', 'sessionZone.zone', 'saleCharges.sale.owner'])->get();
 
         // 3. Ouvries (Attendance / Workers)
         $attendances = Attendance::whereIn('session_zone_id', $sessionZoneIds)
-            ->with(['items.worker', 'sessionZone.zone', 'saleWorkers.sale.customer'])
+            ->with(['items.worker', 'sessionZone.zone', 'saleWorkers.sale.owner'])
             ->get();
 
         // 4. Totals calculation
@@ -160,6 +161,7 @@ class DailySessionController extends Controller
 
             // Données du dialogue de création de bon de réception depuis la journée
             'customers' => Customer::all(['id', 'name']),
+            'usines' => Usine::all(['id', 'name']),
             'boats' => Boat::all(['id', 'name']),
         ]);
     }

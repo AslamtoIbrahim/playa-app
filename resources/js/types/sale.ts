@@ -3,6 +3,7 @@ import type { DailySession, SessionGroupData } from './daily-session';
 import type { SaleCharge } from './sale-charge';
 import type { SaleItem } from './sale-item';
 import type { SaleWorker } from './sale-worker';
+import type { Usine } from './usine';
 
 export interface Sale {
     id: number;
@@ -12,12 +13,13 @@ export interface Sale {
     type: 'normal' | 'usine';
 
     // Relationships IDs
-    customer_id: number;
+    owner_id: number;
+    owner_type: string;
     session_id: number;
     created_by?: number;
 
     // Relationships Data (Loaded via with[])
-    customer?: Customer;
+    owner?: Customer | Usine;
     session?: DailySession;
     items?: SaleItem[];
     charges?: SaleCharge[];

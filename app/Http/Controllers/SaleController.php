@@ -9,7 +9,9 @@ use App\Models\InvoiceItem;
 use App\Models\Item;
 use App\Models\Sale;
 use App\Models\SaleItem;
+use App\Models\Usine;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
@@ -21,7 +23,7 @@ class SaleController extends Controller
     public function index()
     {
         return Inertia::render('sales', [
-            'sales' => Sale::with(['customer', 'session'])
+            'sales' => Sale::with(['owner', 'session'])
                 ->latest()
                 ->paginate(15),
             'customers' => Customer::select('id', 'name')->get(),
@@ -40,15 +42,15 @@ class SaleController extends Controller
     {
         $validated = $request->validate([
             'date' => 'required|date',
-            'customer_id' => 'required|exists:customers,id',
+            'owner_id' => ['required', 'integer', Rule::exists($request->input('type') === 'usine' ? 'usines' : 'customers', 'id')],
             'session_id' => 'required|exists:daily_sessions,id',
             'type' => 'required|in:normal,usine',
             'redirect' => 'sometimes|in:back,show',
         ], [
             'date.required' => 'La date est obligatoire.',
             'date.date' => 'La date est invalide.',
-            'customer_id.required' => 'Veuillez choisir un client.',
-            'customer_id.exists' => "Ce client n'existe pas.",
+            'owner_id.required' => 'Veuillez choisir un client ou une usine.',
+            'owner_id.exists' => "Le client ou l'usine sélectionné n'existe pas.",
             'session_id.required' => 'La journée est obligatoire.',
             'session_id.exists' => "Cette journée n'existe pas.",
             'type.required' => 'Le type de vente est obligatoire.',
@@ -64,7 +66,8 @@ class SaleController extends Controller
 
         $sale = Sale::create([
             'date' => $validated['date'],
-            'customer_id' => $validated['customer_id'],
+            'owner_id' => $validated['owner_id'],
+            'owner_type' => $validated['type'] === 'usine' ? Usine::class : Customer::class,
             'session_id' => $validated['session_id'],
             'type' => $validated['type'],
             'created_by' => $request->user()->id,
@@ -92,7 +95,7 @@ class SaleController extends Controller
     public function show(Request $request, Sale $sale)
     {
         $sale->load([
-            'customer',
+            'owner',
             'session',
             'items.invoiceItem.boat',
             'items.invoiceItem.invoice',
@@ -104,7 +107,7 @@ class SaleController extends Controller
             'charges.receipt.boat',
             'charges.receipt.customer',
             'charges.receipt.sessionZone.zone',
-            'workers.attendance.saleWorkers.sale.customer',
+            'workers.attendance.saleWorkers.sale.owner',
             'workers.attendance.sessionZone.zone',
             'workers.attendance.sessionZone.dailySession',
         ]);
@@ -124,7 +127,7 @@ class SaleController extends Controller
         // Ventes de la journée + clients : alimentent le dialogue
         // d'imputation des salaires ouvert depuis la fiche de la vente.
         $daySales = Sale::where('session_id', $sale->session_id)
-            ->with('customer')
+            ->with('owner')
             ->get();
 
         $customers = Customer::select('id', 'name')->get();
@@ -172,20 +175,28 @@ class SaleController extends Controller
     {
         $validated = $request->validate([
             'date' => 'required|date',
-            'customer_id' => 'required|exists:customers,id',
+            'owner_id' => ['required', 'integer', Rule::exists($request->input('type') === 'usine' ? 'usines' : 'customers', 'id')],
             'type' => 'required|in:normal,usine',
         ]);
 
         if (
-            (int) $validated['customer_id'] !== (int) $sale->customer_id
+            (
+                (int) $validated['owner_id'] !== (int) $sale->owner_id
+                || ($validated['type'] === 'usine' ? Usine::class : Customer::class) !== $sale->owner_type
+            )
             && $sale->items()->exists()
         ) {
             return back()->withErrors([
-                'customer_id' => 'Le client ne peut pas être modifié tant que la vente contient des répartitions.',
+                'owner_id' => 'Le client ou l’usine ne peut pas être modifié tant que la vente contient des répartitions.',
             ]);
         }
 
-        $sale->update($validated);
+        $sale->update([
+            'date' => $validated['date'],
+            'type' => $validated['type'],
+            'owner_id' => $validated['owner_id'],
+            'owner_type' => $validated['type'] === 'usine' ? Usine::class : Customer::class,
+        ]);
 
         return back()->with('success', 'Vente mise à jour.');
     }

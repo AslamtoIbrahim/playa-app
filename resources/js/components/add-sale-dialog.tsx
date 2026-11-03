@@ -51,10 +51,12 @@ import { cn, commandItemClass } from '@/lib/utils';
 import { store } from '@/routes/sales';
 import type { Customer } from '@/types/customer';
 import type { DailySession } from '@/types/daily-session';
+import type { Usine } from '@/types/usine';
 import { Calendar } from './ui/calendar';
 
 interface Props {
-    customers: Customer[];
+    customers: Pick<Customer, 'id' | 'name'>[];
+    usines: Pick<Usine, 'id' | 'name'>[];
     /** Daily sessions available for selection. Unused when `lockedSessionId` is set. */
     sessions?: DailySession[];
     /**
@@ -77,6 +79,7 @@ const toInputDate = (value: string): string => value.split('T')[0];
 
 export default function AddSaleDialog({
     customers,
+    usines,
     sessions = [],
     lockedSessionId,
     lockedDate,
@@ -89,7 +92,7 @@ export default function AddSaleDialog({
     const [clientComboOpen, setClientComboOpen] = useState<boolean>(false);
     const [sessionComboOpen, setSessionComboOpen] = useState<boolean>(false);
 
-    const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
+    const [selectedOwnerId, setSelectedOwnerId] = useState<string>('');
     const [selectedSessionId, setSelectedSessionId] = useState<string>(() =>
         lockedSessionId ? lockedSessionId.toString() : '',
     );
@@ -103,10 +106,15 @@ export default function AddSaleDialog({
     const dateValue = lockedDate
         ? toInputDate(lockedDate)
         : format(date, 'yyyy-MM-dd');
+    const owners = type === 'usine' ? usines : customers;
+    const selectedOwner = owners.find(
+        (owner) => owner.id.toString() === selectedOwnerId,
+    );
+    const ownerLabel = type === 'usine' ? 'Usine' : 'Client';
 
     // Keep the context values untouched: only the user-owned fields are reset.
     const resetContextState = (): void => {
-        setSelectedCustomerId('');
+        setSelectedOwnerId('');
 
         if (!isSessionLocked) {
             setSelectedSessionId('');
@@ -152,8 +160,8 @@ export default function AddSaleDialog({
                             {/* Hidden inputs feeding the backend with the final names. */}
                             <input
                                 type="hidden"
-                                name="customer_id"
-                                value={selectedCustomerId}
+                                name="owner_id"
+                                value={selectedOwnerId}
                             />
                             <input
                                 type="hidden"
@@ -208,7 +216,13 @@ export default function AddSaleDialog({
                                 <Label className="text-xs font-bold text-slate-500 uppercase dark:text-slate-400">
                                     Type de Vente
                                 </Label>
-                                <Select value={type} onValueChange={setType}>
+                                <Select
+                                    value={type}
+                                    onValueChange={(value) => {
+                                        setType(value);
+                                        setSelectedOwnerId('');
+                                    }}
+                                >
                                     <SelectTrigger className="w-full font-medium dark:border-neutral-700 dark:bg-neutral-800 dark:text-slate-200">
                                         <div className="flex items-center gap-2">
                                             <Layers className="h-4 w-4 opacity-50" />
@@ -384,10 +398,10 @@ export default function AddSaleDialog({
                                 </div>
                             )}
 
-                            {/* Section Client */}
+                            {/* Section Owner */}
                             <div className="grid gap-2">
                                 <Label className="text-xs font-bold text-slate-500 uppercase dark:text-slate-400">
-                                    Client
+                                    {ownerLabel}
                                 </Label>
                                 <Popover
                                     open={clientComboOpen}
@@ -399,74 +413,65 @@ export default function AddSaleDialog({
                                             role="combobox"
                                             className={cn(
                                                 'w-full justify-between font-medium dark:border-neutral-700 dark:bg-neutral-800 dark:text-slate-200 dark:hover:bg-neutral-700',
-                                                !selectedCustomerId &&
+                                                !selectedOwnerId &&
                                                     'text-muted-foreground dark:text-slate-400',
-                                                errors.customer_id &&
+                                                errors.owner_id &&
                                                     'border-destructive',
                                             )}
                                         >
-                                            {selectedCustomerId
-                                                ? customers.find(
-                                                      (c) =>
-                                                          c.id.toString() ===
-                                                          selectedCustomerId,
-                                                  )?.name
-                                                : 'Sélectionner un client...'}
+                                            {selectedOwner?.name ??
+                                                `Sélectionner ${type === 'usine' ? 'une usine' : 'un client'}...`}
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-[--radix-popover-trigger-width] p-0 dark:border-neutral-700 dark:bg-neutral-800 dark:text-slate-200">
                                         <Command className="dark:bg-neutral-800 dark:text-slate-200">
                                             <CommandInput
-                                                placeholder="Rechercher un client..."
+                                                placeholder={`Rechercher ${type === 'usine' ? 'une usine' : 'un client'}...`}
                                                 className="dark:text-slate-200 dark:placeholder:text-slate-400"
                                             />
                                             <CommandList>
                                                 <CommandEmpty className="dark:text-slate-400">
-                                                    Aucun client trouvé.
+                                                    {type === 'usine'
+                                                        ? 'Aucune usine trouvée.'
+                                                        : 'Aucun client trouvé.'}
                                                 </CommandEmpty>
                                                 <CommandGroup>
-                                                    {customers.map(
-                                                        (customer) => (
-                                                            <CommandItem
+                                                    {owners.map((owner) => (
+                                                        <CommandItem
+                                                            className={cn(
+                                                                commandItemClass,
+                                                                'dark:text-slate-200 dark:hover:bg-neutral-700 dark:focus:bg-neutral-700',
+                                                            )}
+                                                            key={owner.id}
+                                                            value={owner.name}
+                                                            onSelect={() => {
+                                                                setSelectedOwnerId(
+                                                                    owner.id.toString(),
+                                                                );
+                                                                setClientComboOpen(
+                                                                    false,
+                                                                );
+                                                            }}
+                                                        >
+                                                            <Check
                                                                 className={cn(
-                                                                    commandItemClass,
-                                                                    'dark:text-slate-200 dark:hover:bg-neutral-700 dark:focus:bg-neutral-700',
+                                                                    'mr-2 h-4 w-4',
+                                                                    selectedOwnerId ===
+                                                                        owner.id.toString()
+                                                                        ? 'opacity-100'
+                                                                        : 'opacity-0',
                                                                 )}
-                                                                key={
-                                                                    customer.id
-                                                                }
-                                                                value={
-                                                                    customer.name
-                                                                }
-                                                                onSelect={() => {
-                                                                    setSelectedCustomerId(
-                                                                        customer.id.toString(),
-                                                                    );
-                                                                    setClientComboOpen(
-                                                                        false,
-                                                                    );
-                                                                }}
-                                                            >
-                                                                <Check
-                                                                    className={cn(
-                                                                        'mr-2 h-4 w-4',
-                                                                        selectedCustomerId ===
-                                                                            customer.id.toString()
-                                                                            ? 'opacity-100'
-                                                                            : 'opacity-0',
-                                                                    )}
-                                                                />
-                                                                {customer.name}
-                                                            </CommandItem>
-                                                        ),
-                                                    )}
+                                                            />
+                                                            {owner.name}
+                                                        </CommandItem>
+                                                    ))}
                                                 </CommandGroup>
                                             </CommandList>
                                         </Command>
                                     </PopoverContent>
                                 </Popover>
-                                <InputError message={errors.customer_id} />
+                                <InputError message={errors.owner_id} />
                             </div>
 
                             <div className="flex justify-end gap-3 pt-4">

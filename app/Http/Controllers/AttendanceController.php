@@ -18,7 +18,7 @@ class AttendanceController extends Controller
      */
     public function index()
     {
-        $attendances = Attendance::with(['sessionZone.dailySession', 'sessionZone.zone', 'items.worker', 'saleWorkers.sale.customer'])
+        $attendances = Attendance::with(['sessionZone.dailySession', 'sessionZone.zone', 'items.worker', 'saleWorkers.sale.owner'])
             ->latest()
             ->paginate(10);
 
@@ -32,7 +32,7 @@ class AttendanceController extends Controller
      */
     public function show(Request $request, Attendance $attendance)
     {
-        $attendance->load(['sessionZone.dailySession', 'sessionZone.zone', 'items.worker', 'saleWorkers.sale.customer']); // Changed 'session' to 'sessionZone.dailySession'
+        $attendance->load(['sessionZone.dailySession', 'sessionZone.zone', 'items.worker', 'saleWorkers.sale.owner']); // Changed 'session' to 'sessionZone.dailySession'
 
         $availableWorkers = Worker::orderBy('name')->get();
 
@@ -42,7 +42,7 @@ class AttendanceController extends Controller
         $session = $attendance->sessionZone?->dailySession;
 
         $sales = $session !== null
-            ? Sale::where('session_id', $session->id)->with('customer')->get()
+            ? Sale::where('session_id', $session->id)->with('owner')->get()
             : collect();
 
         $customers = Customer::select('id', 'name')->get();

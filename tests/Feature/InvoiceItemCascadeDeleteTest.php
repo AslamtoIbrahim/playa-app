@@ -116,7 +116,8 @@ function createCascadeDeleteContext(string $date = '2026-06-01'): array
 
     $sale = Sale::create([
         'date' => $date,
-        'customer_id' => $client->id,
+        'owner_id' => $client->id,
+        'owner_type' => Customer::class,
         'session_id' => $session->id,
         'type' => 'normal',
     ]);

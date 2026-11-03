@@ -14,6 +14,7 @@ import { show } from '@/routes/sales';
 import { Customer } from '@/types/customer';
 import { DailySession } from "@/types/daily-session";
 import { Sale } from '@/types/sale';
+import { Usine } from '@/types/usine';
 
 import DeleteSaleDialog from './delete-sale-dialog';
 import EditSaleDialog from './edit-sale-dialog';
@@ -21,10 +22,11 @@ import EditSaleDialog from './edit-sale-dialog';
 interface Props {
     sale: Sale;
     customers: Customer[];
+    usines: Usine[];
     sessions: DailySession[];
 }
 
-export default function SaleActions({ sale, customers, sessions }: Props) {
+export default function SaleActions({ sale, customers, usines, sessions }: Props) {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -55,6 +57,7 @@ export default function SaleActions({ sale, customers, sessions }: Props) {
                     <EditSaleDialog 
                         sale={sale} 
                         customers={customers} 
+                        usines={usines}
                         sessions={sessions} 
                         trigger={
                             <DropdownMenuItem 
@@ -79,7 +82,7 @@ export default function SaleActions({ sale, customers, sessions }: Props) {
                     <DeleteSaleDialog
                         saleId={sale.id}
                         amount={sale.amount}
-                        customerName={sale.customer?.name || 'Client Inconnu'}
+                        customerName={sale.owner?.name || 'Client Inconnu'}
                         trigger={
                             <DropdownMenuItem 
                                 onSelect={(e) => {

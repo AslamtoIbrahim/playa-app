@@ -95,13 +95,13 @@ class DashboardController extends Controller
     }
 
     /**
-     * Latest direct sales with their customer.
+     * Latest direct sales with their owner.
      *
      * @return Collection<int, array<string, mixed>>
      */
     private function recentSales(): Collection
     {
-        return Sale::with('customer')
+        return Sale::with('owner')
             ->latest('date')
             ->latest('id')
             ->limit(self::RECENT_LIMIT)
@@ -109,7 +109,7 @@ class DashboardController extends Controller
             ->map(fn (Sale $sale) => [
                 'id' => $sale->id,
                 'date' => Carbon::parse($sale->date)->toDateString(),
-                'customer' => $sale->customer?->name,
+                'owner' => $sale->owner?->name,
                 'type' => $sale->type,
                 'amount' => (float) $sale->amount,
                 'boxes' => (int) $sale->boxes,

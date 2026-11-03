@@ -32,7 +32,7 @@ export function useSaleDialog({
 
     const saleOptions = sales.map((sale) => ({
         id: sale.id,
-        name: sale.customer?.name ?? `Vente #${sale.id}`,
+        name: sale.owner?.name ?? `Vente #${sale.id}`,
     }));
 
     const remaining = (item: InvoiceItem): number =>

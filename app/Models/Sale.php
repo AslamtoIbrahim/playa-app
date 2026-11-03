@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Sale extends Model
@@ -13,7 +14,8 @@ class Sale extends Model
 
     protected $fillable = [
         'date',
-        'customer_id',
+        'owner_id',
+        'owner_type',
         'session_id',
         'created_by',
         'type', // 'normal' ou 'usine'
@@ -22,12 +24,9 @@ class Sale extends Model
         'weight',
     ];
 
-    /**
-     * العلاقة مع الزبون (Customer)
-     */
-    public function customer(): BelongsTo
+    public function owner(): MorphTo
     {
-        return $this->belongsTo(Customer::class);
+        return $this->morphTo();
     }
 
     /**

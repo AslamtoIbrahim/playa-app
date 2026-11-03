@@ -93,7 +93,8 @@ function createInvoiceSellContext(string $date = '2026-06-01'): array
 
     $sale = Sale::create([
         'date' => $date,
-        'customer_id' => $client->id,
+        'owner_id' => $client->id,
+        'owner_type' => Customer::class,
         'session_id' => $session->id,
         'created_by' => $user->id,
     ]);
@@ -175,7 +176,7 @@ test('a sale is created for the customer when none exists in the session', funct
 
     $sale = Sale::first();
 
-    expect((int) $sale->customer_id)->toBe((int) $context['client']->id)
+    expect((int) $sale->owner_id)->toBe((int) $context['client']->id)
         ->and((int) $sale->session_id)->toBe((int) $context['session']->id)
         ->and($sale->type)->toBe('normal')
         ->and((int) $sale->created_by)->toBe((int) $context['user']->id)

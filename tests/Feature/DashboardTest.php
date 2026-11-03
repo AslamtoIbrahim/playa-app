@@ -73,7 +73,8 @@ test('the dashboard exposes the recent purchases and sales', function () {
 
     Sale::create([
         'date' => now()->toDateString(),
-        'customer_id' => $customer->id,
+        'owner_id' => $customer->id,
+        'owner_type' => Customer::class,
         'session_id' => $context['session']->id,
         'type' => 'normal',
         'amount' => 2200,
@@ -91,7 +92,7 @@ test('the dashboard exposes the recent purchases and sales', function () {
             ->where('recentPurchases.0.amount', 1500)
             ->where('recentPurchases.0.owner', 'Client dashboard')
             ->where('recentSales.0.amount', 2200)
-            ->where('recentSales.0.customer', 'Client dashboard')
+            ->where('recentSales.0.owner', 'Client dashboard')
         );
 });
 

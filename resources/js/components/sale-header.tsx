@@ -30,7 +30,7 @@ export function SaleHeader({ sale, sessionZones = [] }: Props) {
                         )}
 
                         <p className="text-lg font-bold text-slate-900 capitalize dark:text-slate-100">
-                            {sale.customer?.name || 'Client Inconnu'}
+                            {sale.owner?.name || 'Client Inconnu'}
                         </p>
                     </div>
                 </div>

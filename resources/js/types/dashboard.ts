@@ -38,7 +38,7 @@ export interface DashboardPurchase {
 export interface DashboardSale {
     id: number;
     date: string;
-    customer: string | null;
+    owner: string | null;
     type: 'normal' | 'usine';
     amount: number;
     boxes: number;

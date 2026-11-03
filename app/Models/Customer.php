@@ -47,9 +47,9 @@ class Customer extends Model
     }
 
     // البيوعات (Sales) المرتبطة بهاد الكليان
-    public function sales(): HasMany
+    public function sales(): MorphMany
     {
-        return $this->hasMany(Sale::class);
+        return $this->morphMany(Sale::class, 'owner');
     }
 
     public function creator(): BelongsTo

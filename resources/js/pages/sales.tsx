@@ -54,7 +54,7 @@ export default function Sales({ sales }: Props) {
             customer: Array.from(
                 new Set([
                     ...sales.data.map(
-                        (sale) => sale.customer?.name ?? 'Client Divers',
+                        (sale) => sale.owner?.name ?? 'Client Divers',
                     ),
                     'Client Divers',
                 ]),
@@ -147,10 +147,10 @@ export default function Sales({ sales }: Props) {
                                 </TableHead>
                                 <TableHead className="font-bold text-slate-800 dark:text-slate-200">
                                     <span className="inline-flex items-center">
-                                        Client
+                                        Client / Usine
                                         <SalesColumnFilter
                                             column="customer"
-                                            title="Client"
+                                            title="Client / Usine"
                                             options={filterOptions.customer}
                                             filters={filters}
                                             setFilters={setFilters}
@@ -242,7 +242,7 @@ export default function Sales({ sales }: Props) {
                                         <TableCell>
                                             <div className="flex items-center gap-2">
                                                 <span className="font-semibold text-slate-700">
-                                                    {sale.customer?.name ||
+                                                    {sale.owner?.name ||
                                                         'Client Divers'}
                                                 </span>
                                             </div>

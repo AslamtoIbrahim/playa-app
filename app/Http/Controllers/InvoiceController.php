@@ -140,7 +140,7 @@ class InvoiceController extends Controller
             'items.category',
             'items.boat',
             'items.differences.customer',
-            'items.saleItems.sale.customer',
+            'items.saleItems.sale.owner',
             'sessionZone.dailySession', // Changed 'session' to 'sessionZone'
             'sessionZone.zone',
             'items.receiptItems' => function ($q) {
@@ -163,7 +163,7 @@ class InvoiceController extends Controller
         // Ventes de la même journée : la distribution d'une ligne d'achat ne
         // peut se faire que vers une vente de la journée en cours.
         $sales = $session
-            ? Sale::where('session_id', $session->id)->with(['customer', 'items.item'])->latest('id')->get()
+            ? Sale::where('session_id', $session->id)->with(['owner', 'items.item'])->latest('id')->get()
             : Sale::whereRaw('1 = 0')->get();
 
         $commissionTotal = 0.0;
@@ -296,14 +296,16 @@ class InvoiceController extends Controller
 
             // La vente du client dans la journée : réutilisée, créée sinon.
             $sale = Sale::where('session_id', $session->id)
-                ->where('customer_id', $validated['customer_id'])
+                ->where('owner_id', $validated['customer_id'])
+                ->where('owner_type', Customer::class)
                 ->latest('id')
                 ->first();
 
             if (! $sale) {
                 $sale = Sale::create([
                     'date' => $session->session_date,
-                    'customer_id' => $validated['customer_id'],
+                    'owner_id' => $validated['customer_id'],
+                    'owner_type' => Customer::class,
                     'session_id' => $session->id,
                     'created_by' => $request->user()->id,
                     'type' => 'normal',
@@ -333,7 +335,7 @@ class InvoiceController extends Controller
             return back()->with('error', 'Cette facture est déjà entièrement vendue.');
         }
 
-        return back()->with('success', "Facture vendue à {$result->customer->name}. ✅");
+        return back()->with('success', "Facture vendue à {$result->owner->name}. ✅");
     }
 
     /**

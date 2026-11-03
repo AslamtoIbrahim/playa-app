@@ -80,7 +80,7 @@ class SaleChargeController extends Controller
 
             return back()->with([
                 'success' => 'Bon imputé à la vente !',
-                'updated_receipt' => $receipt->fresh()->load('saleCharges.sale.customer'),
+                'updated_receipt' => $receipt->fresh()->load('saleCharges.sale.owner'),
             ]);
         });
     }
@@ -167,7 +167,7 @@ class SaleChargeController extends Controller
 
         return back()->with([
             'success' => 'Supprimée !',
-            'updated_receipt' => $receipt?->fresh()->load('saleCharges.sale.customer'),
+            'updated_receipt' => $receipt?->fresh()->load('saleCharges.sale.owner'),
         ]);
     }
 }

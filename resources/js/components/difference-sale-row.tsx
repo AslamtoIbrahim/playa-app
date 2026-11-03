@@ -43,7 +43,7 @@ export function DifferenceSaleRow({
         () =>
             sales.map((sale) => ({
                 id: sale.id,
-                name: sale.customer?.name ?? 'Client Inconnu',
+                name: sale.owner?.name ?? 'Client Inconnu',
             })),
         [sales],
     );

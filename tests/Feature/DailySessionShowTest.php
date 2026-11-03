@@ -299,7 +299,8 @@ test('the session page exposes sale distributions so only the remainder can be s
 
     $sale = Sale::create([
         'date' => now()->toDateString(),
-        'customer_id' => $data['customer']->id,
+        'owner_id' => $data['customer']->id,
+        'owner_type' => Customer::class,
         'session_id' => $data['session']->id,
         'created_by' => $user->id,
     ]);

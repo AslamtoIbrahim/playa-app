@@ -76,7 +76,7 @@ class SaleWorkerController extends Controller
 
             return back()->with([
                 'success' => 'Salaire imputé à la vente !',
-                'updated_attendance' => $attendance->fresh()->load('saleWorkers.sale.customer'),
+                'updated_attendance' => $attendance->fresh()->load('saleWorkers.sale.owner'),
             ]);
         });
     }
@@ -184,7 +184,7 @@ class SaleWorkerController extends Controller
 
         return back()->with([
             'success' => 'Supprimée !',
-            'updated_attendance' => $attendance?->fresh()->load('saleWorkers.sale.customer'),
+            'updated_attendance' => $attendance?->fresh()->load('saleWorkers.sale.owner'),
         ]);
     }
 }

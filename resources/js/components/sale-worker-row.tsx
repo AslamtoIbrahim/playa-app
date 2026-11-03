@@ -60,7 +60,7 @@ export function SaleWorkerRow({
         })
         .map((sale) => ({
             id: sale.id,
-            name: sale.customer?.name || 'Client Inconnu',
+            name: sale.owner?.name || 'Client Inconnu',
         }));
 
     const canCreateSale = session !== null && customers.length > 0;

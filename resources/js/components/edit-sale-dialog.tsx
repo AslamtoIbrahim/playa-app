@@ -53,12 +53,14 @@ import { update } from '@/routes/sales';
 import type { Customer } from '@/types/customer';
 import type { DailySession } from '@/types/daily-session';
 import type { Sale } from '@/types/sale';
+import type { Usine } from '@/types/usine';
 
 interface Props {
     sale: Sale;
     /** Daily sessions available for selection. Unused when `lockedSessionId` is set. */
     sessions?: DailySession[];
-    customers: Customer[];
+    customers: Pick<Customer, 'id' | 'name'>[];
+    usines: Pick<Usine, 'id' | 'name'>[];
     /**
      * When provided, the sale stays attached to this daily session: the session
      * picker is hidden and no other session can be targeted.
@@ -79,6 +81,7 @@ export default function EditSaleDialog({
     sale,
     sessions = [],
     customers,
+    usines,
     lockedSessionId,
     lockedDate,
     trigger,
@@ -91,13 +94,19 @@ export default function EditSaleDialog({
         sessions.find((s) => Number(s.id) === Number(sale.session_id)) || null,
     );
 
-    const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
-        customers.find((c) => Number(c.id) === Number(sale.customer_id)) ||
-            null,
-    );
-
     // Track the selected sale type.
     const [type, setType] = useState<string>(sale.type || 'normal');
+    const [selectedOwner, setSelectedOwner] = useState<
+        Pick<Customer, 'id' | 'name'> | Pick<Usine, 'id' | 'name'> | null
+    >(
+        sale.type === 'usine'
+            ? (usines.find(
+                  (owner) => Number(owner.id) === Number(sale.owner_id),
+              ) ?? null)
+            : (customers.find(
+                  (owner) => Number(owner.id) === Number(sale.owner_id),
+              ) ?? null),
+    );
     const [date, setDate] = useState<Date>(parseISO(sale.date));
 
     const isDateLocked = Boolean(lockedDate);
@@ -162,8 +171,8 @@ export default function EditSaleDialog({
                                 />
                                 <input
                                     type="hidden"
-                                    name="customer_id"
-                                    value={selectedCustomer?.id || ''}
+                                    name="owner_id"
+                                    value={selectedOwner?.id || ''}
                                 />
                                 <input type="hidden" name="type" value={type} />
 
@@ -207,7 +216,10 @@ export default function EditSaleDialog({
                                     </Label>
                                     <Select
                                         value={type}
-                                        onValueChange={setType}
+                                        onValueChange={(value) => {
+                                            setType(value);
+                                            setSelectedOwner(null);
+                                        }}
                                     >
                                         <SelectTrigger className="w-full font-medium">
                                             <div className="flex items-center gap-2">
@@ -227,10 +239,10 @@ export default function EditSaleDialog({
                                     <InputError message={errors.type} />
                                 </div>
 
-                                {/* Section Customer */}
+                                {/* Section Owner */}
                                 <div className="grid gap-2">
                                     <Label className="text-xs font-bold text-slate-500 uppercase">
-                                        Client
+                                        {type === 'usine' ? 'Usine' : 'Client'}
                                     </Label>
                                     <Popover
                                         open={customerComboOpen}
@@ -242,66 +254,73 @@ export default function EditSaleDialog({
                                                 role="combobox"
                                                 className={cn(
                                                     'w-full justify-between font-medium',
-                                                    errors.customer_id &&
+                                                    errors.owner_id &&
                                                         'border-destructive',
                                                 )}
                                             >
                                                 <div className="flex items-center gap-2">
                                                     <User className="h-4 w-4 opacity-50" />
-                                                    {selectedCustomer
-                                                        ? selectedCustomer.name
-                                                        : 'Sélectionner un client...'}
+                                                    {selectedOwner
+                                                        ? selectedOwner.name
+                                                        : type === 'usine'
+                                                          ? 'Sélectionner une usine...'
+                                                          : 'Sélectionner un client...'}
                                                 </div>
                                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                             </Button>
                                         </PopoverTrigger>
                                         <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                             <Command>
-                                                <SearchInput placeholder="Rechercher un client..." />
+                                                <SearchInput
+                                                    placeholder={
+                                                        type === 'usine'
+                                                            ? 'Rechercher une usine...'
+                                                            : 'Rechercher un client...'
+                                                    }
+                                                />
                                                 <CommandList>
                                                     <CommandEmpty>
-                                                        Aucun client trouvé.
+                                                        {type === 'usine'
+                                                            ? 'Aucune usine trouvée.'
+                                                            : 'Aucun client trouvé.'}
                                                     </CommandEmpty>
                                                     <CommandGroup>
-                                                        {customers.map(
-                                                            (customer) => (
-                                                                <CommandItem
-                                                                    className={
-                                                                        commandItemClass
-                                                                    }
-                                                                    key={
-                                                                        customer.id
-                                                                    }
-                                                                    onSelect={() => {
-                                                                        setSelectedCustomer(
-                                                                            customer,
-                                                                        );
-                                                                        setCustomerComboOpen(
-                                                                            false,
-                                                                        );
-                                                                    }}
-                                                                >
-                                                                    <Check
-                                                                        className={cn(
-                                                                            'mr-2 h-4 w-4',
-                                                                            selectedCustomer?.id ===
-                                                                                customer.id
-                                                                                ? 'opacity-100'
-                                                                                : 'opacity-0',
-                                                                        )}
-                                                                    />
-                                                                    {
-                                                                        customer.name
-                                                                    }
-                                                                </CommandItem>
-                                                            ),
-                                                        )}
+                                                        {(type === 'usine'
+                                                            ? usines
+                                                            : customers
+                                                        ).map((owner) => (
+                                                            <CommandItem
+                                                                className={
+                                                                    commandItemClass
+                                                                }
+                                                                key={owner.id}
+                                                                onSelect={() => {
+                                                                    setSelectedOwner(
+                                                                        owner,
+                                                                    );
+                                                                    setCustomerComboOpen(
+                                                                        false,
+                                                                    );
+                                                                }}
+                                                            >
+                                                                <Check
+                                                                    className={cn(
+                                                                        'mr-2 h-4 w-4',
+                                                                        selectedOwner?.id ===
+                                                                            owner.id
+                                                                            ? 'opacity-100'
+                                                                            : 'opacity-0',
+                                                                    )}
+                                                                />
+                                                                {owner.name}
+                                                            </CommandItem>
+                                                        ))}
                                                     </CommandGroup>
                                                 </CommandList>
                                             </Command>
                                         </PopoverContent>
                                     </Popover>
-                                    <InputError message={errors.customer_id} />
+                                    <InputError message={errors.owner_id} />
                                 </div>
 
                                 {/* Session Field */}
