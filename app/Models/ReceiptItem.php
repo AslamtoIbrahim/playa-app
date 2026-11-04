@@ -92,6 +92,8 @@ class ReceiptItem extends Model
         $receipt = $this->receipt;
 
         if ($receipt) {
+            $previousAmount = (float) $receipt->total_amount;
+
             // حساب المجاميع من الـ Database مباشرة
             $totals = static::where('receipt_id', $this->receipt_id)
                 ->selectRaw('
@@ -106,6 +108,8 @@ class ReceiptItem extends Model
                 'total_amount' => $totals->amount ?? 0,
                 'total_boxes' => $totals->total_boxes ?? 0,
             ]);
+
+            $receipt->syncSaleChargesToTotal($previousAmount);
         }
     }
 }

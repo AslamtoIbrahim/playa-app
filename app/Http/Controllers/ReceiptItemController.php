@@ -466,7 +466,7 @@ class ReceiptItemController extends Controller
     }
 
     /**
-     * Delete a line and clean up the receipts it leaves empty.
+     * Delete a line while keeping its receipt available in the session.
      *
      * A commission is two lines (beneficiary + owner): deleting the beneficiary
      * line must delete its twin too, otherwise the boat owner keeps a negative
@@ -475,6 +475,10 @@ class ReceiptItemController extends Controller
      */
     public function destroy(Receipt $receipt, ReceiptItem $item)
     {
+        if ($receipt->trashed()) {
+            $receipt->restore();
+        }
+
         $isCommission = $item->type === 'commission';
         $twinId = $item->commission_twin_id;
 
@@ -499,9 +503,6 @@ class ReceiptItemController extends Controller
                 if ($twinReceipt) {
                     $twinReceipt->calculateTotals();
 
-                    if ($twinReceipt->items()->count() === 0) {
-                        $twinReceipt->delete();
-                    }
                 }
             }
         });
@@ -510,20 +511,10 @@ class ReceiptItemController extends Controller
         $receipt->calculateTotals();
         $receipt->refresh();
 
-        $receiptDeleted = false;
-
-        if ($receipt->items()->count() === 0) {
-            $receipt->delete();
-
-            $receiptDeleted = true;
-        }
-
-        if (! $receiptDeleted) {
-            $receipt->refresh();
-        }
+        $receipt->refresh();
 
         return back()->with([
-            'success' => $receiptDeleted ? 'Receipt supprimé car il est vide' : 'Supprimé ✅',
+            'success' => 'Supprimé ✅',
             'refresh_all' => true,
         ]);
     }

@@ -185,7 +185,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
             Route::post('/', [ReceiptItemController::class, 'store'])->name('receipts.items.store');
             Route::patch('/{item}', [ReceiptItemController::class, 'update'])->name('receipts.items.update');
-            Route::delete('/{item}', [ReceiptItemController::class, 'destroy'])->name('receipts.items.destroy');
+            Route::delete('/{item}', [ReceiptItemController::class, 'destroy'])->name('receipts.items.destroy')->withTrashed();
         });
     });
 

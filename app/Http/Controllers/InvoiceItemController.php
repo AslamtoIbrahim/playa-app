@@ -414,16 +414,16 @@ class InvoiceItemController extends Controller
                 // 3. مسح سطر العمولة من وصولات الاستلام
                 ReceiptItem::where('invoice_item_id', $item->id)->delete();
 
-                // 4. تنظيف الـ Receipts: إذا بقاو خاويين نمسحوهم، وإلا نعاودو نحسبو الـ Total ديالهم
+                // 4. Keep affected receipts in the session, even when empty.
                 if ($receiptItemIds->isNotEmpty()) {
                     foreach ($receiptItemIds->unique() as $receiptId) {
-                        $receipt = Receipt::find($receiptId);
+                        $receipt = Receipt::withTrashed()->find($receiptId);
                         if ($receipt) {
-                            if ($receipt->items()->count() == 0) {
-                                $receipt->delete(); // مسح الـ Receipt كامل إذا رجع خاوي
-                            } else {
-                                $receipt->calculateTotals(); // تحديث الحساب إذا بقاو فيه سطور خرين
+                            if ($receipt->trashed()) {
+                                $receipt->restore();
                             }
+
+                            $receipt->calculateTotals();
                         }
                     }
                 }
@@ -499,13 +499,13 @@ class InvoiceItemController extends Controller
 
                 // تنظيف الـ Receipts
                 foreach ($receiptIds as $receiptId) {
-                    $receipt = Receipt::find($receiptId);
+                    $receipt = Receipt::withTrashed()->find($receiptId);
                     if ($receipt) {
-                        if ($receipt->items()->count() == 0) {
-                            $receipt->delete();
-                        } else {
-                            $receipt->calculateTotals();
+                        if ($receipt->trashed()) {
+                            $receipt->restore();
                         }
+
+                        $receipt->calculateTotals();
                     }
                 }
 

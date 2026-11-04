@@ -109,6 +109,8 @@ class Receipt extends Model
 
     public function calculateTotals(): void
     {
+        $previousAmount = (float) $this->total_amount;
+
         // 1. حساب مجموع الكمية (unit_count)
         $this->quantity = (float) $this->items()->sum('unit_count');
 
@@ -124,5 +126,35 @@ class Receipt extends Model
         $this->total_boxes = (float) $this->items()->sum('box');
 
         $this->save();
+
+        $this->syncSaleChargesToTotal($previousAmount);
+    }
+
+    public function syncSaleChargesToTotal(float $previousAmount): void
+    {
+        $charges = $this->saleCharges()->get();
+
+        if ($previousAmount > 0 && abs($previousAmount - (float) $this->total_amount) > 0.005) {
+            $ratio = (float) $this->total_amount / $previousAmount;
+
+            foreach ($charges as $charge) {
+                $charge->update([
+                    'amount' => round((float) $charge->amount * $ratio, 2),
+                ]);
+            }
+        }
+
+        $allocatedAmount = (float) $charges->sum('amount');
+        $receiptAmount = max((float) $this->total_amount, 0);
+
+        if ($allocatedAmount > $receiptAmount && $allocatedAmount > 0) {
+            $ratio = $receiptAmount / $allocatedAmount;
+
+            foreach ($charges as $charge) {
+                $charge->update([
+                    'amount' => round((float) $charge->amount * $ratio, 2),
+                ]);
+            }
+        }
     }
 }

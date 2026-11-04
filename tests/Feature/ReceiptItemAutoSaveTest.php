@@ -7,6 +7,8 @@ use App\Models\DailySession;
 use App\Models\Item;
 use App\Models\Receipt;
 use App\Models\ReceiptItem;
+use App\Models\Sale;
+use App\Models\SaleCharge;
 use App\Models\SessionZone;
 use App\Models\User;
 use App\Models\Zone;
@@ -140,4 +142,53 @@ test('une cellule vidée conserve la valeur déjà enregistrée', function () {
     expect((float) $item->unit_count)->toBe(10.0)
         ->and((float) $item->real_price)->toBe(20.0)
         ->and((int) $item->box)->toBe(10);
+});
+
+test('deleting the last receipt line keeps the empty receipt with zero totals', function () {
+    $context = createReceiptAutoSaveContext();
+    $context['receipt']->delete();
+
+    $this->actingAs($context['user'])
+        ->delete(route('receipts.items.destroy', [
+            'receipt' => $context['receipt']->id,
+            'item' => $context['receiptItem']->id,
+        ]))
+        ->assertSessionHas('success', 'Supprimé ✅');
+
+    $receipt = $context['receipt']->fresh();
+
+    expect($receipt)->not->toBeNull()
+        ->and($receipt->trashed())->toBeFalse()
+        ->and((float) $receipt->total_amount)->toBe(0.0)
+        ->and((float) $receipt->total_boxes)->toBe(0.0)
+        ->and($receipt->items)->toBeEmpty();
+});
+
+test('editing a receipt line proportionally updates its sale charge and sale total', function () {
+    $context = createReceiptAutoSaveContext();
+    $sale = Sale::create([
+        'date' => $context['receipt']->date,
+        'owner_id' => $context['client']->id,
+        'owner_type' => Customer::class,
+        'session_id' => $context['receipt']->sessionZone->daily_session_id,
+        'created_by' => $context['user']->id,
+    ]);
+    $charge = SaleCharge::create([
+        'sale_id' => $sale->id,
+        'receipt_id' => $context['receipt']->id,
+        'amount' => 200,
+    ]);
+
+    $this->actingAs($context['user'])
+        ->patch(route('receipts.items.update', [
+            'receipt' => $context['receipt']->id,
+            'item' => $context['receiptItem']->id,
+        ]), [
+            'unit_count' => 5,
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect((float) $context['receipt']->fresh()->total_amount)->toBe(100.0)
+        ->and((float) $charge->fresh()->amount)->toBe(100.0)
+        ->and((float) $sale->fresh()->amount)->toBe(100.0);
 });
