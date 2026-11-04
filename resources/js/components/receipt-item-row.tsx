@@ -15,6 +15,9 @@ import { Item } from '@/types/item';
 import { ReceiptItem } from '@/types/receipt-item';
 import { SearchSelect } from './search-select';
 import { ReceiptRowActions } from './receipt-row-actions';
+import { useEffect } from 'react';
+
+export const NEW_RECEIPT_ITEM_ROW_ID = -1;
 
 interface Props {
     receiptId: number;
@@ -23,6 +26,8 @@ interface Props {
     isNew?: boolean;
     selected?: boolean;
     onSelectChange?: (checked: boolean) => void;
+    onCellSelect?: (rowId: number, field: string, value: string, shift: boolean) => void;
+    selectedCell?: string | null;
 }
 
 export default function ReceiptItemRow({
@@ -32,6 +37,8 @@ export default function ReceiptItemRow({
     isNew,
     selected,
     onSelectChange,
+    onCellSelect,
+    selectedCell,
 }: Props) {
     // استعمال هوك مخصص للـ ReceiptItem
     const {
@@ -58,6 +65,62 @@ export default function ReceiptItemRow({
         id: item?.id || 'new-row',
         disabled: isNew,
     });
+    const rowId = item?.id ?? (isNew ? NEW_RECEIPT_ITEM_ROW_ID : undefined);
+
+    useEffect(() => {
+        if (rowId === undefined) {
+            return;
+        }
+
+        const applyFill = (event: Event) => {
+            const detail = (event as CustomEvent<{ rowId: number; field: string; value: string }>).detail;
+
+            if (detail.rowId === rowId && ['box', 'unit_count', 'real_price', 'item_id'].includes(detail.field)) {
+                handleDataChange({ [detail.field]: detail.value });
+            }
+        };
+
+        window.addEventListener('receipt-cell-fill', applyFill);
+
+        return () => window.removeEventListener('receipt-cell-fill', applyFill);
+    }, [handleDataChange, rowId]);
+
+    const cellProps = (field: string, value: string | number) => {
+        const selectionKey = `|${rowId}:${field}|`;
+        const isSelected = selectedCell?.includes(selectionKey) ?? false;
+
+        return {
+        'data-receipt-cell': field,
+        'data-receipt-row': rowId,
+        tabIndex: -1,
+        onMouseDownCapture: (event: React.MouseEvent) => {
+            if (rowId !== undefined) {
+                onCellSelect?.(rowId, field, String(value), event.shiftKey);
+            }
+
+            if (event.shiftKey) {
+                event.preventDefault();
+                (document.activeElement as HTMLElement | null)?.blur();
+            }
+        },
+        style: isSelected
+            ? {
+                  position: 'relative' as const,
+                  backgroundColor: 'rgb(59 130 246 / 12%)',
+                  boxShadow: [
+                      'inset 1px 0 rgb(59 130 246)',
+                      'inset -1px 0 rgb(59 130 246)',
+                      selectedCell?.startsWith(selectionKey)
+                          ? 'inset 0 1px rgb(59 130 246)'
+                          : '',
+                      selectedCell?.endsWith(selectionKey)
+                          ? 'inset 0 -1px rgb(59 130 246)'
+                          : '',
+                  ].filter(Boolean).join(', '),
+              }
+            : undefined,
+        };
+    };
 
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -66,7 +129,6 @@ export default function ReceiptItemRow({
         position: (isDragging ? 'relative' : 'static') as any,
     };
 
-    const cellFocusClass = 'focus-within:ring-1 focus-within:ring-inset focus-within:ring-blue-300 dark:focus-within:ring-blue-500 focus-within:bg-blue-50/30 dark:focus-within:bg-blue-950/30 transition-all';
     const inputBaseClass = 'border-none rounded-none h-10 text-xs shadow-none bg-transparent text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:ring-0 w-full font-normal [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none';
 
 
@@ -97,11 +159,20 @@ export default function ReceiptItemRow({
             </TableCell>
 
             {/* 2. Checkbox */}
-            <TableCell className="w-8 border-r border-slate-200 p-0 text-center print:hidden dark:border-slate-800">
+            <TableCell {...cellProps('selection', selected ? '1' : '0')} data-receipt-selection-control className="w-8 border-r border-slate-200 p-0 text-center print:hidden dark:border-slate-800">
                 {!isNew && (
                     <div className="flex h-10 items-center justify-center">
                         <Checkbox
                             checked={selected || false}
+                            onFocus={() => rowId !== undefined && onCellSelect?.(rowId, 'selection', selected ? '1' : '0', false)}
+                            onKeyDown={handleKeyDown}
+                            onKeyDownCapture={(event) => {
+                                if (event.key === 'Enter') {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    onSelectChange?.(!selected);
+                                }
+                            }}
                             onCheckedChange={(checked: boolean) => onSelectChange?.(checked)}
                             className="h-4 w-4 border-slate-300 dark:border-slate-600"
                         />
@@ -110,27 +181,42 @@ export default function ReceiptItemRow({
             </TableCell>
 
             {/* 5. Caisses (box) */}
-            <TableCell className={cn('w-24 border-r border-slate-200 p-0 dark:border-slate-800', cellFocusClass)}>
+            <TableCell {...cellProps('box', data.box)} className="w-24 border-r border-slate-200 p-0 dark:border-slate-800">
                 <Input
                     type="number"
                     value={data.box}
                     placeholder="0"
                     onChange={(e) => handleDataChange({ box: e.target.value })}
                     onKeyDown={handleKeyDown}
+                    onFocus={() => rowId !== undefined && onCellSelect?.(rowId, 'box', String(data.box), false)}
+                    onKeyDownCapture={(event) => {
+                        if ((event.key === 'Delete' || event.key === 'Backspace') && event.currentTarget.value !== '') {
+                            event.preventDefault();
+                            handleDataChange({ box: '' });
+                        }
+                    }}
                     onBlur={handleBlur}
                     className={cn(inputBaseClass, 'text-center font-medium')}
                 />
             </TableCell>
 
             {/* 3. Espèce (Item) */}
-            <TableCell className={cn('min-w-45 border-r border-slate-200 p-0 dark:border-slate-800', cellFocusClass)}>
+            <TableCell {...cellProps('item_id', data.item_id)} className="min-w-45 border-r border-slate-200 p-0 dark:border-slate-800">
                 <SearchSelect
                     value={data.item_id}
                     options={items}
                     placeholder="Saisir espèce..."
+                    className="h-10 w-full border-none bg-transparent px-3 text-left text-xs shadow-none hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none"
                     open={openItem}
                     onOpenChange={setOpenItem}
+                    onFocus={() => rowId !== undefined && onCellSelect?.(rowId, 'item_id', String(data.item_id), false)}
                     onKeyDown={(e) => handleKeyDown(e, 'item')}
+                    onCellKeyDown={(event) => {
+                        if (event.key === 'Delete' || event.key === 'Backspace') {
+                            event.preventDefault();
+                            handleDataChange({ item_id: '' });
+                        }
+                    }}
                     onSelect={(id) => {
                         handleDataChange({ item_id: id });
                         setOpenItem(false);
@@ -139,13 +225,21 @@ export default function ReceiptItemRow({
             </TableCell>
 
             {/* 4. Quantité (unit_count) */}
-            <TableCell className={cn('w-28 border-r border-slate-200 p-0 dark:border-slate-800', cellFocusClass)}>
+            <TableCell {...cellProps('unit_count', data.unit_count)} className="w-28 border-r border-slate-200 p-0 dark:border-slate-800">
                 <Input
                     type="number"
                     value={data.unit_count}
                     placeholder="0.00"
                     onChange={(e) => handleDataChange({ unit_count: e.target.value })}
+                    onFocus={() => rowId !== undefined && onCellSelect?.(rowId, 'unit_count', String(data.unit_count), false)}
                     onKeyDown={handleKeyDown}
+                    onFocus={() => rowId !== undefined && onCellSelect?.(rowId, 'unit_count', String(data.unit_count), false)}
+                    onKeyDownCapture={(event) => {
+                        if ((event.key === 'Delete' || event.key === 'Backspace') && event.currentTarget.value !== '') {
+                            event.preventDefault();
+                            handleDataChange({ unit_count: '' });
+                        }
+                    }}
                     onBlur={handleBlur}
                     className={cn(inputBaseClass, 'text-center font-medium')}
                 />
@@ -153,13 +247,21 @@ export default function ReceiptItemRow({
 
 
             {/* 6. Prix Unitaire (real_price) */}
-            <TableCell className={cn('w-32 border-r border-slate-200 p-0 dark:border-slate-800', cellFocusClass)}>
+            <TableCell {...cellProps('real_price', data.real_price)} className="w-32 border-r border-slate-200 p-0 dark:border-slate-800">
                 <Input
                     type="number"
                     value={data.real_price}
                     placeholder="0.00"
                     onChange={(e) => handleDataChange({ real_price: e.target.value })}
+                    onFocus={() => rowId !== undefined && onCellSelect?.(rowId, 'real_price', String(data.real_price), false)}
                     onKeyDown={handleKeyDown}
+                    onFocus={() => rowId !== undefined && onCellSelect?.(rowId, 'real_price', String(data.real_price), false)}
+                    onKeyDownCapture={(event) => {
+                        if ((event.key === 'Delete' || event.key === 'Backspace') && event.currentTarget.value !== '') {
+                            event.preventDefault();
+                            handleDataChange({ real_price: '' });
+                        }
+                    }}
                     onBlur={handleBlur}
                     className={cn(inputBaseClass, 'pr-4 text-right')}
                 />

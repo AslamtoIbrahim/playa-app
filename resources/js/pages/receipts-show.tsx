@@ -3,13 +3,13 @@ import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Head, router } from '@inertiajs/react';
 import { Copy, Printer, Trash2, X, ArrowLeft, Camera } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 // UI Components
 import { DeleteManyItemsDialog } from '@/components/delete-many-items';
 import ReceiptItemDragOverlay from '@/components/receipt-item-drag-overlay';
-import ReceiptItemRow from '@/components/receipt-item-row';
+import ReceiptItemRow, { NEW_RECEIPT_ITEM_ROW_ID } from '@/components/receipt-item-row';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -31,6 +31,7 @@ import { ExportDropdown } from '@/components/export-dropdown';
 import { useReceiptImport } from '@/hooks/use-receipt-import';
 import { ImportItemsDialog } from '@/components/import-items-dialog';
 import SessionZoneBadge from '@/components/receipt-session-zone-badge';
+import { ReceiptSelectionStatistics } from '@/components/receipt-selection-statistics';
 
 interface Props {
     receipt: Receipt & {
@@ -54,6 +55,116 @@ export default function ReceiptShow({ receipt, items, backUrl }: Props) {
     }
 
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
+    const [cellSelection, setCellSelection] = useState<{ rowId: number; anchorId: number; field: string; value: string } | null>(null);
+    const cellSelectDrag = useRef<{ field: string } | null>(null);
+    const rowIds = [NEW_RECEIPT_ITEM_ROW_ID, ...localItems.map((row) => row.id)];
+
+    useEffect(() => {
+        const clearCellSelectionOutsideTable = (event: PointerEvent) => {
+            const target = event.target;
+
+            if (
+                target instanceof Element &&
+                !target.closest(
+                    '[data-receipt-cell], [data-receipt-selection-statistics], [data-receipt-selection-control]',
+                )
+            ) {
+                setCellSelection(null);
+                cellSelectDrag.current = null;
+
+                if (document.activeElement instanceof HTMLElement) {
+                    document.activeElement.blur();
+                }
+            }
+        };
+
+        document.addEventListener('pointerdown', clearCellSelectionOutsideTable);
+
+        return () => {
+            document.removeEventListener('pointerdown', clearCellSelectionOutsideTable);
+        };
+    }, []);
+    const selectedCellRange = (rowId: number) => {
+        if (!cellSelection) {
+return null;
+}
+
+        const start = rowIds.indexOf(cellSelection.anchorId);
+        const end = rowIds.indexOf(cellSelection.rowId);
+
+        if (rowIds.indexOf(rowId) < Math.min(start, end) || rowIds.indexOf(rowId) > Math.max(start, end)) {
+return null;
+}
+
+        return `|${rowIds.slice(Math.min(start, end), Math.max(start, end) + 1).map((id) => `${id}:${cellSelection.field}`).join('|')}|`;
+    };
+
+    const selectCell = (rowId: number, field: string, value: string, shift: boolean) => {
+        setCellSelection((current) => ({ rowId, field, value, anchorId: shift && current?.field === field ? current.anchorId : rowId }));
+        cellSelectDrag.current = shift ? null : { field };
+    };
+
+    useEffect(() => {
+        const handlePointerMove = (event: PointerEvent) => {
+            const drag = cellSelectDrag.current;
+
+            if (!drag) {
+return;
+}
+
+            const target = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-receipt-cell][data-receipt-row]');
+
+            if (!target || target.dataset.receiptCell !== drag.field || !target.dataset.receiptRow) {
+return;
+}
+
+            const rowId = Number(target.dataset.receiptRow);
+            const value = target.querySelector<HTMLInputElement>('input')?.value ?? target.textContent?.trim() ?? '';
+            setCellSelection((current) => current ? { ...current, rowId, value } : current);
+        };
+        const handlePointerUp = () => {
+ cellSelectDrag.current = null; 
+};
+
+        window.addEventListener('pointermove', handlePointerMove);
+        window.addEventListener('pointerup', handlePointerUp);
+
+        return () => {
+            window.removeEventListener('pointermove', handlePointerMove);
+            window.removeEventListener('pointerup', handlePointerUp);
+        };
+    }, []);
+
+    useEffect(() => {
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'd' || !cellSelection) {
+return;
+}
+
+            event.preventDefault();
+            const start = rowIds.indexOf(cellSelection.anchorId);
+            const end = rowIds.indexOf(cellSelection.rowId);
+            const source = document.querySelector<HTMLInputElement>(`[data-receipt-row="${rowIds[Math.min(start, end)]}"][data-receipt-cell="${cellSelection.field}"] input`);
+            const value = source?.value ?? cellSelection.value;
+            rowIds.slice(Math.min(start, end) + 1, Math.max(start, end) + 1).forEach((id) => window.dispatchEvent(new CustomEvent('receipt-cell-fill', { detail: { rowId: id, field: cellSelection.field, value } })));
+        };
+        window.addEventListener('keydown', onKeyDown);
+
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [cellSelection, rowIds.join(',')]);
+
+    const selectedValues = cellSelection ? rowIds.slice(Math.min(rowIds.indexOf(cellSelection.anchorId), rowIds.indexOf(cellSelection.rowId)), Math.max(rowIds.indexOf(cellSelection.anchorId), rowIds.indexOf(cellSelection.rowId)) + 1).map((id) => document.querySelector<HTMLInputElement>(`[data-receipt-row="${id}"][data-receipt-cell="${cellSelection.field}"] input`)?.value ?? (id === cellSelection.rowId ? cellSelection.value : '')).map(Number).filter(Number.isFinite) : [];
+    const selectionSum = selectedValues.reduce((sum, value) => sum + value, 0);
+    const selectionStatistics = cellSelection ? {
+        primary: selectionSum,
+        numeric: !['item_id', 'selection'].includes(cellSelection.field),
+        sum: selectionSum,
+        average: selectedValues.length ? selectionSum / selectedValues.length : null,
+        minimum: selectedValues.length ? Math.min(...selectedValues) : null,
+        maximum: selectedValues.length ? Math.max(...selectedValues) : null,
+        count: selectedValues.length,
+        countNumbers: selectedValues.length,
+    } : null;
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
 
@@ -295,6 +406,7 @@ export default function ReceiptShow({ receipt, items, backUrl }: Props) {
                 </div>
 
                 <div className="relative overflow-hidden rounded-lg rounded-b-none border border-slate-100 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+                    {cellSelection && <div className="flex items-center justify-end border-b bg-muted/60 px-3 py-2 print:hidden"><ReceiptSelectionStatistics statistics={selectionStatistics} /></div>}
                     <DndContext
                         sensors={sensors}
                         collisionDetection={closestCenter}
@@ -334,7 +446,7 @@ export default function ReceiptShow({ receipt, items, backUrl }: Props) {
                             </TableHeader>
 
                             <TableBody>
-                                <ReceiptItemRow receiptId={receipt.id} items={items} isNew={true} />
+                                <ReceiptItemRow receiptId={receipt.id} items={items} isNew={true} onCellSelect={selectCell} selectedCell={selectedCellRange(NEW_RECEIPT_ITEM_ROW_ID)} />
                                 <SortableContext items={localItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
                                     {localItems.map((row) => (
                                         <ReceiptItemRow
@@ -343,6 +455,8 @@ export default function ReceiptShow({ receipt, items, backUrl }: Props) {
                                             item={row}
                                             items={items}
                                             selected={selectedIds.includes(row.id)}
+                                            onCellSelect={selectCell}
+                                            selectedCell={selectedCellRange(row.id)}
                                             onSelectChange={(checked) => {
                                                 setSelectedIds((prev) =>
                                                     checked ? [...prev, row.id] : prev.filter((id) => id !== row.id),

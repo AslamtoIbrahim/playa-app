@@ -25,6 +25,8 @@ interface SearchSelectProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onKeyDown?: (e: React.KeyboardEvent<any>) => void;
+    onCellKeyDown?: (e: React.KeyboardEvent<HTMLButtonElement>) => void;
+    onFocus?: () => void;
     disabled?: boolean;
     className?: string;
     /**
@@ -44,6 +46,8 @@ export function SearchSelect({
     open,
     onOpenChange,
     onKeyDown,
+    onCellKeyDown,
+    onFocus,
     disabled = false,
     className,
     renderNoMatchAction,
@@ -86,7 +90,14 @@ export function SearchSelect({
                 <Button
                     variant="ghost"
                     disabled={disabled}
+                    onFocus={onFocus}
                     onKeyDown={(event) => {
+                        onCellKeyDown?.(event);
+
+                        if (event.defaultPrevented) {
+                            return;
+                        }
+
                         onKeyDown?.(event);
 
                         if (
