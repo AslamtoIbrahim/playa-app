@@ -6,6 +6,7 @@ import AddReceiptDialog from '@/components/add-receipt-dialog';
 import DeleteReceiptDialog from '@/components/delete-receipt-dialog';
 import EditReceiptDialog from '@/components/edit-receipt-dialog';
 import SellReceiptDialog from '@/components/sell-receipt-dialog';
+import SellWholeReceiptsDialog from '@/components/sell-whole-receipts-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -22,7 +23,7 @@ import type { Boat } from '@/types/boat';
 import type { Customer } from '@/types/customer';
 import type { DailySession, SessionStatus } from '@/types/daily-session';
 import type { Receipt } from '@/types/receipt';
-import type { Sale } from '@/types/sale';
+import type { Sale, SaleOwnerOption } from '@/types/sale';
 import type { SessionZone } from '@/types/session-zone';
 import { show as showReceipt } from '@/routes/receipts';
 import {
@@ -93,6 +94,7 @@ export interface SessionReceiptAddContext {
     sessionZones: SessionZone[];
     customers: Customer[];
     boats: Boat[];
+    sellOwners: SaleOwnerOption[];
 }
 
 export type SessionReceiptAddContextInput = SessionReceiptAddContext;
@@ -263,26 +265,34 @@ export function SessionReceiptsTable({
                         />
 
                         {canAddReceipt ? (
-                            <AddReceiptDialog
-                                customers={receiptContext.customers}
-                                sessionZones={receiptContext.sessionZones}
-                                boats={receiptContext.boats}
-                                lockedSessionZoneIds={receiptContext.sessionZones.map(
-                                    (sessionZone) => sessionZone.id,
-                                )}
-                                lockedDate={receiptContext.sessionDate}
-                                title="Nouveau Bon de Réception"
-                                description="La journée, la zone et la date sont déjà définies : choisissez le client et le bateau."
-                                trigger={
-                                    <Button
-                                        size="sm"
-                                        className="bg-blue-600 font-bold text-white shadow-sm hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500"
-                                    >
-                                        <Plus className="mr-2 h-4 w-4" />{' '}
-                                        Nouveau Bon
-                                    </Button>
-                                }
-                            />
+                            <div className="flex items-center gap-2">
+                                <SellWholeReceiptsDialog
+                                    receipts={receipts}
+                                    session={session}
+                                    owners={receiptContext.sellOwners}
+                                    formatCurrency={formatCurrency}
+                                />
+                                <AddReceiptDialog
+                                    customers={receiptContext.customers}
+                                    sessionZones={receiptContext.sessionZones}
+                                    boats={receiptContext.boats}
+                                    lockedSessionZoneIds={receiptContext.sessionZones.map(
+                                        (sessionZone) => sessionZone.id,
+                                    )}
+                                    lockedDate={receiptContext.sessionDate}
+                                    title="Nouveau Bon de Réception"
+                                    description="La journée, la zone et la date sont déjà définies : choisissez le client et le bateau."
+                                    trigger={
+                                        <Button
+                                            size="sm"
+                                            className="bg-blue-600 font-bold text-white shadow-sm hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500"
+                                        >
+                                            <Plus className="mr-2 h-4 w-4" />{' '}
+                                            Nouveau Bon
+                                        </Button>
+                                    }
+                                />
+                            </div>
                         ) : (
                             <Button
                                 size="sm"

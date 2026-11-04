@@ -2,11 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Customer;
+use App\Models\DailySession;
 use App\Models\Item;
 use App\Models\Receipt;
+use App\Models\Sale;
+use App\Models\SaleCharge;
 use App\Models\SessionZone;
+use App\Models\Usine;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class ReceiptController extends Controller
@@ -66,6 +72,96 @@ class ReceiptController extends Controller
             return redirect()->route('receipts.show', $receipt->id)
                 ->with('success', 'Bon créé avec succès.');
         });
+    }
+
+    /** Sell the remaining balance of every receipt in a session to one owner. */
+    public function sellAll(Request $request)
+    {
+        $ownerTable = $request->input('type') === 'usine' ? 'usines' : 'customers';
+        $validated = $request->validate([
+            'session_id' => 'required|exists:daily_sessions,id',
+            'owner_id' => ['required', 'integer', Rule::exists($ownerTable, 'id')],
+            'type' => 'required|in:normal,usine',
+        ], [
+            'owner_id.required' => 'Veuillez choisir un client ou une usine.',
+            'owner_id.exists' => "Le client ou l'usine sélectionné n'existe pas.",
+            'type.in' => 'Le type de vente est invalide.',
+        ]);
+
+        $ownerClass = $validated['type'] === 'usine' ? Usine::class : Customer::class;
+
+        $session = DailySession::findOrFail($validated['session_id']);
+
+        if ($session->status === 'closed') {
+            return back()->with('error', 'Action impossible : La journée est clôturée.');
+        }
+
+        $result = DB::transaction(function () use ($request, $validated, $session, $ownerClass) {
+            $receipts = Receipt::query()
+                ->whereHas('sessionZone', fn ($query) => $query->where('daily_session_id', $session->id))
+                ->withSum('saleCharges', 'amount')
+                ->lockForUpdate()
+                ->get();
+
+            $remainingReceipts = $receipts->map(function ($receipt) {
+                return [$receipt, max((float) $receipt->total_amount - (float) ($receipt->sale_charges_sum_amount ?? 0), 0)];
+            })->filter(fn ($entry) => $entry[1] > 0.005);
+
+            if ($remainingReceipts->isEmpty()) {
+                return null;
+            }
+
+            $sale = Sale::where('session_id', $session->id)
+                ->where('owner_id', $validated['owner_id'])
+                ->where('owner_type', $ownerClass)
+                ->latest('id')
+                ->first();
+
+            if (! $sale) {
+                $sale = Sale::create([
+                    'date' => $session->session_date,
+                    'owner_id' => $validated['owner_id'],
+                    'owner_type' => $ownerClass,
+                    'session_id' => $session->id,
+                    'created_by' => $request->user()->id,
+                    'type' => $validated['type'],
+                    'amount' => 0,
+                    'boxes' => 0,
+                    'weight' => 0,
+                ]);
+            }
+
+            foreach ($remainingReceipts as [$receipt, $remaining]) {
+                $charge = SaleCharge::withTrashed()
+                    ->where('sale_id', $sale->id)
+                    ->where('receipt_id', $receipt->id)
+                    ->first();
+
+                if ($charge?->trashed()) {
+                    $charge->forceDelete();
+                    $charge = null;
+                }
+
+                if ($charge) {
+                    $charge->amount = (float) $charge->amount + $remaining;
+                    $charge->save();
+                } else {
+                    SaleCharge::create([
+                        'sale_id' => $sale->id,
+                        'receipt_id' => $receipt->id,
+                        'amount' => $remaining,
+                    ]);
+                }
+            }
+
+            return [$sale, $remainingReceipts->count()];
+        });
+
+        if (! $result) {
+            return back()->with('error', 'Aucun bon ne reste à vendre pour cette journée.');
+        }
+
+        return back()->with('success', "{$result[1]} bon(s) vendu(s) à {$result[0]->owner->name}.");
     }
 
     /**

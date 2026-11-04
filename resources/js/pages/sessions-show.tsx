@@ -110,6 +110,7 @@ function SessionShow({
         sessionZones,
         customers,
         boats,
+        sellOwners,
     };
 
     // Contexte des ventes : la journée et la date étant déjà connues, seuls le

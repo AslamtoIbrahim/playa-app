@@ -156,6 +156,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // --- Receipts Routes
     Route::get('receipts', [ReceiptController::class, 'index'])->name('receipts');
     Route::post('receipts', [ReceiptController::class, 'store'])->name('receipts.store');
+    Route::post('receipts/sell-all', [ReceiptController::class, 'sellAll'])->name('receipts.sellAll');
     Route::get('receipts/{receipt}', [ReceiptController::class, 'show'])->name('receipts.show');
     Route::patch('receipts/{receipt}', [ReceiptController::class, 'update'])->name('receipts.update');
     Route::delete('receipts/{receipt}', [ReceiptController::class, 'destroy'])->name('receipts.destroy');
