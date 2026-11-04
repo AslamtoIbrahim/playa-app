@@ -11,6 +11,7 @@ use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\SessionZone;
 use App\Models\User;
+use App\Models\Usine;
 use App\Models\Zone;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -260,13 +261,33 @@ test('only the remaining quantity of a partially sold line is distributed', func
         ->and((int) $sale->boxes)->toBe(15);
 });
 
-test('customer_id is required with a French validation message', function () {
+test('the whole invoice is sold to a factory sale when a factory is selected', function () {
+    $context = createInvoiceSellContext();
+    $usine = Usine::create(['name' => 'Usine '.uniqid()]);
+
+    $this->actingAs($context['user'])
+        ->post(route('invoices.sell', $context['invoice']), [
+            'customer_id' => null,
+            'usine_id' => $usine->id,
+        ])
+        ->assertSessionHasNoErrors();
+
+    $sale = Sale::where('owner_id', $usine->id)
+        ->where('owner_type', Usine::class)
+        ->firstOrFail();
+
+    expect($sale->type)->toBe('usine')
+        ->and($sale->items)->toHaveCount(2)
+        ->and(SaleItem::count())->toBe(2);
+});
+
+test('a client or factory is required with a French validation message', function () {
     $context = createInvoiceSellContext();
 
     $this->actingAs($context['user'])
         ->post(route('invoices.sell', $context['invoice']), [])
         ->assertSessionHasErrors([
-            'customer_id' => 'Veuillez choisir le client vendeur.',
+            'customer_id' => 'Veuillez choisir le client ou l’usine vendeur.',
         ]);
 
     expect(SaleItem::count())->toBe(0);

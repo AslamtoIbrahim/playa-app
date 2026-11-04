@@ -13,6 +13,7 @@ use App\Models\ReceiptItem;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\SessionZone;
+use App\Models\Usine;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -249,21 +250,27 @@ class InvoiceController extends Controller
     }
 
     /**
-     * Vendre la totalité d'une facture à un seul client.
-     *
-     * Toutes les lignes restantes sont distribuées vers la vente du client
-     * choisi (dans la même journée) au prix facturé : aucune différence n'est
-     * créée ici — elle reste ajustable ligne par ligne depuis la fiche facture.
+     * Sell the remaining invoice quantity to a customer or factory in the
+     * same session at the invoiced price, without creating a difference.
      */
     public function sell(Request $request, Invoice $invoice)
     {
         $validated = $request->validate([
-            'customer_id' => 'required|exists:customers,id',
+            'customer_id' => ['nullable', 'required_without:usine_id', 'prohibits:usine_id', 'exists:customers,id'],
+            'usine_id' => ['nullable', 'required_without:customer_id', 'prohibits:customer_id', 'exists:usines,id'],
             'is_with_tax' => 'sometimes|boolean',
         ], [
-            'customer_id.required' => 'Veuillez choisir le client vendeur.',
+            'customer_id.required_without' => 'Veuillez choisir le client ou l’usine vendeur.',
+            'customer_id.prohibits' => 'Veuillez choisir un seul client ou une seule usine.',
             'customer_id.exists' => "Ce client n'existe pas.",
+            'usine_id.required_without' => 'Veuillez choisir le client ou l’usine vendeur.',
+            'usine_id.prohibits' => 'Veuillez choisir un seul client ou une seule usine.',
+            'usine_id.exists' => "Cette usine n'existe pas.",
         ]);
+
+        $ownerId = $validated['usine_id'] ?? $validated['customer_id'];
+        $ownerType = isset($validated['usine_id']) ? Usine::class : Customer::class;
+        $saleType = isset($validated['usine_id']) ? 'usine' : 'normal';
 
         $session = $invoice->sessionZone?->dailySession;
 
@@ -275,7 +282,7 @@ class InvoiceController extends Controller
             return back()->with('error', 'Action impossible : La journée est clôturée.');
         }
 
-        $result = DB::transaction(function () use ($request, $validated, $invoice, $session) {
+        $result = DB::transaction(function () use ($request, $validated, $invoice, $session, $ownerId, $ownerType, $saleType) {
             // Lignes encore vendables : on ne vend que le reste, au prix facturé.
             // Row lock: two concurrent submissions cannot distribute the same
             // remaining quantity twice.
@@ -294,21 +301,21 @@ class InvoiceController extends Controller
                 return null;
             }
 
-            // La vente du client dans la journée : réutilisée, créée sinon.
+            // Reuse the owner's sale in the session, or create it if missing.
             $sale = Sale::where('session_id', $session->id)
-                ->where('owner_id', $validated['customer_id'])
-                ->where('owner_type', Customer::class)
+                ->where('owner_id', $ownerId)
+                ->where('owner_type', $ownerType)
                 ->latest('id')
                 ->first();
 
             if (! $sale) {
                 $sale = Sale::create([
                     'date' => $session->session_date,
-                    'owner_id' => $validated['customer_id'],
-                    'owner_type' => Customer::class,
+                    'owner_id' => $ownerId,
+                    'owner_type' => $ownerType,
                     'session_id' => $session->id,
                     'created_by' => $request->user()->id,
-                    'type' => 'normal',
+                    'type' => $saleType,
                     'amount' => 0,
                     'boxes' => 0,
                     'weight' => 0,

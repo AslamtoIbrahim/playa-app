@@ -20,7 +20,7 @@ import type { Customer } from '@/types/customer';
 import type { DailySession, SessionGroupData } from '@/types/daily-session';
 import type { Billable } from '@/types/invoice';
 import type { OfficeRoom } from '@/types/office-room';
-import type { SessionSaleData } from '@/types/sale';
+import type { SaleOwnerOption, SessionSaleData } from '@/types/sale';
 import type { SessionZone } from '@/types/session-zone';
 import type { Usine } from '@/types/usine';
 
@@ -71,15 +71,22 @@ function SessionShow({
     // se limite donc au compte et au bureau. Le même contexte alimente les
     // actions de ligne (modifier / archiver).
     //
-    // `sellCustomers` : les clients des ventes déjà créées dans la journée —
-    // seuls clients proposés pour vendre une facture en entier à un seul client.
-    const sellCustomers: Customer[] = [
+    // Offer the owners of sales already created in this session.
+    const sellOwners: SaleOwnerOption[] = [
         ...new Map(
             (saleData.sales ?? [])
-                .filter((sale) => sale.type === 'normal')
-                .map((sale) => sale.owner)
-                .filter((owner): owner is Customer => Boolean(owner))
-                .map((owner) => [owner.id, owner] as const),
+                .flatMap((sale) =>
+                    sale.owner
+                        ? [
+                              {
+                                  id: sale.owner.id,
+                                  name: sale.owner.name,
+                                  type: sale.type,
+                              },
+                          ]
+                        : [],
+                )
+                .map((owner) => [`${owner.type}:${owner.id}`, owner] as const),
         ).values(),
     ];
 
@@ -91,8 +98,7 @@ function SessionShow({
         billables,
         officeRooms,
         cautions,
-        sellCustomers,
-        allCustomers: customers,
+        sellOwners,
     };
 
     // Contexte des bons de réception : la session, la zone et la date étant

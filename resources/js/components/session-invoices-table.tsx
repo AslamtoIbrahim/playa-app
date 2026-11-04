@@ -18,10 +18,10 @@ import {
 import { computeInvoiceRemainingTotals } from '@/lib/sales';
 import { show as showInvoice } from '@/routes/invoices';
 import type { Caution } from '@/types/caution';
-import type { Customer } from '@/types/customer';
 import type { SessionStatus } from '@/types/daily-session';
 import type { Billable, Invoice } from '@/types/invoice';
 import type { OfficeRoom } from '@/types/office-room';
+import type { SaleOwnerOption } from '@/types/sale';
 import type { SessionZone } from '@/types/session-zone';
 import {
     SessionInvoiceColumnFilter,
@@ -92,16 +92,8 @@ export interface SessionInvoiceAddContext {
     billables: Billable[];
     officeRooms: OfficeRoom[];
     cautions: Caution[];
-    /**
-     * Clients déjà utilisés par les ventes de la journée : seuls proposés
-     * pour vendre une facture en entier à un seul client.
-     */
-    sellCustomers: Customer[];
-    /**
-     * All session customers: used to create a missing day sale inline
-     * without leaving the sell dialog.
-     */
-    allCustomers: Customer[];
+    /** Customers and factories already used by sales in this session. */
+    sellOwners: SaleOwnerOption[];
 }
 
 export type SessionInvoiceAddContextInput = Omit<
@@ -397,20 +389,11 @@ export function SessionInvoicesTable({
                                                         0) > 0 && (
                                                         <SellWholeInvoiceDialog
                                                             invoice={invoice}
-                                                            customers={
-                                                                invoiceContext.sellCustomers
-                                                            }
-                                                            allCustomers={
-                                                                invoiceContext.allCustomers
+                                                            owners={
+                                                                invoiceContext.sellOwners
                                                             }
                                                             formatCurrency={
                                                                 formatCurrency
-                                                            }
-                                                            sessionId={
-                                                                invoiceContext.sessionId
-                                                            }
-                                                            sessionDate={
-                                                                invoiceContext.sessionDate
                                                             }
                                                             disabled={
                                                                 !computeInvoiceRemainingTotals(

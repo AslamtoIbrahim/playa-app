@@ -36,6 +36,12 @@ export interface Sale {
     deleted_at?: string | null;
 }
 
+export interface SaleOwnerOption {
+    id: number;
+    name: string;
+    type: 'normal' | 'usine';
+}
+
 /**
  * Données groupées d'une session pour l'onglet Ventes :
  * factures / réceptions / différences + ventes directes.
