@@ -280,6 +280,7 @@ export function SessionReceiptsTable({
                                         (sessionZone) => sessionZone.id,
                                     )}
                                     lockedDate={receiptContext.sessionDate}
+                                    fromSessionId={receiptContext.sessionId}
                                     title="Nouveau Bon de Réception"
                                     description="La journée, la zone et la date sont déjà définies : choisissez le client et le bateau."
                                     trigger={

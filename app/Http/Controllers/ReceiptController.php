@@ -41,7 +41,7 @@ class ReceiptController extends Controller
             'customer_id' => 'required|exists:customers,id',
             'session_zone_id' => 'required|exists:session_zones,id',
             'boat_id' => 'nullable|exists:boats,id',
-            'redirect_to' => 'nullable|string|in:session',
+            'from_session' => 'nullable|integer|exists:daily_sessions,id',
         ]);
 
         $sessionZone = SessionZone::with('dailySession')->findOrFail($validated['session_zone_id']);
@@ -61,12 +61,12 @@ class ReceiptController extends Controller
                 'total_boxes' => 0,
             ]);
 
-            // Depuis la page d'une journée, on revient sur la journée pour
-            // enchaîner les saisies : la fiche du bon reste accessible en
-            // cliquant sur la ligne du tableau.
-            if (($validated['redirect_to'] ?? null) === 'session') {
-                return redirect()->route('sessions.show', $sessionZone->daily_session_id)
-                    ->with('success', 'Bon créé avec succès.');
+            // Preserve the session origin so the receipt detail can link back to it.
+            if (isset($validated['from_session']) && (int) $validated['from_session'] === $sessionZone->daily_session_id) {
+                return redirect()->route('receipts.show', [
+                    'receipt' => $receipt->id,
+                    'from_session' => $sessionZone->daily_session_id,
+                ])->with('success', 'Bon créé avec succès.');
             }
 
             return redirect()->route('receipts.show', $receipt->id)

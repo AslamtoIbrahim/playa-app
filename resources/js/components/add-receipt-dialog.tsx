@@ -68,8 +68,8 @@ interface Props {
     trigger?: ReactNode;
     title?: string;
     description?: string;
-    /** Renvoie vers la journée après création au lieu de la fiche du bon. */
-    redirectTo?: 'session';
+    /** Session context to preserve when opening the created receipt. */
+    fromSessionId?: number;
 }
 
 /**
@@ -87,7 +87,7 @@ export default function AddReceiptDialog({
     trigger,
     title = 'Nouveau Bon de Réception',
     description = "Créez l'entête du bon de réception. Vous pourrez ajouter les articles après validation.",
-    redirectTo,
+    fromSessionId,
 }: Props) {
     const [open, setOpen] = useState<boolean>(false);
 
@@ -227,11 +227,11 @@ export default function AddReceiptDialog({
                                 value={dateValue}
                             />
 
-                            {redirectTo === 'session' && (
+                            {fromSessionId !== undefined && (
                                 <input
                                     type="hidden"
-                                    name="redirect_to"
-                                    value="session"
+                                    name="from_session"
+                                    value={fromSessionId}
                                 />
                             )}
 
