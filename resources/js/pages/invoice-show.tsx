@@ -432,6 +432,7 @@ export default function InvoiceShow({
 
             if (isArrowKey && !event.shiftKey) {
                 const fields = [
+                    'selection',
                     'boat_id',
                     'category_id',
                     'unit_count',

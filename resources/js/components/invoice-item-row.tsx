@@ -322,17 +322,38 @@ export default function InvoiceItemRow({
                 )}
             </TableCell>
 
-            <TableCell className="w-8 border-r border-slate-100 p-0 text-center dark:border-neutral-800 print:hidden">
+            <TableCell
+                {...cellProps('selection', selected ? '1' : '0')}
+                className="w-8 border-r border-slate-100 p-0 text-center dark:border-neutral-800 print:hidden"
+            >
                 {!isNew && (
                     <div className="flex h-10 items-center justify-center">
                         <Checkbox
                             checked={selected || false}
+                            onFocus={() => {
+                                if (rowId !== undefined) {
+                                    onCellSelect?.(
+                                        rowId,
+                                        'selection',
+                                        selected ? '1' : '0',
+                                        false,
+                                    );
+                                }
+                            }}
+                            onKeyDown={handleKeyDown}
+                            onKeyDownCapture={(event) => {
+                                if (event.key === 'Enter') {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    onSelectChange?.(!selected);
+                                }
+                            }}
                             onCheckedChange={(checked: boolean) => {
                                 {
                                     onSelectChange?.(checked);
                                 }
                             }}
-                            className="h-4 w-4 border-slate-300 dark:border-neutral-700 dark:data-[state=checked]:bg-blue-600 dark:data-[state=checked]:text-white"
+                            className="h-4 w-4 border-slate-300 focus-visible:ring-0 dark:border-neutral-700 dark:data-[state=checked]:bg-blue-600 dark:data-[state=checked]:text-white"
                         />
                     </div>
                 )}
