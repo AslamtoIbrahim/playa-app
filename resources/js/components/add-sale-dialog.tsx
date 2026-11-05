@@ -14,6 +14,8 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 import InputError from '@/components/input-error';
+import MissingCustomerPopup from '@/components/missing-customer-popup';
+import MissingUsinePopup from '@/components/missing-usine-popup';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -90,6 +92,7 @@ export default function AddSaleDialog({
     const [open, setOpen] = useState<boolean>(false);
 
     const [clientComboOpen, setClientComboOpen] = useState<boolean>(false);
+    const [ownerSearch, setOwnerSearch] = useState<string>('');
     const [sessionComboOpen, setSessionComboOpen] = useState<boolean>(false);
 
     const [selectedOwnerId, setSelectedOwnerId] = useState<string>('');
@@ -111,6 +114,20 @@ export default function AddSaleDialog({
         (owner) => owner.id.toString() === selectedOwnerId,
     );
     const ownerLabel = type === 'usine' ? 'Usine' : 'Client';
+    const matchingOwners = owners.filter((owner) =>
+        owner.name.toLocaleLowerCase().includes(ownerSearch.trim().toLocaleLowerCase()),
+    );
+    const showAddOwner = ownerSearch.trim() !== '' && matchingOwners.length === 0;
+
+    const selectCreatedOwner = (name: string): void => {
+        const createdOwner = owners.find(
+            (owner) => owner.name.trim() === name,
+        );
+
+        if (createdOwner) {
+            setSelectedOwnerId(createdOwner.id.toString());
+        }
+    };
 
     // Keep the context values untouched: only the user-owned fields are reset.
     const resetContextState = (): void => {
@@ -221,6 +238,7 @@ export default function AddSaleDialog({
                                     onValueChange={(value) => {
                                         setType(value);
                                         setSelectedOwnerId('');
+                                        setOwnerSearch('');
                                     }}
                                 >
                                     <SelectTrigger className="w-full font-medium dark:border-neutral-700 dark:bg-neutral-800 dark:text-slate-200">
@@ -403,10 +421,17 @@ export default function AddSaleDialog({
                                 <Label className="text-xs font-bold text-slate-500 uppercase dark:text-slate-400">
                                     {ownerLabel}
                                 </Label>
-                                <Popover
-                                    open={clientComboOpen}
-                                    onOpenChange={setClientComboOpen}
-                                >
+                                <div className="flex items-start gap-2">
+                                    <Popover
+                                        open={clientComboOpen}
+                                        onOpenChange={(nextOpen) => {
+                                            setClientComboOpen(nextOpen);
+
+                                            if (!nextOpen) {
+                                                setOwnerSearch('');
+                                            }
+                                        }}
+                                    >
                                     <PopoverTrigger asChild>
                                         <Button
                                             variant="outline"
@@ -425,11 +450,30 @@ export default function AddSaleDialog({
                                         </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-[--radix-popover-trigger-width] p-0 dark:border-neutral-700 dark:bg-neutral-800 dark:text-slate-200">
-                                        <Command className="dark:bg-neutral-800 dark:text-slate-200">
-                                            <CommandInput
-                                                placeholder={`Rechercher ${type === 'usine' ? 'une usine' : 'un client'}...`}
-                                                className="dark:text-slate-200 dark:placeholder:text-slate-400"
-                                            />
+                                        <Command
+                                            shouldFilter={false}
+                                            className="dark:bg-neutral-800 dark:text-slate-200"
+                                        >
+                                            <div className="flex items-center gap-1 pr-1">
+                                                <CommandInput
+                                                    value={ownerSearch}
+                                                    onValueChange={setOwnerSearch}
+                                                    placeholder={`Rechercher ${type === 'usine' ? 'une usine' : 'un client'}...`}
+                                                    className="min-w-0 flex-1 dark:text-slate-200 dark:placeholder:text-slate-400"
+                                                />
+                                                {showAddOwner &&
+                                                    (type === 'usine' ? (
+                                                        <MissingUsinePopup
+                                                            initialName={ownerSearch.trim()}
+                                                            onCreated={selectCreatedOwner}
+                                                        />
+                                                    ) : (
+                                                        <MissingCustomerPopup
+                                                            initialName={ownerSearch.trim()}
+                                                            onCreated={selectCreatedOwner}
+                                                        />
+                                                    ))}
+                                            </div>
                                             <CommandList>
                                                 <CommandEmpty className="dark:text-slate-400">
                                                     {type === 'usine'
@@ -437,7 +481,7 @@ export default function AddSaleDialog({
                                                         : 'Aucun client trouvé.'}
                                                 </CommandEmpty>
                                                 <CommandGroup>
-                                                    {owners.map((owner) => (
+                                                    {matchingOwners.map((owner) => (
                                                         <CommandItem
                                                             className={cn(
                                                                 commandItemClass,
@@ -470,7 +514,8 @@ export default function AddSaleDialog({
                                             </CommandList>
                                         </Command>
                                     </PopoverContent>
-                                </Popover>
+                                    </Popover>
+                                </div>
                                 <InputError message={errors.owner_id} />
                             </div>
 
