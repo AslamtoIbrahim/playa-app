@@ -8,7 +8,9 @@ use App\Models\DailySession;
 use App\Models\InvoiceItem;
 use App\Models\Item;
 use App\Models\Sale;
+use App\Models\SaleCharge;
 use App\Models\SaleItem;
+use App\Models\SaleWorker;
 use App\Models\Usine;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -107,6 +109,7 @@ class SaleController extends Controller
             'charges.receipt.boat',
             'charges.receipt.customer',
             'charges.receipt.sessionZone.zone',
+            'charges.receipt.sessionZone.dailySession',
             'workers.attendance.saleWorkers.sale.owner',
             'workers.attendance.sessionZone.zone',
             'workers.attendance.sessionZone.dailySession',
@@ -120,9 +123,18 @@ class SaleController extends Controller
 
         $sessionZones = $sale->items
             ->map(fn (SaleItem $saleItem) => $saleItem->invoiceItem?->invoice?->sessionZone)
+            ->merge($sale->charges->map(fn (SaleCharge $charge) => $charge->receipt?->sessionZone))
+            ->merge($sale->workers->map(fn (SaleWorker $worker) => $worker->attendance?->sessionZone))
             ->filter()
             ->unique('id')
             ->values();
+
+        if ($sessionZones->isEmpty()) {
+            $sessionZones = $sale->session
+                ->sessionZones()
+                ->with(['zone', 'dailySession'])
+                ->get();
+        }
 
         // Ventes de la journée + clients : alimentent le dialogue
         // d'imputation des salaires ouvert depuis la fiche de la vente.

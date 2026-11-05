@@ -89,7 +89,7 @@ export function SaleHeader({ sale, sessionZones = [] }: Props) {
                     <Calendar className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
 
                     <span className="text-xs font-bold">
-                        {formatDateDisplay(sale.date)}
+                        {formatDateDisplay(sale.session?.session_date ?? sale.date)}
                     </span>
                 </Badge>
                 <Badge
