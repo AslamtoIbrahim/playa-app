@@ -123,9 +123,13 @@ class SaleController extends Controller
 
         $sessionZones = $sale->items
             ->map(fn (SaleItem $saleItem) => $saleItem->invoiceItem?->invoice?->sessionZone)
-            ->merge($sale->charges->map(fn (SaleCharge $charge) => $charge->receipt?->sessionZone))
-            ->merge($sale->workers->map(fn (SaleWorker $worker) => $worker->attendance?->sessionZone))
             ->filter()
+            ->merge($sale->charges
+                ->map(fn (SaleCharge $charge) => $charge->receipt?->sessionZone)
+                ->filter())
+            ->merge($sale->workers
+                ->map(fn (SaleWorker $worker) => $worker->attendance?->sessionZone)
+                ->filter())
             ->unique('id')
             ->values();
 

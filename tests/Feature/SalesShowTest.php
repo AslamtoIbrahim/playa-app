@@ -8,7 +8,9 @@ use App\Models\DailySession;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Item;
+use App\Models\Receipt;
 use App\Models\Sale;
+use App\Models\SaleCharge;
 use App\Models\SaleItem;
 use App\Models\SessionZone;
 use App\Models\User;
@@ -206,5 +208,53 @@ test('la fiche vente sans ligne n expose aucune zone', function () {
             ->component('sales-show')
             ->has('sale.items', 0)
             ->has('sessionZones', 0)
+        );
+});
+
+test('the sale details page ignores zones from soft-deleted receipts', function () {
+    $session = DailySession::create([
+        'session_date' => '2026-06-01',
+        'status' => 'open',
+        'total_buy' => 0,
+        'total_sell' => 0,
+    ]);
+
+    $sessionZone = createSalesShowZone($session, 'Agadir '.uniqid());
+    $customer = Customer::create(['name' => 'Client Bon Supprime']);
+
+    $sale = Sale::create([
+        'date' => '2026-06-01',
+        'owner_id' => $customer->id,
+        'owner_type' => Customer::class,
+        'session_id' => $session->id,
+        'type' => 'normal',
+    ]);
+
+    $receipt = Receipt::create([
+        'date' => '2026-06-01',
+        'customer_id' => $customer->id,
+        'session_zone_id' => $sessionZone->id,
+        'quantity' => 1,
+        'total_amount' => 100,
+        'total_boxes' => 1,
+    ]);
+
+    SaleCharge::create([
+        'sale_id' => $sale->id,
+        'receipt_id' => $receipt->id,
+        'amount' => 100,
+    ]);
+    $receipt->delete();
+
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get(route('sales.show', $sale))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('sales-show')
+            ->has('sale.charges', 1)
+            ->has('sessionZones', 1)
+            ->where('sessionZones.0.id', $sessionZone->id)
         );
 });
