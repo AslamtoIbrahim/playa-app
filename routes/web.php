@@ -17,6 +17,7 @@ use App\Http\Controllers\OfficeRoomController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ReceiptController;
 use App\Http\Controllers\ReceiptItemController;
+use App\Http\Controllers\ReceptionRecordController;
 use App\Http\Controllers\SaleChargeController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SaleItemController;
@@ -58,8 +59,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // --- Usines Routes
     Route::get('usines', [UsineController::class, 'index'])->name('usines');
     Route::post('usines', [UsineController::class, 'store'])->name('usines.store');
+    Route::get('usines/{usine}', [UsineController::class, 'show'])->name('usines.show');
     Route::patch('usines/{usine}', [UsineController::class, 'update'])->name('usines.update');
     Route::delete('usines/{usine}', [UsineController::class, 'destroy'])->name('usines.destroy');
+    Route::post('usines/{usine}/reception-records', [ReceptionRecordController::class, 'store'])->name('usines.reception-records.store');
+    Route::patch('usines/{usine}/reception-records/{receptionRecord}', [ReceptionRecordController::class, 'update'])->name('usines.reception-records.update');
+    Route::delete('usines/{usine}/reception-records/{receptionRecord}', [ReceptionRecordController::class, 'destroy'])->name('usines.reception-records.destroy');
 
     // --- Daily Sessions Routes
     Route::prefix('sessions')->group(function () {

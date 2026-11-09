@@ -10,8 +10,9 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { formatDateDisplay } from '@/lib/date';
+import { show } from '@/routes/usines';
 import type { Usine } from '@/types/usine';
-import { Head } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { Building2, CalendarDays } from 'lucide-react';
 
 interface Props {
@@ -61,16 +62,25 @@ export default function UsinePage({ usines }: Props) {
                                 usines.map((usine) => (
                                     <TableRow
                                         key={usine.id}
-                                        className="group border-b border-slate-100 bg-white transition-all last:border-0 hover:bg-slate-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800/70"
+                                        className="group cursor-pointer border-b border-slate-100 bg-white transition-all last:border-0 hover:bg-slate-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800/70"
+                                        onClick={() =>
+                                            router.visit(show(usine.id).url)
+                                        }
                                     >
                                         <TableCell className="font-mono text-sm font-bold text-slate-700 dark:text-neutral-300">
                                             #{usine.id}
                                         </TableCell>
                                         <TableCell className="font-semibold text-slate-900 capitalize dark:text-neutral-100">
-                                            <div className="flex items-center gap-2">
+                                            <Link
+                                                href={show(usine.id)}
+                                                onClick={(event) =>
+                                                    event.stopPropagation()
+                                                }
+                                                className="flex items-center gap-2"
+                                            >
                                                 <Building2 className="h-4 w-4 text-slate-400 dark:text-neutral-500" />
                                                 {usine.name}
-                                            </div>
+                                            </Link>
                                         </TableCell>
                                         <TableCell className="text-sm font-medium text-slate-600 dark:text-neutral-300">
                                             <div className="flex items-center gap-2">
@@ -81,7 +91,12 @@ export default function UsinePage({ usines }: Props) {
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-center">
-                                            <div className="flex justify-center gap-2">
+                                            <div
+                                                className="flex justify-center gap-2"
+                                                onClick={(event) =>
+                                                    event.stopPropagation()
+                                                }
+                                            >
                                                 <EditUsineDialog
                                                     usine={usine}
                                                 />
