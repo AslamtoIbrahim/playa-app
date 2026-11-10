@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Boat;
+use App\Models\Category;
 use App\Models\Customer;
 use App\Models\DailySession;
 use App\Models\Receipt;
@@ -95,6 +96,74 @@ test('a receipt amount is charged and added to its sale totals', function () {
     expect($charge->sale_id)->toBe($context['sale']->id)
         ->and((float) $charge->amount)->toBe(300.0)
         ->and((float) $context['sale']->fresh()->amount)->toBe(300.0);
+});
+
+test('a receipt can be split across categories on the same sale', function () {
+    $context = createSaleChargeContext();
+    $secondSale = createChargeSale($context);
+    $calamar = Category::create(['name' => 'Calamar']);
+    $sabre = Category::create(['name' => 'Sabre']);
+
+    $this->actingAs($context['user'])->post(route('sale-charges.store'), [
+        'sale_id' => $context['sale']->id,
+        'receipt_id' => $context['receipt']->id,
+        'category_id' => $calamar->id,
+        'amount' => 300,
+    ])->assertSessionHasNoErrors();
+
+    $this->actingAs($context['user'])->post(route('sale-charges.store'), [
+        'sale_id' => $context['sale']->id,
+        'receipt_id' => $context['receipt']->id,
+        'category_id' => $sabre->id,
+        'amount' => 200,
+    ])->assertSessionHasNoErrors();
+
+    $this->actingAs($context['user'])->post(route('sale-charges.store'), [
+        'sale_id' => $secondSale->id,
+        'receipt_id' => $context['receipt']->id,
+        'amount' => 200,
+    ])->assertSessionHasNoErrors();
+
+    expect(SaleCharge::count())->toBe(3)
+        ->and(SaleCharge::where('sale_id', $context['sale']->id)->count())->toBe(2)
+        ->and(SaleCharge::where('sale_id', $context['sale']->id)->pluck('category_id')->all())
+        ->toBe([$calamar->id, $sabre->id]);
+});
+
+test('a charge stores updates and clears its manual category', function () {
+    $context = createSaleChargeContext();
+    $poulpe = Category::create(['name' => 'Poulpe']);
+    $calamar = Category::create(['name' => 'Calamar']);
+
+    $this->actingAs($context['user'])
+        ->post(route('sale-charges.store'), [
+            'sale_id' => $context['sale']->id,
+            'receipt_id' => $context['receipt']->id,
+            'category_id' => $poulpe->id,
+            'amount' => 300,
+        ])
+        ->assertSessionHasNoErrors();
+
+    $charge = SaleCharge::firstOrFail();
+
+    expect($charge->category_id)->toBe($poulpe->id);
+
+    $this->actingAs($context['user'])
+        ->patch(route('sale-charges.update', $charge->id), [
+            'category_id' => $calamar->id,
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect($charge->fresh()->category_id)->toBe($calamar->id)
+        ->and((float) $charge->fresh()->amount)->toBe(300.0);
+
+    $this->actingAs($context['user'])
+        ->patch(route('sale-charges.update', $charge->id), [
+            'category_id' => null,
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect($charge->fresh()->category_id)->toBeNull();
 });
 
 test('a charge cannot exceed the remaining receipt amount', function () {

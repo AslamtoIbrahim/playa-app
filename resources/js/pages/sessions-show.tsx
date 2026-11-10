@@ -15,6 +15,7 @@ import { formatDateDisplay } from '@/lib/date';
 import { computeSaleNetToPayFromSale } from '@/lib/sales';
 import type { Attendance } from '@/types/attendance';
 import type { Boat } from '@/types/boat';
+import type { Category } from '@/types/category';
 import type { Caution } from '@/types/caution';
 import type { Customer } from '@/types/customer';
 import type { DailySession, SessionGroupData } from '@/types/daily-session';
@@ -39,6 +40,7 @@ interface Props {
     customers: Customer[];
     usines: Usine[];
     boats: Boat[];
+    categories: Category[];
 }
 
 function SessionShow({
@@ -54,6 +56,7 @@ function SessionShow({
     customers,
     usines,
     boats,
+    categories,
 }: Props) {
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('fr-FR', {
@@ -111,6 +114,7 @@ function SessionShow({
         customers,
         boats,
         sellOwners,
+        categories,
     };
 
     // Contexte des ventes : la journée et la date étant déjà connues, seuls le

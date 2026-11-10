@@ -19,6 +19,7 @@ class SaleCharge extends Model
     protected $fillable = [
         'sale_id',
         'receipt_id',
+        'category_id',
         'amount',
     ];
 
@@ -34,6 +35,15 @@ class SaleCharge extends Model
     public function receipt(): BelongsTo
     {
         return $this->belongsTo(Receipt::class);
+    }
+
+    /**
+     * Manually selected category. When null, the category is inferred from
+     * the receipt items, or distributed by the usine reporting layer.
+     */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(Category::class);
     }
 
     protected static function boot()

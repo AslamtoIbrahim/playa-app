@@ -1,9 +1,13 @@
 <?php
 
 use App\Models\Category;
+use App\Models\Customer;
 use App\Models\DailySession;
 use App\Models\Item;
+use App\Models\Receipt;
+use App\Models\ReceiptItem;
 use App\Models\ReceptionRecord;
+use App\Models\SaleCharge;
 use App\Models\SaleItem;
 use App\Models\SessionZone;
 use App\Models\User;
@@ -58,6 +62,37 @@ function createReceptionSaleCategory(
         'real_price' => $amount,
         'sale_price' => $amount,
     ]);
+}
+
+function createUsineReceipt(
+    DailySession $session,
+    Customer $customer,
+    float $totalAmount = 0,
+    array $lines = [],
+): Receipt {
+    $receipt = Receipt::create([
+        'date' => $session->session_date,
+        'customer_id' => $customer->id,
+        'session_zone_id' => $session->sessionZones()->value('id'),
+        'quantity' => 0,
+        'total_amount' => $totalAmount,
+        'total_boxes' => 0,
+    ]);
+
+    foreach ($lines as [$category, $unitCount, $realPrice]) {
+        ReceiptItem::create([
+            'receipt_id' => $receipt->id,
+            'item_id' => Item::create([
+                'name' => strtolower($category->name).' receipt item '.uniqid(),
+                'category_id' => $category->id,
+            ])->id,
+            'unit_count' => $unitCount,
+            'real_price' => $realPrice,
+            'box' => 0,
+        ]);
+    }
+
+    return $receipt->fresh();
 }
 
 test('usine detail only displays categories from its own sales and reuses existing records', function () {
@@ -180,6 +215,152 @@ test('reception record amounts split the session total across categories', funct
                 ->toEqualWithDelta($expectedSessionTotal, 0.01)
                 ->and((float) $records->first()['amount'])
                 ->not->toEqualWithDelta($expectedSessionTotal, 0.01);
+        });
+});
+
+test('receipt charges are attributed to the categories of their receipt items', function () {
+    $user = User::factory()->create();
+    $usine = Usine::create(['name' => 'Usine Charges']);
+    $session = createReceptionSession('2026-07-01', 'Laayoune');
+    $customer = Customer::create(['name' => 'Client Charges']);
+    $poulpe = Category::create(['name' => 'Poulpe']);
+    $calamar = Category::create(['name' => 'Calamar']);
+
+    $receipt = createUsineReceipt($session, $customer, 0, [
+        [$poulpe, 10, 10],
+        [$calamar, 10, 30],
+    ]);
+
+    $sale = $usine->sales()->create([
+        'date' => $session->session_date,
+        'session_id' => $session->id,
+        'type' => 'usine',
+    ]);
+
+    SaleCharge::create([
+        'sale_id' => $sale->id,
+        'receipt_id' => $receipt->id,
+        'amount' => 400,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('usines.show', $usine))
+        ->assertOk()
+        ->assertInertia(function (AssertableInertia $page) {
+            $records = collect($page->toArray()['props']['receptionRecords'])
+                ->keyBy('designation');
+
+            expect($records)->toHaveCount(2)
+                ->and((float) $records['Poulpe']['amount'])->toBe(100.0)
+                ->and((float) $records['Calamar']['amount'])->toBe(300.0)
+                ->and($records->sum(fn (array $record) => (float) $record['amount']))
+                ->toEqualWithDelta(400.0, 0.01);
+        });
+});
+
+test('an assigned charge category overrides the receipt item categories', function () {
+    $user = User::factory()->create();
+    $usine = Usine::create(['name' => 'Usine Catégorie Manuelle']);
+    $session = createReceptionSession('2026-07-02', 'Laayoune');
+    $customer = Customer::create(['name' => 'Client Catégorie Manuelle']);
+    $poulpe = Category::create(['name' => 'Poulpe']);
+    $calamar = Category::create(['name' => 'Calamar']);
+
+    $receipt = createUsineReceipt($session, $customer, 0, [
+        [$poulpe, 10, 10],
+        [$calamar, 10, 30],
+    ]);
+
+    $sale = $usine->sales()->create([
+        'date' => $session->session_date,
+        'session_id' => $session->id,
+        'type' => 'usine',
+    ]);
+
+    SaleCharge::create([
+        'sale_id' => $sale->id,
+        'receipt_id' => $receipt->id,
+        'category_id' => $calamar->id,
+        'amount' => 400,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('usines.show', $usine))
+        ->assertOk()
+        ->assertInertia(function (AssertableInertia $page) {
+            $records = collect($page->toArray()['props']['receptionRecords']);
+
+            expect($records)->toHaveCount(1)
+                ->and($records->first()['designation'])->toBe('Calamar')
+                ->and((float) $records->first()['amount'])->toBe(400.0);
+        });
+});
+
+test('charges are added on top of the scaled sale item category totals', function () {
+    $user = User::factory()->create();
+    $usine = Usine::create(['name' => 'Usine Totaux Charges']);
+    $session = createReceptionSession('2026-07-03', 'Laayoune');
+    $customer = Customer::create(['name' => 'Client Totaux Charges']);
+
+    createReceptionSaleCategory($usine, $session, 'Poulpe', 100);
+    createReceptionSaleCategory($usine, $session, 'Calamar', 200);
+
+    $receipt = createUsineReceipt($session, $customer, 100);
+    $sale = $usine->sales()->latest('id')->firstOrFail();
+
+    SaleCharge::create([
+        'sale_id' => $sale->id,
+        'receipt_id' => $receipt->id,
+        'amount' => 100,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('usines.show', $usine))
+        ->assertOk()
+        ->assertInertia(function (AssertableInertia $page) {
+            $records = collect($page->toArray()['props']['receptionRecords'])
+                ->keyBy('designation');
+
+            expect($records)->toHaveCount(2)
+                ->and((float) $records['Poulpe']['amount'])->toBe(150.0)
+                ->and((float) $records['Calamar']['amount'])->toBe(250.0)
+                ->and($records->sum(fn (array $record) => (float) $record['amount']))
+                ->toEqualWithDelta(400.0, 0.01);
+        });
+});
+
+test('an unassigned charge without receipt items keeps the exact split total', function () {
+    $user = User::factory()->create();
+    $usine = Usine::create(['name' => 'Usine Arrondi Charges']);
+    $session = createReceptionSession('2026-07-04', 'Laayoune');
+    $customer = Customer::create(['name' => 'Client Arrondi Charges']);
+
+    createReceptionSaleCategory($usine, $session, 'Alpha', 0);
+    createReceptionSaleCategory($usine, $session, 'Beta', 0);
+    createReceptionSaleCategory($usine, $session, 'Gamma', 0);
+
+    $receipt = createUsineReceipt($session, $customer, 100);
+    $sale = $usine->sales()->latest('id')->firstOrFail();
+
+    SaleCharge::create([
+        'sale_id' => $sale->id,
+        'receipt_id' => $receipt->id,
+        'amount' => 100,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('usines.show', $usine))
+        ->assertOk()
+        ->assertInertia(function (AssertableInertia $page) {
+            $records = collect($page->toArray()['props']['receptionRecords'])
+                ->keyBy('designation');
+
+            expect($records)->toHaveCount(3)
+                ->and((float) $records['Alpha']['amount'])->toEqualWithDelta(33.33, 0.01)
+                ->and((float) $records['Beta']['amount'])->toEqualWithDelta(33.33, 0.01)
+                ->and((float) $records['Gamma']['amount'])->toEqualWithDelta(33.34, 0.01)
+                ->and($records->sum(fn (array $record) => (float) $record['amount']))
+                ->toEqualWithDelta(100.0, 0.01);
         });
 });
 

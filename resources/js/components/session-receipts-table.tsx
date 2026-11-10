@@ -20,6 +20,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import type { Boat } from '@/types/boat';
+import type { Category } from '@/types/category';
 import type { Customer } from '@/types/customer';
 import type { DailySession, SessionStatus } from '@/types/daily-session';
 import type { Receipt } from '@/types/receipt';
@@ -95,6 +96,7 @@ export interface SessionReceiptAddContext {
     customers: Customer[];
     boats: Boat[];
     sellOwners: SaleOwnerOption[];
+    categories: Category[];
 }
 
 export type SessionReceiptAddContextInput = SessionReceiptAddContext;
@@ -426,6 +428,9 @@ export function SessionReceiptsTable({
                                                     session={session}
                                                     customers={
                                                         receiptContext.customers
+                                                    }
+                                                    categories={
+                                                        receiptContext.categories
                                                     }
                                                 />
 

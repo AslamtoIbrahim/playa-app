@@ -2,8 +2,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { useSaleChargeRow } from '@/hooks/use-sale-charge-row';
+import type { ReceiptCategoryInfo } from '@/lib/sales';
 import { navigateToAdjacentCell } from '@/lib/table-navigation';
 import { cn } from '@/lib/utils';
+import type { Category } from '@/types/category';
 import type { Customer } from '@/types/customer';
 import type { DailySession } from '@/types/daily-session';
 import type { Sale } from '@/types/sale';
@@ -13,13 +15,16 @@ import type { FocusEvent } from 'react';
 import MissingDialogSale from './missing-dialog-sale';
 import { SearchSelect } from './search-select';
 
+const AUTOMATIC_CATEGORY_ID = '__automatic__';
+
 interface RowProps {
     saleCharge?: SaleCharge;
     receiptId: number;
+    categories: Category[];
+    receiptCategory: ReceiptCategoryInfo;
     sales: Sale[];
     maxAvailable: number;
     isNew?: boolean;
-    excludedSaleIds?: number[];
     onSuccess?: () => void;
     onDelete?: (id: number) => void;
     onSilentSave?: () => void;
@@ -30,10 +35,11 @@ interface RowProps {
 export function SaleChargeRow({
     saleCharge,
     receiptId,
+    categories,
+    receiptCategory,
     sales,
     maxAvailable,
     isNew,
-    excludedSaleIds = [],
     onSuccess,
     onDelete,
     onSilentSave,
@@ -50,24 +56,35 @@ export function SaleChargeRow({
         onSilentSave,
     });
 
-    const saleOptions = sales
-        .filter((sale) => {
-            if (isNew && excludedSaleIds.includes(sale.id)) {
-                return false;
-            }
-
-            return true;
-        })
-        .map((sale) => ({
-            id: sale.id,
-            name: sale.owner?.name || 'Client Inconnu',
-        }));
+    const saleOptions = sales.map((sale) => ({
+        id: sale.id,
+        name: sale.owner?.name || 'Client Inconnu',
+    }));
 
     const canCreateSale = session !== null && customers.length > 0;
     const createSaleSession = canCreateSale ? session : null;
 
-    const { data, handleDataChange, loading, openSale, setOpenSale } = row;
+    const { data, handleDataChange, loading } = row;
+    const { openSale, setOpenSale, openCategory, setOpenCategory } = row;
     const { handleDelete, handleKeyDown, submitSave } = row;
+
+    const automaticCategoryName = receiptCategory.isMerge
+        ? 'Automatique (Merge)'
+        : receiptCategory.category
+          ? `Automatique (${receiptCategory.category.name})`
+          : 'Automatique (aucune)';
+    const categoryOptions = [
+        ...categories.map((category) => ({
+            id: category.id,
+            name: category.name,
+        })),
+        {
+            id: AUTOMATIC_CATEGORY_ID,
+            name: automaticCategoryName,
+        },
+    ];
+    const categoryPlaceholder =
+        receiptCategory.label !== '' ? receiptCategory.label : 'Catégorie...';
 
     const inputClass = 'h-10 border-none bg-transparent text-center';
 
@@ -122,6 +139,42 @@ export function SaleChargeRow({
                                         { ...data, sale_id: id.toString() },
                                         { silent: true },
                                     );
+                                }
+                            }
+                        }
+                    }}
+                    className="bg-transparent shadow-none"
+                />
+            </TableCell>
+            <TableCell className="min-w-40 border-r p-0">
+                <SearchSelect
+                    value={data.category_id}
+                    options={categoryOptions}
+                    placeholder={categoryPlaceholder}
+                    emptyMessage="Aucune catégorie disponible."
+                    open={openCategory}
+                    onOpenChange={setOpenCategory}
+                    onKeyDown={(e) => {
+                        {
+                            handleKeyDown(e, 'category');
+                        }
+                    }}
+                    onSelect={(id) => {
+                        {
+                            const categoryId =
+                                id === AUTOMATIC_CATEGORY_ID
+                                    ? ''
+                                    : id.toString();
+                            const nextData = {
+                                ...data,
+                                category_id: categoryId,
+                            };
+
+                            handleDataChange({ category_id: categoryId });
+
+                            if (!isNew) {
+                                {
+                                    submitSave(nextData, { silent: true });
                                 }
                             }
                         }

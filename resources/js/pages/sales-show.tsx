@@ -65,19 +65,17 @@ export default function SalesShow({ sale, sessionZones, backUrl }: Props) {
     const calculatedStats = useSaleCalculations(sale);
     const stats = {
         ...calculatedStats,
-        totalBoxes: Math.abs(calculatedStats.totalBoxes),
-        totalValeur: Math.abs(calculatedStats.totalValeur),
-        netToPay: Math.abs(calculatedStats.netToPay),
-        formattedTotalValeur: Math.abs(
-            calculatedStats.totalValeur,
-        ).toLocaleString('fr-FR', {
+        formattedTotalValeur: calculatedStats.totalValeur.toLocaleString(
+            'fr-FR',
+            {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+            },
+        ),
+        formattedNetToPay: calculatedStats.netToPay.toLocaleString('fr-FR', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
         }),
-        formattedNetToPay: Math.abs(calculatedStats.netToPay).toLocaleString(
-            'fr-FR',
-            { minimumFractionDigits: 2, maximumFractionDigits: 2 },
-        ),
     };
 
     const { copyToClipboard } = useScreenshot();

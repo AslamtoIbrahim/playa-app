@@ -28,6 +28,7 @@ interface UseSaleChargeRowProps {
 
 interface SaleChargeRowData {
     sale_id: string;
+    category_id: string;
     amount: string;
 }
 
@@ -55,6 +56,7 @@ export function useSaleChargeRow({
     const [loading, setLoading] = useState<boolean>(false);
 
     const [openSale, setOpenSale] = useState<boolean>(false);
+    const [openCategory, setOpenCategory] = useState<boolean>(false);
 
     const [input, setInput] = useState<Partial<SaleChargeRowData>>({});
 
@@ -64,6 +66,8 @@ export function useSaleChargeRow({
 
     const data: SaleChargeRowData = {
         sale_id: input.sale_id ?? saleCharge?.sale_id?.toString() ?? '',
+        category_id:
+            input.category_id ?? saleCharge?.category_id?.toString() ?? '',
         amount: input.amount ?? defaultAmount,
     };
 
@@ -180,6 +184,10 @@ export function useSaleChargeRow({
                     {
                         sale_id: parseInt(currentData.sale_id),
                         receipt_id: receiptId,
+                        category_id:
+                            currentData.category_id === ''
+                                ? null
+                                : Number(currentData.category_id),
                         amount: newAmount,
                     },
                     options,
@@ -193,6 +201,10 @@ export function useSaleChargeRow({
                     update(saleCharge.id),
                     {
                         sale_id: parseInt(currentData.sale_id),
+                        category_id:
+                            currentData.category_id === ''
+                                ? null
+                                : Number(currentData.category_id),
                         amount: newAmount,
                     },
                     options,
@@ -235,9 +247,9 @@ export function useSaleChargeRow({
 
     const handleKeyDown = (
         e: KeyboardEvent<HTMLElement>,
-        type?: 'sale',
+        type?: 'sale' | 'category',
     ): void => {
-        if (openSale) {
+        if (openSale || openCategory) {
             {
                 return;
             }
@@ -255,18 +267,30 @@ export function useSaleChargeRow({
                     }
                 }
 
+                if (type === 'category' && data.category_id !== '') {
+                    {
+                        handleDataChange({ category_id: '' });
+                    }
+                }
+
                 return;
             }
         }
 
-        if (type && !openSale) {
+        if (type) {
             {
                 const isCharacter =
                     e.key.length === 1 && e.key.match(/[a-z0-9\u0600-\u06FF]/i);
 
                 if (isCharacter) {
                     {
-                        setOpenSale(true);
+                        if (type === 'sale') {
+                            setOpenSale(true);
+                        }
+
+                        if (type === 'category') {
+                            setOpenCategory(true);
+                        }
 
                         return;
                     }
@@ -295,6 +319,8 @@ export function useSaleChargeRow({
         loading,
         openSale,
         setOpenSale,
+        openCategory,
+        setOpenCategory,
         handleDelete,
         handleKeyDown,
         submitSave,

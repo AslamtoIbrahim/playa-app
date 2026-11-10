@@ -1,7 +1,7 @@
-import { Item } from "./item";
-import { Boat } from "./boat";
-import { Customer } from "./customer";
-
+import { Item } from './item';
+import { Boat } from './boat';
+import { Customer } from './customer';
+import type { InvoiceItem } from './invoice-item';
 
 export interface ReceiptItem {
     id: number;
@@ -10,10 +10,10 @@ export interface ReceiptItem {
     boat_id: number; // حيت فـ الـ Table Row كاين الباطو، خاصو يكون فـ الـ Schema أو كـ Foreign Key
 
     // الحقول الأساسية
-    unit_count: number;    // الكمية (الوزن غالباً)
-    real_price: number;    // الثمن الحقيقي
-    box: number;           // عدد الصناديق
-    total_diff: number;    // الفرق الإجمالي أو القيمة الإجمالية
+    unit_count: number; // الكمية (الوزن غالباً)
+    real_price: number; // الثمن الحقيقي
+    box: number; // عدد الصناديق
+    total_diff: number; // الفرق الإجمالي أو القيمة الإجمالية
 
     // التوقيت
     created_at: string;
@@ -22,6 +22,7 @@ export interface ReceiptItem {
     // العلاقات (Optional - كيجيو مع الـ Eager Loading فـ Laravel)
     item?: Item;
     boat?: Boat;
+    invoice_item?: InvoiceItem;
 
     type: 'item' | 'commission' | 'freetax';
     receipt?: {
@@ -30,4 +31,7 @@ export interface ReceiptItem {
 }
 
 // هاد النوع كينفع ملي كنكونو كنصاوبو Item جديد (قبل ما يتكريا فـ الداتابيز)
-export type ReceiptItemInput = Omit<ReceiptItem, 'id' | 'created_at' | 'updated_at' | 'total_diff'>;
+export type ReceiptItemInput = Omit<
+    ReceiptItem,
+    'id' | 'created_at' | 'updated_at' | 'total_diff'
+>;

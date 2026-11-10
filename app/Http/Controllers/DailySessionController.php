@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Concerns\CalculatesSessionTotals;
 use App\Models\Attendance;
 use App\Models\Boat;
+use App\Models\Category;
 use App\Models\Caution;
 use App\Models\Company;
 use App\Models\Customer;
@@ -82,7 +83,7 @@ class DailySessionController extends Controller
                 })->orWhereHas('items.invoiceItem.invoice', function ($q2) {
                     $q2->where('type', 'purchase');
                 });
-            })->with(['items.invoiceItem.invoice', 'customer', 'boat', 'sessionZone.zone', 'saleCharges.sale.owner'])->get();
+            })->with(['items.item.category', 'items.invoiceItem.category', 'items.invoiceItem.invoice', 'customer', 'boat', 'sessionZone.zone', 'saleCharges.category', 'saleCharges.sale.owner'])->get();
 
         // 2. Ventes data & tracking
         $sales = Sale::where('session_id', $session->id)
@@ -101,7 +102,7 @@ class DailySessionController extends Controller
         $saleReceipts = Receipt::whereIn('session_zone_id', $sessionZoneIds)
             ->whereHas('items.invoiceItem.invoice', function ($q) {
                 $q->where('type', 'sale');
-            })->with(['items.invoiceItem.invoice', 'customer', 'boat', 'sessionZone.zone', 'saleCharges.sale.owner'])->get();
+            })->with(['items.item.category', 'items.invoiceItem.category', 'items.invoiceItem.invoice', 'customer', 'boat', 'sessionZone.zone', 'saleCharges.category', 'saleCharges.sale.owner'])->get();
 
         // 3. Ouvries (Attendance / Workers)
         $attendances = Attendance::whereIn('session_zone_id', $sessionZoneIds)
@@ -163,6 +164,7 @@ class DailySessionController extends Controller
             'customers' => Customer::all(['id', 'name']),
             'usines' => Usine::all(['id', 'name']),
             'boats' => Boat::all(['id', 'name']),
+            'categories' => Category::query()->orderBy('name')->get(['id', 'name']),
         ]);
     }
 

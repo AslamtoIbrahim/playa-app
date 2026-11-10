@@ -5,9 +5,19 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
-import { Table, TableBody } from '@/components/ui/table';
-import { computeReceiptRemainingAmount } from '@/lib/sales';
+import {
+    Table,
+    TableBody,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
+import {
+    computeReceiptRemainingAmount,
+    getReceiptCategoryInfo,
+} from '@/lib/sales';
 import { cn } from '@/lib/utils';
+import type { Category } from '@/types/category';
 import type { Customer } from '@/types/customer';
 import type { DailySession } from '@/types/daily-session';
 import type { Receipt } from '@/types/receipt';
@@ -25,6 +35,7 @@ interface Props {
     sales: Sale[];
     session: DailySession | null;
     customers: Customer[];
+    categories: Category[];
     trigger?: React.ReactNode;
 }
 
@@ -33,17 +44,25 @@ export function SellReceiptDialog({
     sales,
     session,
     customers,
+    categories,
     trigger,
 }: Props) {
     const [open, setOpen] = useState(false);
     const silentSaveCount = useRef<number>(0);
-    const charges = receipt.sale_charges ?? [];
-
+    const charges = useMemo(
+        () => receipt.sale_charges ?? [],
+        [receipt.sale_charges],
+    );
     const remaining = useMemo((): number => {
         {
             return computeReceiptRemainingAmount(receipt);
         }
     }, [receipt]);
+
+    const receiptCategory = useMemo(
+        () => getReceiptCategoryInfo(receipt),
+        [receipt],
+    );
 
     const handleSilentSave = (): void => {
         silentSaveCount.current += 1;
@@ -82,7 +101,7 @@ export function SellReceiptDialog({
                 )}
             </DialogTrigger>
 
-            <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
+            <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
                 <DialogHeader className="border-b p-6 pb-3">
                     <div className="flex w-full items-center justify-between pr-8">
                         <DialogTitle>{`Vendre le bon #${receipt.id}`}</DialogTitle>
@@ -126,17 +145,31 @@ export function SellReceiptDialog({
                     )}
                 </DialogHeader>
 
-                <div className="min-h-0 flex-1 overflow-y-auto">
+                <div className="min-h-0 flex-1 overflow-auto">
                     <Table>
+                        <TableHeader>
+                            <TableRow className="hover:bg-transparent">
+                                <TableHead className="min-w-44">
+                                    Vente
+                                </TableHead>
+                                <TableHead className="min-w-40">
+                                    Catégorie
+                                </TableHead>
+                                <TableHead className="w-32">Montant</TableHead>
+                                <TableHead className="w-40 text-right">
+                                    Maximum
+                                </TableHead>
+                                <TableHead className="w-15" />
+                            </TableRow>
+                        </TableHeader>
                         <TableBody>
                             {remaining > 0 && (
                                 <SaleChargeRow
                                     isNew
                                     receiptId={receipt.id}
+                                    categories={categories}
+                                    receiptCategory={receiptCategory}
                                     sales={sales}
-                                    excludedSaleIds={charges.map(
-                                        (charge) => charge.sale_id,
-                                    )}
                                     maxAvailable={remaining}
                                     onSilentSave={handleSilentSave}
                                     session={session}
@@ -151,6 +184,8 @@ export function SellReceiptDialog({
                                             key={charge.id}
                                             saleCharge={charge}
                                             receiptId={receipt.id}
+                                            categories={categories}
+                                            receiptCategory={receiptCategory}
                                             sales={sales}
                                             maxAvailable={
                                                 remaining +

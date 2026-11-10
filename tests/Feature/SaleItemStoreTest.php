@@ -130,6 +130,31 @@ test('a sale uses the customer and values from its invoice difference row', func
         );
 });
 
+test('selling an invoice item with a positive quantity keeps sale totals positive', function () {
+    $context = createSaleItemContext();
+
+    $this->actingAs($context['user'])
+        ->post(route('sale-items.store'), [
+            'sale_id' => $context['sale']->id,
+            'invoice_item_id' => $context['invoiceItem']->id,
+            'item_id' => $context['item']->id,
+            'boat_id' => $context['invoiceItem']->boat_id,
+            'unit_count' => 4,
+            'sale_price' => 25,
+            'real_price' => 20,
+            'is_with_tax' => true,
+        ])
+        ->assertSessionHasNoErrors();
+
+    $saleItem = SaleItem::firstOrFail();
+
+    expect((float) $saleItem->unit_count)->toBe(4.0)
+        ->and((float) $saleItem->amount)->toBe(80.0)
+        ->and((float) $saleItem->tax)->toBe(2.4)
+        ->and((float) $saleItem->total_diff)->toBe(20.0)
+        ->and((float) $context['sale']->fresh()->amount)->toBe(80.0);
+});
+
 test('global sale lines calculate boxes and weight from session category totals', function () {
     $context = createSaleItemContext();
 

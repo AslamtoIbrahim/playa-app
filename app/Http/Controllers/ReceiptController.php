@@ -169,7 +169,7 @@ class ReceiptController extends Controller
      */
     public function show(Request $request, Receipt $receipt)
     {
-        $receipt->load(['customer', 'sessionZone.dailySession', 'sessionZone.zone', 'boat', 'items.item']);
+        $receipt->load(['customer', 'sessionZone.dailySession', 'sessionZone.zone', 'boat', 'items.item.category', 'items.invoiceItem.category']);
 
         $session = $receipt->sessionZone?->dailySession;
         $openedFromSession = $session !== null

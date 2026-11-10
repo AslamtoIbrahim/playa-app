@@ -1,3 +1,4 @@
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     Table,
@@ -7,6 +8,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { getReceiptCategoryInfo } from '@/lib/sales';
 import { cn } from '@/lib/utils';
 import type { SaleCharge } from '@/types/sale-charge';
 
@@ -55,6 +57,10 @@ export function SaleReceiptChargesTable({
                                 Bons
                             </TableHead>
 
+                            <TableHead className="px-4 text-[10px] font-black uppercase">
+                                Catégorie
+                            </TableHead>
+
                             <TableHead className="w-36 px-4 text-right text-[10px] font-black uppercase">
                                 Montant imputé
                             </TableHead>
@@ -64,20 +70,52 @@ export function SaleReceiptChargesTable({
                     <TableBody>
                         {charges.map((charge) => {
                             const receipt = charge.receipt;
+                            const receiptCategory =
+                                getReceiptCategoryInfo(receipt);
+                            const categoryLabel =
+                                charge.category?.name ||
+                                receiptCategory.label ||
+                                '—';
+                            const isMerge =
+                                !charge.category && receiptCategory.isMerge;
 
                             return (
-                                    <TableRow key={charge.id} className="h-11 transition-colors hover:bg-orange-50/40 dark:hover:bg-orange-950/10">
+                                <TableRow
+                                    key={charge.id}
+                                    className="h-11 transition-colors hover:bg-orange-50/40 dark:hover:bg-orange-950/10"
+                                >
                                     <TableCell className="px-4 text-sm font-semibold text-slate-900 dark:text-neutral-100">
                                         {`#${charge.receipt_id}`}
                                     </TableCell>
 
-                                    <TableCell className="px-4 text-sm capitalize text-slate-600 dark:text-neutral-300">
+                                    <TableCell className="px-4 text-sm text-slate-600 capitalize dark:text-neutral-300">
                                         {receipt?.boat?.name ||
                                             receipt?.customer?.name ||
                                             '—'}
                                     </TableCell>
 
-                                    <TableCell className="px-4 text-right text-sm font-bold tabular-nums text-slate-900 dark:text-neutral-100">
+                                    <TableCell className="px-4 text-sm text-slate-600 dark:text-neutral-300">
+                                        {isMerge ? (
+                                            <Badge
+                                                variant="outline"
+                                                className="border-orange-200 bg-orange-50 text-[10px] font-bold text-orange-700 dark:border-orange-900/60 dark:bg-orange-950/40 dark:text-orange-300"
+                                            >
+                                                Merge
+                                            </Badge>
+                                        ) : (
+                                            <span
+                                                className={
+                                                    charge.category
+                                                        ? 'font-medium text-slate-700 dark:text-neutral-200'
+                                                        : 'italic'
+                                                }
+                                            >
+                                                {categoryLabel}
+                                            </span>
+                                        )}
+                                    </TableCell>
+
+                                    <TableCell className="px-4 text-right text-sm font-bold text-slate-900 tabular-nums dark:text-neutral-100">
                                         {`${Number(charge.amount).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DH`}
                                     </TableCell>
                                 </TableRow>
@@ -91,4 +129,3 @@ export function SaleReceiptChargesTable({
 }
 
 export default SaleReceiptChargesTable;
-

@@ -1,4 +1,5 @@
 import type { Attendance } from '@/types/attendance';
+import type { Category } from '@/types/category';
 import type { Invoice } from '@/types/invoice';
 import type { InvoiceItem } from '@/types/invoice-item';
 import type { Receipt } from '@/types/receipt';
@@ -77,6 +78,7 @@ export function computeSaleItemDifference(
     item: Pick<SaleItem, 'unit_count' | 'total_diff'>,
 ): number {
     const storedDifference = Number(item.total_diff);
+
     return storedDifference || 0;
 }
 
@@ -217,6 +219,49 @@ export function computeReceiptRemainingAmount(
     }
 
     return Number(receipt.total_amount) - computeReceiptSoldAmount(receipt);
+}
+
+/** Category inferred from the receipt items. */
+export interface ReceiptCategoryInfo {
+    /** The single category of the receipt, or null when empty/merged. */
+    category: Category | null;
+    /** Category name, `Merge` for several categories, or an empty string. */
+    label: string;
+    /** Whether the receipt items belong to more than one category. */
+    isMerge: boolean;
+}
+
+/**
+ * Infer the category of a receipt from its items.
+ *
+ * A single distinct category is returned as-is. Several distinct categories
+ * are reported as `Merge`, and a receipt without categorised items has an
+ * empty label so a manual category can be selected.
+ */
+export function getReceiptCategoryInfo(
+    receipt?: Pick<Receipt, 'items'> | null,
+): ReceiptCategoryInfo {
+    const categories = new Map<number, Category>();
+
+    for (const item of receipt?.items ?? []) {
+        const category = item.item?.category ?? item.invoice_item?.category;
+
+        if (category) {
+            categories.set(category.id, category);
+        }
+    }
+
+    const values = [...categories.values()];
+
+    if (values.length === 0) {
+        return { category: null, label: '', isMerge: false };
+    }
+
+    if (values.length === 1) {
+        return { category: values[0], label: values[0].name, isMerge: false };
+    }
+
+    return { category: null, label: 'Merge', isMerge: true };
 }
 
 /**

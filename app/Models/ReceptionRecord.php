@@ -11,6 +11,7 @@ class ReceptionRecord extends Model
         'usine_id',
         'session_id',
         'sale_item_id',
+        'category_id',
         'weight',
         'ttc',
         'amount',
@@ -20,6 +21,7 @@ class ReceptionRecord extends Model
 
     protected $casts = [
         'sale_item_id' => 'integer',
+        'category_id' => 'integer',
         'weight' => 'decimal:2',
         'ttc' => 'decimal:2',
         'amount' => 'decimal:2',
@@ -41,5 +43,10 @@ class ReceptionRecord extends Model
     public function saleItem(): BelongsTo
     {
         return $this->belongsTo(SaleItem::class, 'sale_item_id');
+    }
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(Category::class);
     }
 }

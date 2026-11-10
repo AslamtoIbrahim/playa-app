@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Receipt;
 use App\Models\Sale;
 use App\Models\SaleCharge;
-use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -19,12 +18,14 @@ class SaleChargeController extends Controller
         $validated = $request->validate([
             'sale_id' => 'required|exists:sales,id',
             'receipt_id' => 'required|exists:receipts,id',
+            'category_id' => 'nullable|integer|exists:categories,id',
             'amount' => 'required|numeric|min:0.01',
         ], [
             'sale_id.required' => 'Veuillez choisir une vente.',
             'sale_id.exists' => "Cette vente n'existe pas.",
             'receipt_id.required' => 'Le bon est obligatoire.',
             'receipt_id.exists' => "Ce bon n'existe pas.",
+            'category_id.exists' => "Cette catégorie n'existe pas.",
             'amount.required' => 'Le montant est obligatoire.',
             'amount.numeric' => 'Le montant doit être un nombre.',
             'amount.min' => 'Le montant doit être au moins 0.01.',
@@ -43,20 +44,6 @@ class SaleChargeController extends Controller
                 return back()->with('error', 'Action impossible : La session est clôturée.');
             }
 
-            // Active duplicate -> friendly error instead of 500.
-            $exists = SaleCharge::where('sale_id', $sale->id)->where('receipt_id', $receipt->id)->exists();
-
-            if ($exists) {
-                return back()->with('error', 'Ce bon est déjà imputé à cette vente.');
-            }
-
-            // Soft-deleted rows still occupy the UNIQUE(sale_id, receipt_id)
-            // index, so purge only trashed rows before re-using the pair.
-            SaleCharge::onlyTrashed()
-                ->where('sale_id', $sale->id)
-                ->where('receipt_id', $receipt->id)
-                ->forceDelete();
-
             $distributed = (float) $receipt->saleCharges()->sum('amount');
             $remaining = (float) $receipt->total_amount - $distributed;
 
@@ -68,19 +55,15 @@ class SaleChargeController extends Controller
                 return back()->with('error', "Montant insuffisant ! Max: $remaining");
             }
 
-            try {
-                $receipt->saleCharges()->create([
-                    'sale_id' => $sale->id,
-                    'amount' => $validated['amount'],
-                ]);
-            } catch (QueryException $e) {
-                // Race condition on the UNIQUE(sale_id, receipt_id) index.
-                return back()->with('error', 'Ce bon est déjà imputé à cette vente.');
-            }
+            $receipt->saleCharges()->create([
+                'sale_id' => $sale->id,
+                'category_id' => $validated['category_id'] ?? null,
+                'amount' => $validated['amount'],
+            ]);
 
             return back()->with([
                 'success' => 'Bon imputé à la vente !',
-                'updated_receipt' => $receipt->fresh()->load('saleCharges.sale.owner'),
+                'updated_receipt' => $receipt->fresh()->load('saleCharges.category', 'saleCharges.sale.owner'),
             ]);
         });
     }
@@ -89,10 +72,13 @@ class SaleChargeController extends Controller
     {
         $validated = $request->validate([
             'sale_id' => 'sometimes|integer|exists:sales,id',
+            'category_id' => 'sometimes|nullable|integer|exists:categories,id',
             'amount' => 'nullable|numeric|min:0.01',
         ], [
             'sale_id.integer' => "L'identifiant de vente est invalide.",
             'sale_id.exists' => "Cette vente n'existe pas.",
+            'category_id.integer' => "L'identifiant de catégorie est invalide.",
+            'category_id.exists' => "Cette catégorie n'existe pas.",
             'amount.numeric' => 'Le montant doit être un nombre.',
             'amount.min' => 'Le montant doit être au moins 0.01.',
         ]);
@@ -112,16 +98,6 @@ class SaleChargeController extends Controller
 
             $previousSaleId = (int) $saleCharge->sale_id;
             $targetSaleId = isset($validated['sale_id']) ? (int) $validated['sale_id'] : null;
-            $finalSaleId = $targetSaleId ?? $previousSaleId;
-
-            // Soft-deleted rows still occupy the UNIQUE(sale_id, receipt_id)
-            // index. Purge them first, otherwise even an amount-only update
-            // that rewrites the same sale_id crashes with a 500.
-            SaleCharge::onlyTrashed()
-                ->where('sale_id', $finalSaleId)
-                ->where('receipt_id', $saleCharge->receipt_id)
-                ->forceDelete();
-
             if ($targetSaleId !== null && $targetSaleId !== $previousSaleId) {
                 $sale = Sale::findOrFail($targetSaleId);
                 $receiptSessionId = $receipt?->sessionZone?->daily_session_id;
@@ -130,26 +106,17 @@ class SaleChargeController extends Controller
                     return back()->with('error', 'La vente doit appartenir à la même journée que le bon.');
                 }
 
-                $duplicate = SaleCharge::where('sale_id', $targetSaleId)
-                    ->where('receipt_id', $saleCharge->receipt_id)
-                    ->exists();
-
-                if ($duplicate) {
-                    return back()->with('error', 'Ce bon est déjà imputé à cette vente.');
-                }
             }
 
             $saleCharge->unsetRelation('sale');
 
-            try {
-                $saleCharge->update([
-                    'sale_id' => $targetSaleId ?? $saleCharge->sale_id,
-                    'amount' => $newAmount,
-                ]);
-            } catch (QueryException $e) {
-                // Race condition on the UNIQUE(sale_id, receipt_id) index.
-                return back()->with('error', 'Ce bon est déjà imputé à cette vente.');
-            }
+            $saleCharge->update([
+                'sale_id' => $targetSaleId ?? $saleCharge->sale_id,
+                'category_id' => array_key_exists('category_id', $validated)
+                    ? $validated['category_id']
+                    : $saleCharge->category_id,
+                'amount' => $newAmount,
+            ]);
 
             if ($targetSaleId !== null && $targetSaleId !== $previousSaleId) {
                 Sale::find($previousSaleId)?->calculateTotals();
@@ -167,7 +134,7 @@ class SaleChargeController extends Controller
 
         return back()->with([
             'success' => 'Supprimée !',
-            'updated_receipt' => $receipt?->fresh()->load('saleCharges.sale.owner'),
+            'updated_receipt' => $receipt?->fresh()->load('saleCharges.category', 'saleCharges.sale.owner'),
         ]);
     }
 }

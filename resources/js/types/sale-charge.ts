@@ -1,3 +1,4 @@
+import type { Category } from './category';
 import type { Receipt } from './receipt';
 import type { Sale } from './sale';
 
@@ -12,12 +13,17 @@ export interface SaleCharge {
     sale_id: number;
     receipt_id: number;
 
+    // Manually selected category. Null means the category is inferred from
+    // the receipt items (single category, Merge, or empty).
+    category_id: number | null;
+
     // Amount of the receipt assigned to this sale
     amount: number;
 
     // Relationships loaded from backend
     sale?: Sale;
     receipt?: Receipt;
+    category?: Category;
 
     created_at?: string;
     updated_at?: string;
@@ -30,5 +36,6 @@ export interface SaleCharge {
 export interface SaleChargeRequest {
     sale_id: number;
     receipt_id: number;
+    category_id: number | null;
     amount: number;
 }

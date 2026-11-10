@@ -59,8 +59,7 @@ export function useSaleDialog({
     const sellableItems = items.filter(
         (item) =>
             remaining(item) > 0 &&
-            (availableStockByCategory[item.category_id] ?? remaining(item)) >
-                0,
+            (availableStockByCategory[item.category_id] ?? remaining(item)) > 0,
     );
     const savedSaleRows = items.flatMap((item) =>
         (item.sale_items ?? [])
@@ -140,7 +139,7 @@ export function useSaleDialog({
             invoice_item_id: item.id,
             item_id: articleId,
             boat_id: item.boat_id,
-            unit_count: count > 0 ? -count : count,
+            unit_count: count,
             sale_price: salePrice,
             real_price: realPrice,
             is_with_tax:
