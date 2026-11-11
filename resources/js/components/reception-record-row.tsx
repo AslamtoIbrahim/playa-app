@@ -1,6 +1,7 @@
 import { Input } from '@/components/ui/input';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { useReceptionRecord } from '@/hooks/use-reception-record';
+import type { ReceptionRecordData } from '@/hooks/use-reception-record';
 import { formatDateDisplay } from '@/lib/date';
 import { cn } from '@/lib/utils';
 import type { ReceptionRecord } from '@/types/reception-record';
@@ -9,6 +10,7 @@ import { Loader2 } from 'lucide-react';
 interface Props {
     usineId: number;
     record: ReceptionRecord;
+    onDataChange?: (data: ReceptionRecordData) => void;
 }
 
 function formatNumber(value: number): string {
@@ -21,9 +23,18 @@ function formatNumber(value: number): string {
 const inputClassName =
     'h-9 w-full min-w-0 rounded-none border-none bg-transparent px-1 text-center text-sm font-semibold tabular-nums text-slate-900 shadow-none focus-visible:ring-1 focus-visible:ring-blue-500 focus-visible:ring-inset focus-visible:ring-offset-0 dark:text-neutral-100 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none';
 
-export default function ReceptionRecordRow({ usineId, record }: Props) {
+export default function ReceptionRecordRow({
+    usineId,
+    record,
+    onDataChange,
+}: Props) {
     const { data, loading, handleDataChange, handleBlur, handleKeyDown } =
         useReceptionRecord({ usineId, record });
+
+    const updateRecordData = (updates: Partial<ReceptionRecordData>) => {
+        onDataChange?.({ ...data, ...updates });
+        handleDataChange(updates);
+    };
 
     const weight = Number(data.weight) || 0;
     const amount = Number(data.amount) || 0;
@@ -54,7 +65,7 @@ export default function ReceptionRecordRow({ usineId, record }: Props) {
                     step="0.01"
                     value={data.weight}
                     onChange={(event) =>
-                        handleDataChange({ weight: event.target.value })
+                        updateRecordData({ weight: event.target.value })
                     }
                     onBlur={handleBlur}
                 />
@@ -74,7 +85,7 @@ export default function ReceptionRecordRow({ usineId, record }: Props) {
                     step="0.01"
                     value={data.ttc}
                     onChange={(event) =>
-                        handleDataChange({ ttc: event.target.value })
+                        updateRecordData({ ttc: event.target.value })
                     }
                     onBlur={handleBlur}
                 />
@@ -91,7 +102,7 @@ export default function ReceptionRecordRow({ usineId, record }: Props) {
                     step="0.01"
                     value={data.amount}
                     onChange={(event) =>
-                        handleDataChange({ amount: event.target.value })
+                        updateRecordData({ amount: event.target.value })
                     }
                     onBlur={handleBlur}
                 />
@@ -105,7 +116,7 @@ export default function ReceptionRecordRow({ usineId, record }: Props) {
                     step="0.01"
                     value={data.margin_percentage}
                     onChange={(event) =>
-                        handleDataChange({
+                        updateRecordData({
                             margin_percentage: event.target.value,
                         })
                     }
@@ -125,7 +136,7 @@ export default function ReceptionRecordRow({ usineId, record }: Props) {
                     }
                     aria-pressed={data.is_invoiced}
                     onClick={() =>
-                        handleDataChange({ is_invoiced: !data.is_invoiced })
+                        updateRecordData({ is_invoiced: !data.is_invoiced })
                     }
                     className={cn(
                         'h-9 w-full text-xs font-bold transition-colors hover:bg-slate-100 dark:hover:bg-neutral-800/70',
@@ -146,7 +157,7 @@ export default function ReceptionRecordRow({ usineId, record }: Props) {
                     step="1"
                     value={data.invoice_reference}
                     onChange={(event) =>
-                        handleDataChange({
+                        updateRecordData({
                             invoice_reference: event.target.value,
                         })
                     }

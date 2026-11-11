@@ -1,5 +1,9 @@
 import ReceptionRecordRow from '@/components/reception-record-row';
 import {
+    ReceptionRecordColumnFilter,
+    ReceptionRecordGlobalSearch,
+} from '@/components/reception-record-filters';
+import {
     Table,
     TableBody,
     TableCell,
@@ -7,32 +11,114 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useReceptionRecordFilters } from '@/hooks/use-reception-record-filters';
+import type { ReceptionRecordData } from '@/hooks/use-reception-record';
 import { usines as usinesIndex } from '@/routes';
 import type { ReceptionRecord } from '@/types/reception-record';
 import type { Usine } from '@/types/usine';
 import { Head, router } from '@inertiajs/react';
 import { ArrowLeft, Building2, Package } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface Props {
     usine: Usine;
     receptionRecords: ReceptionRecord[];
 }
 
-const headings = [
-    'DATE',
-    'RECEP',
-    'DESIGNATION',
-    'ORIGINE',
-    'TTC',
-    'PRIX MOY',
-    'ACHAT',
-    '%',
-    'VENTE',
-    'FACT',
-    'RÉF',
+const columns: {
+    heading: string;
+    filterColumn:
+        | 'date'
+        | 'weight'
+        | 'designation'
+        | 'origin'
+        | 'ttc'
+        | 'averagePrice'
+        | 'amount'
+        | 'margin'
+        | 'sale'
+        | 'invoiced'
+        | 'reference';
+    optionColumn?: 'date' | 'designation' | 'origin' | 'invoiced';
+}[] = [
+    { heading: 'DATE', filterColumn: 'date', optionColumn: 'date' },
+    { heading: 'RECEP', filterColumn: 'weight' },
+    {
+        heading: 'DESIGNATION',
+        filterColumn: 'designation',
+        optionColumn: 'designation',
+    },
+    { heading: 'ORIGINE', filterColumn: 'origin', optionColumn: 'origin' },
+    { heading: 'TTC', filterColumn: 'ttc' },
+    { heading: 'PRIX MOY', filterColumn: 'averagePrice' },
+    { heading: 'ACHAT', filterColumn: 'amount' },
+    { heading: '%', filterColumn: 'margin' },
+    { heading: 'VENTE', filterColumn: 'sale' },
+    { heading: 'FACT', filterColumn: 'invoiced', optionColumn: 'invoiced' },
+    { heading: 'RÉF', filterColumn: 'reference' },
 ];
 
+const formatTotal = (value: number): string =>
+    value.toLocaleString('fr-FR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    });
+
 export default function UsineShowPage({ usine, receptionRecords }: Props) {
+    const [localRecords, setLocalRecords] = useState(receptionRecords);
+    const [showColumnFilters, setShowColumnFilters] = useState(false);
+    const {
+        filters,
+        setFilters,
+        filteredRecords,
+        optionsByColumn,
+        totals,
+        activeFilterCount,
+        hasActiveFilters,
+    } = useReceptionRecordFilters(localRecords);
+
+    useEffect(() => {
+        setLocalRecords(receptionRecords);
+    }, [receptionRecords]);
+
+    const handleRecordDataChange = (
+        recordId: number,
+        data: ReceptionRecordData,
+    ) => {
+        setLocalRecords((current) =>
+            current.map((record) =>
+                record.id === recordId
+                    ? {
+                          ...record,
+                          weight: data.weight,
+                          ttc: data.ttc,
+                          amount: data.amount,
+                          margin_percentage: data.margin_percentage,
+                          is_invoiced: data.is_invoiced,
+                          invoice_reference:
+                              data.invoice_reference.trim() === ''
+                                  ? null
+                                  : Number(data.invoice_reference),
+                      }
+                    : record,
+            ),
+        );
+    };
+
+    const totalValues = [
+        'Totaux',
+        formatTotal(totals.weight),
+        '',
+        '',
+        formatTotal(totals.ttc),
+        formatTotal(totals.averagePrice),
+        formatTotal(totals.amount),
+        formatTotal(totals.margin),
+        formatTotal(totals.sale),
+        '',
+        '',
+    ];
+
     return (
         <>
             <Head title={`Réceptions - ${usine.name}`} />
@@ -57,42 +143,97 @@ export default function UsineShowPage({ usine, receptionRecords }: Props) {
                     </h1>
                 </div>
 
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <ReceptionRecordGlobalSearch
+                        value={filters.search}
+                        onChange={(search) =>
+                            setFilters((current) => ({ ...current, search }))
+                        }
+                        showColumnFilters={showColumnFilters}
+                        activeFilterCount={activeFilterCount}
+                        onToggleColumnFilters={() =>
+                            setShowColumnFilters((visible) => !visible)
+                        }
+                    />
+                </div>
+
                 <div className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900/90">
                     <Table>
                         <TableHeader className="bg-neutral-50/50 dark:bg-neutral-800/50">
+                            {hasActiveFilters && (
+                                <TableRow
+                                    aria-label="Totaux des réceptions filtrées"
+                                    className="h-11 border-b border-neutral-200 bg-neutral-100/70 hover:bg-neutral-100/70 dark:border-neutral-800 dark:bg-neutral-800/70 dark:hover:bg-neutral-800/70"
+                                >
+                                    {totalValues.map((value, index) => (
+                                        <TableHead
+                                            key={columns[index].heading}
+                                            className={`text-center ${
+                                                value
+                                                    ? 'font-bold text-foreground tabular-nums'
+                                                    : ''
+                                            }`}
+                                        >
+                                            {value}
+                                        </TableHead>
+                                    ))}
+                                </TableRow>
+                            )}
                             <TableRow className="border-b border-neutral-200 text-sm hover:bg-transparent dark:border-neutral-800">
-                                {headings.map((heading) => (
+                                {columns.map((column) => (
                                     <TableHead
-                                        key={heading}
+                                        key={column.heading}
                                         className={`text-center leading-tight font-bold text-neutral-800 dark:text-neutral-200 ${
-                                            heading === 'PRIX MOY.' ||
-                                            heading === 'VAL. VENTE'
+                                            column.heading === 'PRIX MOY' ||
+                                            column.heading === 'VENTE'
                                                 ? 'whitespace-nowrap'
                                                 : 'whitespace-normal'
                                         }`}
                                     >
-                                        {heading}
+                                        <span className="inline-flex items-center justify-center">
+                                            {column.heading}
+                                            {showColumnFilters && (
+                                                <ReceptionRecordColumnFilter
+                                                    column={column.filterColumn}
+                                                    title={column.heading}
+                                                    options={
+                                                        column.optionColumn
+                                                            ? optionsByColumn[
+                                                                  column
+                                                                      .optionColumn
+                                                              ]
+                                                            : undefined
+                                                    }
+                                                    filters={filters}
+                                                    setFilters={setFilters}
+                                                />
+                                            )}
+                                        </span>
                                     </TableHead>
                                 ))}
                             </TableRow>
                         </TableHeader>
 
                         <TableBody>
-                            {receptionRecords.map((record, index) => (
+                            {filteredRecords.map((record, index) => (
                                 <ReceptionRecordRow
                                     key={`${record.id}-${record.designation}-${index}`}
                                     usineId={usine.id}
                                     record={record}
+                                    onDataChange={(data) =>
+                                        handleRecordDataChange(record.id, data)
+                                    }
                                 />
                             ))}
-                            {receptionRecords.length === 0 && (
+                            {filteredRecords.length === 0 && (
                                 <TableRow>
                                     <TableCell
-                                        colSpan={headings.length}
+                                        colSpan={columns.length}
                                         className="py-16 text-center font-medium text-muted-foreground italic dark:text-neutral-400"
                                     >
-                                        Aucune réception enregistrée pour cette
-                                        usine.
+                                        {hasActiveFilters
+                                            ? 'Aucune réception ne correspond aux filtres sélectionnés.'
+                                            : 'Aucune réception enregistrée pour cette usine.'}
                                     </TableCell>
                                 </TableRow>
                             )}
@@ -102,7 +243,9 @@ export default function UsineShowPage({ usine, receptionRecords }: Props) {
                     <div className="flex items-center justify-between border-t border-neutral-200 bg-neutral-50/50 px-6 py-3 dark:border-neutral-800 dark:bg-neutral-800/50">
                         <div className="flex items-center gap-2 text-xs font-bold tracking-widest text-neutral-500 uppercase dark:text-neutral-400">
                             <Package className="h-4 w-4" />
-                            {receptionRecords.length} réception(s) au total
+                            {filteredRecords.length} réception(s) affichée(s)
+                            {hasActiveFilters &&
+                                ` sur ${localRecords.length} au total`}
                         </div>
                     </div>
                 </div>

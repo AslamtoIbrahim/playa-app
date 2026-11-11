@@ -18,7 +18,7 @@ interface UseReceptionRecordProps {
     record: ReceptionRecord;
 }
 
-interface ReceptionRecordData {
+export interface ReceptionRecordData {
     weight: string;
     ttc: string;
     amount: string;
