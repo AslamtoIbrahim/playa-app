@@ -221,6 +221,25 @@ class UsineController extends Controller
             ->map(fn (array $entry) => $entry['category'])
             ->values();
 
+        $boxFee = (float) $sessionSales->sum('boxes');
+        $boxFeeWeights = $categories
+            ->mapWithKeys(fn (array $entry) => [
+                $entry['category']->id => max(0, $entry['amount']),
+            ])
+            ->all();
+        $categoryMap = $categories
+            ->mapWithKeys(fn (array $entry) => [
+                $entry['category']->id => $entry['category'],
+            ])
+            ->all();
+
+        foreach ($this->allocateAmount($boxFee, $boxFeeWeights, $categoryMap) as $categoryId => $distribution) {
+            $categoryTotals[$categoryId]['amount'] = round(
+                $categoryTotals[$categoryId]['amount'] + $distribution['amount'],
+                2,
+            );
+        }
+
         foreach ($sessionSales as $sale) {
             foreach ($sale->charges as $charge) {
                 foreach ($this->distributeCharge($charge, $relevantCategories) as $categoryId => $distribution) {
@@ -264,6 +283,31 @@ class UsineController extends Controller
                     'amount' => round($amount, 2),
                 ],
             ];
+        }
+
+        $receiptWeights = [];
+        $receiptCategories = [];
+
+        foreach ($charge->receipt?->items ?? [] as $receiptItem) {
+            $category = $receiptItem->item?->category
+                ?? $receiptItem->invoiceItem?->category;
+
+            if (! $category) {
+                continue;
+            }
+
+            $categoryId = $category->id;
+            $receiptWeights[$categoryId] = ($receiptWeights[$categoryId] ?? 0)
+                + max(0, (float) $receiptItem->unit_count * (float) $receiptItem->real_price);
+            $receiptCategories[$categoryId] = $category;
+        }
+
+        if ($receiptCategories !== []) {
+            if (array_sum($receiptWeights) <= 0.00001) {
+                $receiptWeights = array_fill_keys(array_keys($receiptCategories), 1.0);
+            }
+
+            return $this->allocateAmount($amount, $receiptWeights, $receiptCategories);
         }
 
         $fallbackWeights = [];
