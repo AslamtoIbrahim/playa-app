@@ -56,6 +56,8 @@ class UsineController extends Controller
             ])
             ->get();
 
+        $calculatedAmounts = [];
+
         foreach ($salesBySession as $sessionSales) {
             $session = $sessionSales->first()->session;
 
@@ -73,6 +75,7 @@ class UsineController extends Controller
 
             foreach ($categories as $entry) {
                 $category = $entry['category'];
+                $calculatedAmounts[$session->id][$category->id] = $entry['amount'];
 
                 $record = $sessionRecords->first(function (ReceptionRecord $record) use ($category) {
                     if ($record->category_id !== null) {
@@ -151,7 +154,7 @@ class UsineController extends Controller
                 'saleItem.invoiceItem.category',
             ])
             ->get()
-            ->map(function (ReceptionRecord $record) {
+            ->map(function (ReceptionRecord $record) use ($calculatedAmounts) {
                 $session = $record->session;
                 $category = $record->category
                     ?? $record->saleItem?->item?->category
@@ -168,7 +171,8 @@ class UsineController extends Controller
                     'designation' => $category?->name ?? '—',
                     'weight' => $record->weight,
                     'ttc' => $record->ttc,
-                    'amount' => $record->amount,
+                    'amount' => $calculatedAmounts[$record->session_id][$category?->id]
+                        ?? $record->amount,
                     'margin_percentage' => $record->margin_percentage,
                     'is_invoiced' => $record->is_invoiced,
                     'invoice_reference' => $record->invoice_reference,
@@ -189,10 +193,8 @@ class UsineController extends Controller
     /**
      * Category totals of a usine session.
      *
-     * Sale items keep the historical session-total scaling. Receipt charges are
-     * attributed afterwards so their distribution stays exact: an explicit
-     * category owns the whole charge, otherwise the receipt item values drive
-     * the split, with an equal fallback across the session categories.
+     * Sale item values form the category base; receipt charges are then
+     * allocated to categories without scaling them to the session sell total.
      */
     private function buildSessionCategoryTotals(Collection $sessionSales, DailySession $session): Collection
     {
@@ -210,39 +212,6 @@ class UsineController extends Controller
                 'amount' => (float) $entries->sum('amount'),
             ])
             ->values();
-
-        if ($categories->isNotEmpty()) {
-            $totals = $this->sessionTotals(
-                $session->sessionZones->pluck('id')->all(),
-            );
-
-            $sessionTotal = (float) $totals['sell'];
-            $categoryBaseTotal = (float) $categories->sum('amount');
-            $categoryCount = max($categories->count(), 1);
-
-            // The session total is the reference value: split it across the
-            // categories instead of repeating it on every row.
-            $categories = $categories
-                ->map(function (array $entry) use ($categoryBaseTotal, $sessionTotal, $categoryCount) {
-                    $share = abs($categoryBaseTotal) > 0.00001
-                        ? $sessionTotal * ($entry['amount'] / $categoryBaseTotal)
-                        : $sessionTotal / $categoryCount;
-
-                    return [
-                        ...$entry,
-                        'amount' => round($share, 2),
-                    ];
-                })
-                ->values();
-
-            $difference = round($sessionTotal - (float) $categories->sum('amount'), 2);
-
-            if (abs($difference) > 0.00001) {
-                $lastEntry = $categories->pop();
-                $lastEntry['amount'] = round($lastEntry['amount'] + $difference, 2);
-                $categories->push($lastEntry);
-            }
-        }
 
         $categoryTotals = $categories
             ->keyBy(fn (array $entry) => $entry['category']->id)
@@ -295,34 +264,6 @@ class UsineController extends Controller
                     'amount' => round($amount, 2),
                 ],
             ];
-        }
-
-        $weights = [];
-        $itemCategories = [];
-
-        foreach ($charge->receipt?->items ?? [] as $item) {
-            $category = $item->item?->category ?? $item->invoiceItem?->category;
-
-            if (! $category) {
-                continue;
-            }
-
-            $value = abs((float) $item->total_diff);
-
-            if ($value <= 0.00001) {
-                $value = abs((float) $item->unit_count * (float) $item->real_price);
-            }
-
-            if ($value <= 0.00001) {
-                continue;
-            }
-
-            $weights[$category->id] = ($weights[$category->id] ?? 0) + $value;
-            $itemCategories[$category->id] = $category;
-        }
-
-        if ($weights !== []) {
-            return $this->allocateAmount($amount, $weights, $itemCategories);
         }
 
         $fallbackWeights = [];
