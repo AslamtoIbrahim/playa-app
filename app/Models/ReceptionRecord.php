@@ -16,6 +16,7 @@ class ReceptionRecord extends Model
         'ttc',
         'amount',
         'margin_percentage',
+        'is_invoiced',
         'invoice_reference',
     ];
 

@@ -391,11 +391,13 @@ test('users can create update and delete reception records for an usine', functi
             'ttc' => 25,
             'amount' => 40,
             'margin_percentage' => 3,
+            'is_invoiced' => true,
             'invoice_reference' => 1798,
         ])
         ->assertRedirect();
 
     expect($record->fresh()->amount)->toBe('40.00')
+        ->and($record->fresh()->is_invoiced)->toBeTrue()
         ->and($record->fresh()->invoice_reference)->toBe(1798);
 
     $this->actingAs($user)

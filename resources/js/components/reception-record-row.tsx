@@ -1,35 +1,14 @@
-import InputError from '@/components/input-error';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { TableCell, TableRow } from '@/components/ui/table';
+import { useReceptionRecord } from '@/hooks/use-reception-record';
 import { formatDateDisplay } from '@/lib/date';
-import { destroy, update } from '@/routes/usines/reception-records';
+import { cn } from '@/lib/utils';
 import type { ReceptionRecord } from '@/types/reception-record';
-import { router } from '@inertiajs/react';
-import { Check, Loader2, Trash2 } from 'lucide-react';
-import { useState } from 'react';
-import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react';
 
 interface Props {
     usineId: number;
     record: ReceptionRecord;
-}
-
-interface FormValues {
-    session_id: string;
-    weight: string;
-    ttc: string;
-    amount: string;
-    margin_percentage: string;
-    invoice_reference: string;
-}
-
-type FormErrors = Partial<Record<keyof FormValues, string>>;
-
-function toFixedDecimal(value: string | number): string {
-    const parsed = Number(String(value).replace(',', '.'));
-
-    return Number.isFinite(parsed) ? parsed.toFixed(2) : '0.00';
 }
 
 function formatNumber(value: number): string {
@@ -39,225 +18,139 @@ function formatNumber(value: number): string {
     }).format(value);
 }
 
+const inputClassName =
+    'h-9 w-full min-w-0 rounded-none border-none bg-transparent px-1 text-center text-xs font-semibold tabular-nums text-slate-900 shadow-none focus-visible:ring-1 focus-visible:ring-blue-500 focus-visible:ring-inset focus-visible:ring-offset-0 dark:text-neutral-100 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none';
+
 export default function ReceptionRecordRow({ usineId, record }: Props) {
-    const [form, setForm] = useState<FormValues>(() => ({
-        session_id: String(record.session_id),
-        weight: toFixedDecimal(record.weight),
-        ttc: toFixedDecimal(record.ttc),
-        amount: toFixedDecimal(record.amount),
-        margin_percentage: toFixedDecimal(record.margin_percentage),
-        invoice_reference: record.invoice_reference
-            ? String(record.invoice_reference)
-            : '',
-    }));
-    const [errors, setErrors] = useState<FormErrors>({});
-    const [processing, setProcessing] = useState(false);
+    const { data, loading, handleDataChange, handleBlur, handleKeyDown } =
+        useReceptionRecord({ usineId, record });
 
-    const weight = Number(form.weight) || 0;
-    const amount = Number(form.amount) || 0;
-    const margin = Number(form.margin_percentage) || 0;
-    const isDirty =
-        form.weight !== toFixedDecimal(record.weight) ||
-        form.ttc !== toFixedDecimal(record.ttc) ||
-        form.amount !== toFixedDecimal(record.amount) ||
-        form.margin_percentage !== toFixedDecimal(record.margin_percentage) ||
-        form.invoice_reference !==
-            (record.invoice_reference ? String(record.invoice_reference) : '');
-
-    const updateField = (field: keyof FormValues, value: string) => {
-        setForm((current) => {
-            return { ...current, [field]: value };
-        });
-    };
-
-    const normalizeDecimal = (field: keyof FormValues) => {
-        if (field !== 'invoice_reference' && field !== 'session_id') {
-            updateField(field, toFixedDecimal(form[field]));
-        }
-    };
-
-    const save = () => {
-        setProcessing(true);
-        setErrors({});
-
-        router.patch(
-            update({
-                usine: usineId,
-                receptionRecord: record.id,
-            }).url,
-            {
-                ...form,
-                invoice_reference: form.invoice_reference || null,
-            },
-            {
-                preserveScroll: true,
-                onSuccess: () => {
-                    toast.success('Réception mise à jour avec succès.');
-                },
-                onError: (validationErrors) => {
-                    setErrors(validationErrors as FormErrors);
-                },
-                onFinish: () => setProcessing(false),
-            },
-        );
-    };
-
-    const remove = () => {
-        if (!window.confirm('Supprimer cette réception ?')) {
-            return;
-        }
-
-        router.delete(
-            destroy({
-                usine: usineId,
-                receptionRecord: record.id,
-            }).url,
-            {
-                preserveScroll: true,
-                onSuccess: () => toast.success('Réception supprimée.'),
-                onError: () =>
-                    toast.error('Impossible de supprimer cette réception.'),
-            },
-        );
-    };
-
-    const inputClassName =
-        'h-10 min-w-20 rounded-none border-none bg-transparent text-center text-xs shadow-none focus-visible:ring-1 focus-visible:ring-blue-500';
+    const weight = Number(data.weight) || 0;
+    const amount = Number(data.amount) || 0;
+    const margin = Number(data.margin_percentage) || 0;
 
     return (
-        <TableRow className="group border-b border-slate-100 text-center font-semibold transition-colors hover:bg-blue-50/40 dark:border-neutral-800 dark:hover:bg-blue-950/20">
+        <TableRow
+            onKeyDown={handleKeyDown}
+            className="border-b border-slate-100 text-center font-semibold transition-colors hover:bg-slate-50 dark:border-neutral-800 dark:hover:bg-neutral-800/70"
+        >
             <TableCell className="whitespace-nowrap">
-                {formatDateDisplay(record.session_date)}
+                <div className="flex items-center justify-center gap-1">
+                    {formatDateDisplay(record.session_date)}
+                    {loading && (
+                        <Loader2
+                            aria-label="Enregistrement en cours"
+                            className="h-3 w-3 animate-spin text-muted-foreground"
+                        />
+                    )}
+                </div>
             </TableCell>
-            <TableCell>
+            <TableCell className="p-0">
                 <Input
                     aria-label="Réception"
                     className={inputClassName}
                     type="number"
                     min="0"
                     step="0.01"
-                    value={form.weight}
+                    value={data.weight}
                     onChange={(event) =>
-                        updateField('weight', event.target.value)
+                        handleDataChange({ weight: event.target.value })
                     }
-                    onBlur={() => normalizeDecimal('weight')}
-                    aria-invalid={Boolean(errors.weight)}
-                    title={errors.weight}
+                    onBlur={handleBlur}
                 />
-                <InputError message={errors.weight} />
             </TableCell>
             <TableCell className="text-xs font-bold uppercase">
                 {record.designation}
             </TableCell>
             <TableCell className="text-xs">{record.origin || '—'}</TableCell>
-            <TableCell>
+            <TableCell className="p-0">
                 <Input
                     aria-label="TTC"
                     className={inputClassName}
                     type="number"
                     min="0"
                     step="0.01"
-                    value={form.ttc}
-                    onChange={(event) => updateField('ttc', event.target.value)}
-                    onBlur={() => normalizeDecimal('ttc')}
-                    aria-invalid={Boolean(errors.ttc)}
-                    title={errors.ttc}
+                    value={data.ttc}
+                    onChange={(event) =>
+                        handleDataChange({ ttc: event.target.value })
+                    }
+                    onBlur={handleBlur}
                 />
-                <InputError message={errors.ttc} />
             </TableCell>
-            <TableCell className="bg-slate-50/40 text-right text-xs font-medium dark:bg-neutral-900/40">
+            <TableCell className="text-right text-xs font-medium tabular-nums">
                 {formatNumber(weight > 0 ? amount / weight : 0)}
             </TableCell>
-            <TableCell>
+            <TableCell className="p-0">
                 <Input
                     aria-label="Valeur d'achat"
                     className={inputClassName}
                     type="number"
                     min="0"
                     step="0.01"
-                    value={form.amount}
+                    value={data.amount}
                     onChange={(event) =>
-                        updateField('amount', event.target.value)
+                        handleDataChange({ amount: event.target.value })
                     }
-                    onBlur={() => normalizeDecimal('amount')}
-                    aria-invalid={Boolean(errors.amount)}
-                    title={errors.amount}
+                    onBlur={handleBlur}
                 />
-                <InputError message={errors.amount} />
             </TableCell>
-            <TableCell>
+            <TableCell className="p-0">
                 <Input
                     aria-label="Pourcentage"
                     className={inputClassName}
                     type="number"
                     min="0"
                     step="0.01"
-                    value={form.margin_percentage}
+                    value={data.margin_percentage}
                     onChange={(event) =>
-                        updateField('margin_percentage', event.target.value)
+                        handleDataChange({
+                            margin_percentage: event.target.value,
+                        })
                     }
-                    onBlur={() => normalizeDecimal('margin_percentage')}
-                    aria-invalid={Boolean(errors.margin_percentage)}
-                    title={errors.margin_percentage}
+                    onBlur={handleBlur}
                 />
-                <InputError message={errors.margin_percentage} />
             </TableCell>
-            <TableCell className="bg-slate-50/40 text-right text-xs font-semibold dark:bg-neutral-900/40">
+            <TableCell className="text-right text-xs font-semibold tabular-nums">
                 {formatNumber(amount + weight * margin)}
             </TableCell>
-            <TableCell
-                className={
-                    record.is_invoiced
-                        ? 'font-bold text-green-600'
-                        : 'font-bold text-red-600'
-                }
-            >
-                {record.is_invoiced ? 'V' : 'F'}
+            <TableCell className="p-0 text-center">
+                <button
+                    type="button"
+                    aria-label={
+                        data.is_invoiced
+                            ? 'Marquer la réception comme non facturée'
+                            : 'Marquer la réception comme facturée'
+                    }
+                    aria-pressed={data.is_invoiced}
+                    onClick={() =>
+                        handleDataChange({ is_invoiced: !data.is_invoiced })
+                    }
+                    className={cn(
+                        'h-9 w-full text-xs font-bold transition-colors hover:bg-slate-100 dark:hover:bg-neutral-800/70',
+                        data.is_invoiced
+                            ? 'text-green-600 dark:text-green-400'
+                            : 'text-red-600 dark:text-red-400',
+                    )}
+                >
+                    {data.is_invoiced ? 'V' : 'F'}
+                </button>
             </TableCell>
-            <TableCell>
+            <TableCell className="p-0">
                 <Input
                     aria-label="Bon de réception"
                     className={inputClassName}
                     type="number"
                     min="0"
                     step="1"
-                    value={form.invoice_reference}
+                    placeholder="—"
+                    value={data.invoice_reference}
                     onChange={(event) =>
-                        updateField('invoice_reference', event.target.value)
+                        handleDataChange({
+                            invoice_reference: event.target.value,
+                        })
                     }
-                    aria-invalid={Boolean(errors.invoice_reference)}
-                    title={errors.invoice_reference}
+                    onBlur={handleBlur}
                 />
-                <InputError message={errors.invoice_reference} />
-            </TableCell>
-            <TableCell>
-                <div className="flex justify-center gap-1">
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        aria-label="Enregistrer la réception"
-                        disabled={processing || !isDirty}
-                        onClick={save}
-                        className="h-8 w-8 text-green-600 opacity-60 transition-opacity group-hover:opacity-100 disabled:opacity-25"
-                    >
-                        {processing ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                            <Check className="h-4 w-4" />
-                        )}
-                    </Button>
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        aria-label="Supprimer la réception"
-                        onClick={remove}
-                        className="h-8 w-8 text-red-500 opacity-60 transition-opacity group-hover:opacity-100"
-                    >
-                        <Trash2 className="h-4 w-4" />
-                    </Button>
-                </div>
             </TableCell>
         </TableRow>
     );

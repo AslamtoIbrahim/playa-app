@@ -17,6 +17,7 @@ class ReceptionRecordController extends Controller
             'ttc' => ['required', 'numeric', 'min:0'],
             'amount' => ['required', 'numeric', 'min:0'],
             'margin_percentage' => ['required', 'numeric', 'min:0'],
+            'is_invoiced' => ['sometimes', 'boolean'],
             'invoice_reference' => ['nullable', 'integer', 'min:0'],
         ]);
 
@@ -36,6 +37,7 @@ class ReceptionRecordController extends Controller
             'ttc' => ['required', 'numeric', 'min:0'],
             'amount' => ['required', 'numeric', 'min:0'],
             'margin_percentage' => ['required', 'numeric', 'min:0'],
+            'is_invoiced' => ['sometimes', 'boolean'],
             'invoice_reference' => ['nullable', 'integer', 'min:0'],
         ]);
 

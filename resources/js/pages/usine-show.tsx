@@ -1,3 +1,4 @@
+import ReceptionRecordRow from '@/components/reception-record-row';
 import {
     Table,
     TableBody,
@@ -6,24 +7,37 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import ReceptionRecordRow from '@/components/reception-record-row';
 import { usines as usinesIndex } from '@/routes';
 import type { ReceptionRecord } from '@/types/reception-record';
 import type { Usine } from '@/types/usine';
 import { Head, router } from '@inertiajs/react';
-import { ArrowLeft, Building2 } from 'lucide-react';
+import { ArrowLeft, Building2, Package } from 'lucide-react';
 
 interface Props {
     usine: Usine;
     receptionRecords: ReceptionRecord[];
 }
 
+const headings = [
+    'DATE',
+    'RECEP',
+    'DESIGNATION',
+    'ORIGINE',
+    'TTC',
+    'PRIX MOYEN',
+    "VALEUR D'ACHAT",
+    'POURCENTAGE',
+    'VALEUR DE VENTE',
+    'FACTURATION',
+    'BON RECEP',
+];
+
 export default function UsineShowPage({ usine, receptionRecords }: Props) {
     return (
         <>
             <Head title={`Réceptions - ${usine.name}`} />
 
-            <div className="flex h-full flex-1 flex-col gap-4 bg-neutral-100 p-4 lg:p-8 dark:bg-neutral-950">
+            <div className="flex h-full flex-1 flex-col gap-4 p-4 lg:p-8">
                 <button
                     type="button"
                     onClick={() => router.visit(usinesIndex().url)}
@@ -33,7 +47,7 @@ export default function UsineShowPage({ usine, receptionRecords }: Props) {
                     Retour aux usines
                 </button>
 
-                <div>
+                <div className="px-2">
                     <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
                         <Building2 className="h-4 w-4" />
                         {usine.name}
@@ -43,27 +57,14 @@ export default function UsineShowPage({ usine, receptionRecords }: Props) {
                     </h1>
                 </div>
 
-                <div className="overflow-x-auto rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900/90">
-                    <Table className="min-w-[1400px]">
-                        <TableHeader>
-                            <TableRow className="border-0 bg-blue-500 hover:bg-blue-500">
-                                {[
-                                    'DATE',
-                                    'RECEP',
-                                    'DESIGNATION',
-                                    'ORIGINE',
-                                    'TTC',
-                                    'PRIX MOYEN',
-                                    "VALEUR D'ACHAT",
-                                    'POURCENTAGE',
-                                    'VALEUR DE VENTE',
-                                    'FACTURATION',
-                                    'BON RECEP',
-                                    'ACTIONS',
-                                ].map((heading) => (
+                <div className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900/90">
+                    <Table>
+                        <TableHeader className="bg-neutral-50/50 dark:bg-neutral-800/50">
+                            <TableRow className="border-b border-neutral-200 text-sm hover:bg-transparent dark:border-neutral-800">
+                                {headings.map((heading) => (
                                     <TableHead
                                         key={heading}
-                                        className="text-center font-bold whitespace-nowrap text-white"
+                                        className="text-center leading-tight font-bold whitespace-normal text-neutral-800 dark:text-neutral-200"
                                     >
                                         {heading}
                                     </TableHead>
@@ -82,8 +83,8 @@ export default function UsineShowPage({ usine, receptionRecords }: Props) {
                             {receptionRecords.length === 0 && (
                                 <TableRow>
                                     <TableCell
-                                        colSpan={12}
-                                        className="py-20 text-center text-muted-foreground"
+                                        colSpan={headings.length}
+                                        className="py-16 text-center font-medium text-muted-foreground italic dark:text-neutral-400"
                                     >
                                         Aucune réception enregistrée pour cette
                                         usine.
@@ -92,6 +93,13 @@ export default function UsineShowPage({ usine, receptionRecords }: Props) {
                             )}
                         </TableBody>
                     </Table>
+
+                    <div className="flex items-center justify-between border-t border-neutral-200 bg-neutral-50/50 px-6 py-3 dark:border-neutral-800 dark:bg-neutral-800/50">
+                        <div className="flex items-center gap-2 text-xs font-bold tracking-widest text-neutral-500 uppercase dark:text-neutral-400">
+                            <Package className="h-4 w-4" />
+                            {receptionRecords.length} réception(s) au total
+                        </div>
+                    </div>
                 </div>
             </div>
         </>
