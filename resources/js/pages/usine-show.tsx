@@ -24,12 +24,12 @@ const headings = [
     'DESIGNATION',
     'ORIGINE',
     'TTC',
-    'PRIX MOYEN',
-    "VALEUR D'ACHAT",
-    'POURCENTAGE',
-    'VALEUR DE VENTE',
-    'FACTURATION',
-    'BON RECEP',
+    'PRIX MOY',
+    'ACHAT',
+    '%',
+    'VENTE',
+    'FACT',
+    'RÉF',
 ];
 
 export default function UsineShowPage({ usine, receptionRecords }: Props) {
@@ -64,7 +64,12 @@ export default function UsineShowPage({ usine, receptionRecords }: Props) {
                                 {headings.map((heading) => (
                                     <TableHead
                                         key={heading}
-                                        className="text-center leading-tight font-bold whitespace-normal text-neutral-800 dark:text-neutral-200"
+                                        className={`text-center leading-tight font-bold text-neutral-800 dark:text-neutral-200 ${
+                                            heading === 'PRIX MOY.' ||
+                                            heading === 'VAL. VENTE'
+                                                ? 'whitespace-nowrap'
+                                                : 'whitespace-normal'
+                                        }`}
                                     >
                                         {heading}
                                     </TableHead>

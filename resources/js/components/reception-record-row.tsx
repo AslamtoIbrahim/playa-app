@@ -19,7 +19,7 @@ function formatNumber(value: number): string {
 }
 
 const inputClassName =
-    'h-9 w-full min-w-0 rounded-none border-none bg-transparent px-1 text-center text-xs font-semibold tabular-nums text-slate-900 shadow-none focus-visible:ring-1 focus-visible:ring-blue-500 focus-visible:ring-inset focus-visible:ring-offset-0 dark:text-neutral-100 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none';
+    'h-9 w-full min-w-0 rounded-none border-none bg-transparent px-1 text-center text-sm font-semibold tabular-nums text-slate-900 shadow-none focus-visible:ring-1 focus-visible:ring-blue-500 focus-visible:ring-inset focus-visible:ring-offset-0 dark:text-neutral-100 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none';
 
 export default function ReceptionRecordRow({ usineId, record }: Props) {
     const { data, loading, handleDataChange, handleBlur, handleKeyDown } =
@@ -62,7 +62,9 @@ export default function ReceptionRecordRow({ usineId, record }: Props) {
             <TableCell className="text-xs font-bold uppercase">
                 {record.designation}
             </TableCell>
-            <TableCell className="text-xs">{record.origin || '—'}</TableCell>
+            <TableCell className="text-xs uppercase">
+                {record.origin || '—'}
+            </TableCell>
             <TableCell className="p-0">
                 <Input
                     aria-label="TTC"
@@ -77,7 +79,7 @@ export default function ReceptionRecordRow({ usineId, record }: Props) {
                     onBlur={handleBlur}
                 />
             </TableCell>
-            <TableCell className="text-right text-xs font-medium tabular-nums">
+            <TableCell className="text-right text-sm font-medium tabular-nums">
                 {formatNumber(weight > 0 ? amount / weight : 0)}
             </TableCell>
             <TableCell className="p-0">
@@ -110,7 +112,7 @@ export default function ReceptionRecordRow({ usineId, record }: Props) {
                     onBlur={handleBlur}
                 />
             </TableCell>
-            <TableCell className="text-right text-xs font-semibold tabular-nums">
+            <TableCell className="text-right text-sm font-semibold tabular-nums">
                 {formatNumber(amount + weight * margin)}
             </TableCell>
             <TableCell className="p-0 text-center">
@@ -142,7 +144,6 @@ export default function ReceptionRecordRow({ usineId, record }: Props) {
                     type="number"
                     min="0"
                     step="1"
-                    placeholder="—"
                     value={data.invoice_reference}
                     onChange={(event) =>
                         handleDataChange({
