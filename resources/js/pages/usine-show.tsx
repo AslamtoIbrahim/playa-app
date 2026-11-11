@@ -18,7 +18,9 @@ import type { ReceptionRecord } from '@/types/reception-record';
 import type { Usine } from '@/types/usine';
 import { Head, router } from '@inertiajs/react';
 import { ArrowLeft, Building2, Package } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { UsineSelectionStatistics } from '@/components/usine-selection-statistics';
+import { useUsineCellSelection } from '@/hooks/use-usine-cell-selection';
 
 interface Props {
     usine: Usine;
@@ -76,10 +78,124 @@ export default function UsineShowPage({ usine, receptionRecords }: Props) {
         activeFilterCount,
         hasActiveFilters,
     } = useReceptionRecordFilters(localRecords);
+    const {
+        selection: cellSelection,
+        setSelection: setCellSelection,
+        selectCell,
+        extendSelection,
+        getSelectedCellRange,
+        statistics: selectionStatistics,
+        rowIds,
+    } = useUsineCellSelection(filteredRecords);
+    const cellSelectDrag = useRef<{
+        rowId: number;
+        field: (typeof columns)[number]['filterColumn'];
+    } | null>(null);
 
     useEffect(() => {
         setLocalRecords(receptionRecords);
     }, [receptionRecords]);
+
+    useEffect(() => {
+        const clearCellSelectionOutsideTable = (event: PointerEvent) => {
+            const target = event.target;
+
+            if (
+                target instanceof Element &&
+                !target.closest(
+                    '[data-usine-cell], [data-usine-selection-statistics]',
+                )
+            ) {
+                setCellSelection(null);
+            }
+        };
+
+        document.addEventListener(
+            'pointerdown',
+            clearCellSelectionOutsideTable,
+        );
+
+        return () => {
+            document.removeEventListener(
+                'pointerdown',
+                clearCellSelectionOutsideTable,
+            );
+        };
+    }, [setCellSelection]);
+
+    useEffect(() => {
+        const handlePointerMove = (event: PointerEvent) => {
+            const drag = cellSelectDrag.current;
+            const target = document
+                .elementFromPoint(event.clientX, event.clientY)
+                ?.closest<HTMLElement>('[data-usine-cell][data-usine-row]');
+
+            if (
+                drag &&
+                target?.dataset.usineCell === drag.field &&
+                target.dataset.usineRow
+            ) {
+                extendSelection(Number(target.dataset.usineRow), drag.field);
+            }
+        };
+
+        const handlePointerUp = () => {
+            cellSelectDrag.current = null;
+        };
+
+        window.addEventListener('pointermove', handlePointerMove);
+        window.addEventListener('pointerup', handlePointerUp);
+        window.addEventListener('pointercancel', handlePointerUp);
+
+        return () => {
+            window.removeEventListener('pointermove', handlePointerMove);
+            window.removeEventListener('pointerup', handlePointerUp);
+            window.removeEventListener('pointercancel', handlePointerUp);
+        };
+    }, [extendSelection]);
+
+    useEffect(() => {
+        const extendSelectionWithShiftArrow = (event: KeyboardEvent) => {
+            if (
+                !event.shiftKey ||
+                (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') ||
+                !cellSelection
+            ) {
+                return;
+            }
+
+            const currentIndex = rowIds.indexOf(cellSelection.rowId);
+            const targetRowId =
+                rowIds[currentIndex + (event.key === 'ArrowDown' ? 1 : -1)];
+
+            if (targetRowId === undefined) {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+            extendSelection(targetRowId, cellSelection.field);
+        };
+
+        window.addEventListener('keydown', extendSelectionWithShiftArrow, true);
+
+        return () => {
+            window.removeEventListener(
+                'keydown',
+                extendSelectionWithShiftArrow,
+                true,
+            );
+        };
+    }, [cellSelection, extendSelection, rowIds]);
+
+    const handleCellSelect = (
+        rowId: number,
+        field: (typeof columns)[number]['filterColumn'],
+        shift: boolean,
+    ) => {
+        selectCell(rowId, field, shift);
+        cellSelectDrag.current = shift ? null : { rowId, field };
+    };
 
     const handleRecordDataChange = (
         recordId: number,
@@ -143,7 +259,7 @@ export default function UsineShowPage({ usine, receptionRecords }: Props) {
                     </h1>
                 </div>
 
-                <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                     <ReceptionRecordGlobalSearch
                         value={filters.search}
                         onChange={(search) =>
@@ -155,6 +271,11 @@ export default function UsineShowPage({ usine, receptionRecords }: Props) {
                             setShowColumnFilters((visible) => !visible)
                         }
                     />
+                    <div className="ml-auto flex items-center gap-2">
+                        <UsineSelectionStatistics
+                            statistics={selectionStatistics}
+                        />
+                    </div>
                 </div>
 
                 <div className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900/90">
@@ -220,6 +341,10 @@ export default function UsineShowPage({ usine, receptionRecords }: Props) {
                                     key={`${record.id}-${record.designation}-${index}`}
                                     usineId={usine.id}
                                     record={record}
+                                    onCellSelect={handleCellSelect}
+                                    selectedCell={getSelectedCellRange(
+                                        record.id,
+                                    )}
                                     onDataChange={(data) =>
                                         handleRecordDataChange(record.id, data)
                                     }

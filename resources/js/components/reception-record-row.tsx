@@ -6,11 +6,19 @@ import { formatDateDisplay } from '@/lib/date';
 import { cn } from '@/lib/utils';
 import type { ReceptionRecord } from '@/types/reception-record';
 import { Loader2 } from 'lucide-react';
+import type { MouseEvent } from 'react';
+import type { ReceptionRecordFilterColumn } from '@/hooks/use-reception-record-filters';
 
 interface Props {
     usineId: number;
     record: ReceptionRecord;
     onDataChange?: (data: ReceptionRecordData) => void;
+    onCellSelect?: (
+        rowId: number,
+        field: ReceptionRecordFilterColumn,
+        extend: boolean,
+    ) => void;
+    selectedCell?: string | null;
 }
 
 function formatNumber(value: number): string {
@@ -27,6 +35,8 @@ export default function ReceptionRecordRow({
     usineId,
     record,
     onDataChange,
+    onCellSelect,
+    selectedCell,
 }: Props) {
     const { data, loading, handleDataChange, handleBlur, handleKeyDown } =
         useReceptionRecord({ usineId, record });
@@ -40,12 +50,60 @@ export default function ReceptionRecordRow({
     const amount = Number(data.amount) || 0;
     const margin = Number(data.margin_percentage) || 0;
 
+    const cellProps = (field: ReceptionRecordFilterColumn) => ({
+        'data-usine-cell': field,
+        'data-usine-row': record.id,
+        tabIndex: -1,
+        onMouseDownCapture: (event: MouseEvent) => {
+            onCellSelect?.(record.id, field, event.shiftKey);
+
+            if (event.shiftKey) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+        },
+        onClickCapture: (event: MouseEvent) => {
+            if (event.shiftKey) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+        },
+        onClick: (event: MouseEvent) => {
+            if (event.shiftKey) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+        },
+        style: {
+            cursor: 'cell',
+            userSelect: 'none' as const,
+            ...(selectedCell?.includes(`|${record.id}:${field}|`)
+                ? {
+                      position: 'relative' as const,
+                      backgroundColor: 'rgb(59 130 246 / 12%)',
+                      boxShadow: [
+                          'inset 1px 0 rgb(59 130 246)',
+                          'inset -1px 0 rgb(59 130 246)',
+                          selectedCell.startsWith(`|${record.id}:${field}|`)
+                              ? 'inset 0 1px rgb(59 130 246)'
+                              : '',
+                          selectedCell.endsWith(`|${record.id}:${field}|`)
+                              ? 'inset 0 -1px rgb(59 130 246)'
+                              : '',
+                      ]
+                          .filter(Boolean)
+                          .join(', '),
+                  }
+                : {}),
+        },
+    });
+
     return (
         <TableRow
             onKeyDown={handleKeyDown}
             className="border-b border-slate-100 text-center font-semibold transition-colors hover:bg-slate-50 dark:border-neutral-800 dark:hover:bg-neutral-800/70"
         >
-            <TableCell className="whitespace-nowrap">
+            <TableCell {...cellProps('date')} className="whitespace-nowrap">
                 <div className="flex items-center justify-center gap-1">
                     {formatDateDisplay(record.session_date)}
                     {loading && (
@@ -56,7 +114,7 @@ export default function ReceptionRecordRow({
                     )}
                 </div>
             </TableCell>
-            <TableCell className="p-0">
+            <TableCell {...cellProps('weight')} className="p-0">
                 <Input
                     aria-label="Réception"
                     className={inputClassName}
@@ -70,13 +128,16 @@ export default function ReceptionRecordRow({
                     onBlur={handleBlur}
                 />
             </TableCell>
-            <TableCell className="text-xs font-bold uppercase">
+            <TableCell
+                {...cellProps('designation')}
+                className="text-xs font-bold uppercase"
+            >
                 {record.designation}
             </TableCell>
-            <TableCell className="text-xs uppercase">
+            <TableCell {...cellProps('origin')} className="text-xs uppercase">
                 {record.origin || '—'}
             </TableCell>
-            <TableCell className="p-0">
+            <TableCell {...cellProps('ttc')} className="p-0">
                 <Input
                     aria-label="TTC"
                     className={inputClassName}
@@ -90,10 +151,13 @@ export default function ReceptionRecordRow({
                     onBlur={handleBlur}
                 />
             </TableCell>
-            <TableCell className="text-right text-sm font-medium tabular-nums">
+            <TableCell
+                {...cellProps('averagePrice')}
+                className="text-right text-sm font-medium tabular-nums"
+            >
                 {formatNumber(weight > 0 ? amount / weight : 0)}
             </TableCell>
-            <TableCell className="p-0">
+            <TableCell {...cellProps('amount')} className="p-0">
                 <Input
                     aria-label="Valeur d'achat"
                     className={inputClassName}
@@ -107,7 +171,7 @@ export default function ReceptionRecordRow({
                     onBlur={handleBlur}
                 />
             </TableCell>
-            <TableCell className="p-0">
+            <TableCell {...cellProps('margin')} className="p-0">
                 <Input
                     aria-label="Pourcentage"
                     className={inputClassName}
@@ -123,10 +187,13 @@ export default function ReceptionRecordRow({
                     onBlur={handleBlur}
                 />
             </TableCell>
-            <TableCell className="text-right text-sm font-semibold tabular-nums">
+            <TableCell
+                {...cellProps('sale')}
+                className="text-right text-sm font-semibold tabular-nums"
+            >
                 {formatNumber(amount + weight * margin)}
             </TableCell>
-            <TableCell className="p-0 text-center">
+            <TableCell {...cellProps('invoiced')} className="p-0 text-center">
                 <button
                     type="button"
                     aria-label={
@@ -148,7 +215,7 @@ export default function ReceptionRecordRow({
                     {data.is_invoiced ? 'V' : 'F'}
                 </button>
             </TableCell>
-            <TableCell className="p-0">
+            <TableCell {...cellProps('reference')} className="p-0">
                 <Input
                     aria-label="Bon de réception"
                     className={inputClassName}
