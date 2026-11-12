@@ -11,13 +11,27 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { useReceptionRecordFilters } from '@/hooks/use-reception-record-filters';
 import type { ReceptionRecordData } from '@/hooks/use-reception-record';
 import { usines as usinesIndex } from '@/routes';
 import type { ReceptionRecord } from '@/types/reception-record';
 import type { Usine } from '@/types/usine';
 import { Head, router } from '@inertiajs/react';
-import { ArrowLeft, Building2, Package } from 'lucide-react';
+import {
+    ArrowLeft,
+    Building2,
+    ChevronLeft,
+    ChevronRight,
+    Package,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { UsineSelectionStatistics } from '@/components/usine-selection-statistics';
 import { useUsineCellSelection } from '@/hooks/use-usine-cell-selection';
@@ -66,18 +80,36 @@ const formatTotal = (value: number): string =>
         maximumFractionDigits: 2,
     });
 
+const DEFAULT_PAGE_SIZE = 10;
+
 export default function UsineShowPage({ usine, receptionRecords }: Props) {
     const [localRecords, setLocalRecords] = useState(receptionRecords);
     const [showColumnFilters, setShowColumnFilters] = useState(false);
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
     const {
         filters,
-        setFilters,
+        setFilters: setCurrentFilters,
         filteredRecords,
         optionsByColumn,
         totals,
         activeFilterCount,
         hasActiveFilters,
     } = useReceptionRecordFilters(localRecords);
+    const setFilters: typeof setCurrentFilters = (nextFilters) => {
+        setCurrentFilters(nextFilters);
+        setPage(1);
+    };
+    const pageCount = Math.max(1, Math.ceil(filteredRecords.length / pageSize));
+    const currentPage = Math.min(page, pageCount);
+    const pageRecords = filteredRecords.slice(
+        (currentPage - 1) * pageSize,
+        currentPage * pageSize,
+    );
+    const firstItem = filteredRecords.length
+        ? (currentPage - 1) * pageSize + 1
+        : 0;
+    const lastItem = Math.min(currentPage * pageSize, filteredRecords.length);
     const {
         selection: cellSelection,
         setSelection: setCellSelection,
@@ -336,7 +368,7 @@ export default function UsineShowPage({ usine, receptionRecords }: Props) {
                         </TableHeader>
 
                         <TableBody>
-                            {filteredRecords.map((record, index) => (
+                            {pageRecords.map((record, index) => (
                                 <ReceptionRecordRow
                                     key={`${record.id}-${record.designation}-${index}`}
                                     usineId={usine.id}
@@ -368,9 +400,97 @@ export default function UsineShowPage({ usine, receptionRecords }: Props) {
                     <div className="flex items-center justify-between border-t border-neutral-200 bg-neutral-50/50 px-6 py-3 dark:border-neutral-800 dark:bg-neutral-800/50">
                         <div className="flex items-center gap-2 text-xs font-bold tracking-widest text-neutral-500 uppercase dark:text-neutral-400">
                             <Package className="h-4 w-4" />
-                            {filteredRecords.length} réception(s) affichée(s)
+                            {firstItem}–{lastItem} sur {filteredRecords.length}{' '}
+                            réception(s)
                             {hasActiveFilters &&
                                 ` sur ${localRecords.length} au total`}
+                        </div>
+                        <div className="flex flex-wrap items-center justify-end gap-3">
+                            <div className="flex items-center gap-2 text-xs font-bold tracking-widest text-neutral-500 uppercase dark:text-neutral-400">
+                                <label htmlFor="reception-page-size">
+                                    Lignes par page
+                                </label>
+                                <Select
+                                    value={String(pageSize)}
+                                    onValueChange={(value) => {
+                                        setPageSize(Number(value));
+                                        setPage(1);
+                                    }}
+                                >
+                                    <SelectTrigger
+                                        id="reception-page-size"
+                                        aria-label="Lignes par page"
+                                        className="h-9 w-[76px]"
+                                    >
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent align="end">
+                                        {[10, 25, 50, 100].map((size) => (
+                                            <SelectItem
+                                                key={size}
+                                                value={String(size)}
+                                            >
+                                                {size}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            {pageCount > 1 && (
+                                <div className="flex gap-2">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        aria-label="Page précédente"
+                                        disabled={currentPage <= 1}
+                                        onClick={() => setPage(currentPage - 1)}
+                                        className="h-9 min-w-9 text-xs font-bold shadow-none transition-all dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+                                    >
+                                        <ChevronLeft className="h-4 w-4" />
+                                    </Button>
+                                    {Array.from(
+                                        { length: pageCount },
+                                        (_, index) => index + 1,
+                                    ).map((pageNumber) => (
+                                        <Button
+                                            key={pageNumber}
+                                            type="button"
+                                            variant={
+                                                pageNumber === currentPage
+                                                    ? 'default'
+                                                    : 'outline'
+                                            }
+                                            size="sm"
+                                            aria-label={`Page ${pageNumber}`}
+                                            aria-current={
+                                                pageNumber === currentPage
+                                                    ? 'page'
+                                                    : undefined
+                                            }
+                                            onClick={() => setPage(pageNumber)}
+                                            className={`h-9 min-w-9 text-xs font-bold shadow-none transition-all dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700 ${
+                                                pageNumber === currentPage
+                                                    ? 'scale-105 shadow-md dark:bg-primary dark:text-primary-foreground'
+                                                    : ''
+                                            }`}
+                                        >
+                                            {pageNumber}
+                                        </Button>
+                                    ))}
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        aria-label="Page suivante"
+                                        disabled={currentPage >= pageCount}
+                                        onClick={() => setPage(currentPage + 1)}
+                                        className="h-9 min-w-9 text-xs font-bold shadow-none transition-all dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+                                    >
+                                        <ChevronRight className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
