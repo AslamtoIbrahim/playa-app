@@ -8,27 +8,22 @@ import {
 } from '@/components/ui/table';
 import AddSessionForZoneDialog from '@/components/add-session-for-zone-dialog';
 import EditSessionForZoneDialog from '@/components/edit-session-for-zone-dialog';
+import {
+    ZoneSessionColumnFilter,
+    ZoneSessionFilterSummary,
+    ZoneSessionSearch,
+} from '@/components/zone-session-filters';
+import { useZoneSessionFilters } from '@/hooks/use-zone-session-filters';
+import type { ZoneDailySession } from '@/hooks/use-zone-session-filters';
 import { formatDateDisplay } from '@/lib/date';
 import { Head, Link, router } from '@inertiajs/react';
 import { ArrowLeft, CalendarDays, Lock, MapPin, Unlock } from 'lucide-react';
-
-interface Zone {
-    id: number;
-    name: string;
-}
-
-interface DailySession {
-    id: number | null;
-    session_date: string | null;
-    status: string | null;
-    total_buy: number;
-    total_sell: number;
-    closed_at: string | null;
-}
+import { useState } from 'react';
+import type { ReactNode } from 'react';
 
 interface Props {
-    zone: Zone;
-    dailySessions: DailySession[];
+    zone: { id: number; name: string };
+    dailySessions: ZoneDailySession[];
     existingSessionDates: string[];
 }
 
@@ -43,6 +38,26 @@ export default function ZoneShow({
     dailySessions,
     existingSessionDates,
 }: Props) {
+    const [showColumnFilters, setShowColumnFilters] = useState(false);
+    const {
+        filters,
+        setFilters,
+        filteredSessions,
+        activeFilterCount,
+        clearColumnFilters,
+    } = useZoneSessionFilters(dailySessions);
+
+    const toggleColumnFilters = () => {
+        if (showColumnFilters) {
+            clearColumnFilters();
+            setShowColumnFilters(false);
+
+            return;
+        }
+
+        setShowColumnFilters(true);
+    };
+
     return (
         <>
             <Head title={`Zone ${zone.name}`} />
@@ -70,30 +85,100 @@ export default function ZoneShow({
                 </div>
 
                 <div className="flex-1 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900/90">
+                    <div className="flex min-h-14 items-center justify-between gap-3 border-b border-neutral-200 bg-neutral-50/50 px-4 py-2 dark:border-neutral-800 dark:bg-neutral-800/50">
+                        <ZoneSessionSearch
+                            value={filters.search}
+                            onChange={(search) =>
+                                setFilters((current) => ({
+                                    ...current,
+                                    search,
+                                }))
+                            }
+                            showColumnFilters={showColumnFilters}
+                            activeFilterCount={activeFilterCount}
+                            onToggleColumnFilters={toggleColumnFilters}
+                        />
+                    </div>
                     <Table>
-                        <TableHeader className="bg-neutral-50/50 dark:bg-neutral-800/50">
+                        <TableHeader
+                            className={`bg-neutral-50/50 dark:bg-neutral-800/50 ${showColumnFilters ? '' : '**:data-column-filter-trigger:hidden'}`}
+                        >
+                            <ZoneSessionFilterSummary
+                                sessions={filteredSessions}
+                                totalSessions={dailySessions.length}
+                            />
                             <TableRow className="border-b border-neutral-200 dark:border-neutral-800">
                                 <TableHead className="font-bold">
-                                    Date de journée
+                                    <span className="inline-flex items-center">
+                                        Date de journée
+                                        <ZoneSessionColumnFilter
+                                            column="session_date"
+                                            title="Date de journée"
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="font-bold">
-                                    Statut
+                                    <span className="inline-flex items-center">
+                                        Statut
+                                        <ZoneSessionColumnFilter
+                                            column="status"
+                                            title="Statut"
+                                            options={[
+                                                {
+                                                    label: 'Ouverte',
+                                                    value: 'open',
+                                                },
+                                                {
+                                                    label: 'Clôturée',
+                                                    value: 'closed',
+                                                },
+                                            ]}
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="text-right font-bold">
-                                    Total achat
+                                    <span className="inline-flex items-center">
+                                        Total achat
+                                        <ZoneSessionColumnFilter
+                                            column="total_buy"
+                                            title="Total achat"
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="text-right font-bold">
-                                    Total vente
+                                    <span className="inline-flex items-center">
+                                        Total vente
+                                        <ZoneSessionColumnFilter
+                                            column="total_sell"
+                                            title="Total vente"
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="text-right font-bold">
-                                    Marge
+                                    <span className="inline-flex items-center">
+                                        Marge
+                                        <ZoneSessionColumnFilter
+                                            column="margin"
+                                            title="Marge"
+                                            filters={filters}
+                                            setFilters={setFilters}
+                                        />
+                                    </span>
                                 </TableHead>
                                 <TableHead className="w-12" />
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {dailySessions.length > 0 ? (
-                                dailySessions.map((session) => {
+                            {filteredSessions.length > 0 ? (
+                                filteredSessions.map((session) => {
                                     const margin =
                                         session.total_sell - session.total_buy;
 
@@ -171,10 +256,10 @@ export default function ZoneShow({
                             ) : (
                                 <TableRow>
                                     <TableCell
-                                        colSpan={5}
+                                        colSpan={6}
                                         className="py-24 text-center text-muted-foreground"
                                     >
-                                        Aucune session trouvée pour cette zone.
+                                        Aucune journée trouvée pour cette zone.
                                     </TableCell>
                                 </TableRow>
                             )}
@@ -186,7 +271,7 @@ export default function ZoneShow({
     );
 }
 
-ZoneShow.layout = (page: React.ReactNode) => ({
+ZoneShow.layout = (page: ReactNode) => ({
     breadcrumbs: [
         { title: 'Zones', href: '/zones' },
         { title: 'Journées', href: '/zones' },
