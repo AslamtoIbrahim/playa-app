@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { SessionSelectionStatistics } from '@/components/session-selection-statistics';
 import {
     SessionColumnFilter,
     SessionFilterSummary,
@@ -14,6 +15,8 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { formatDateDisplay } from '@/lib/date';
+import { useSessionCellSelection } from '@/hooks/use-session-cell-selection';
+import type { SessionSelectionField } from '@/hooks/use-session-cell-selection';
 import { useSessionFilters } from '@/hooks/use-session-filters';
 import { cn } from '@/lib/utils';
 import type { SessionsIndexProps } from '@/types/daily-session';
@@ -26,7 +29,8 @@ import {
     Unlock,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { MouseEvent as ReactMouseEvent } from 'react';
 
 export default function Sessions({ sessions }: SessionsIndexProps) {
     const [showColumnFilters, setShowColumnFilters] = useState(false);
@@ -37,6 +41,77 @@ export default function Sessions({ sessions }: SessionsIndexProps) {
         activeFilterCount,
         clearColumnFilters,
     } = useSessionFilters(sessions.data);
+    const {
+        setSelection: setCellSelection,
+        selectCell,
+        extendSelection,
+        getSelectedCellRange,
+        statistics: selectionStatistics,
+    } = useSessionCellSelection(filteredSessions);
+    const cellSelectDrag = useRef<{
+        rowId: number;
+        field: SessionSelectionField;
+    } | null>(null);
+    const suppressRowClick = useRef(false);
+
+    useEffect(() => {
+        const handlePointerMove = (event: PointerEvent) => {
+            const drag = cellSelectDrag.current;
+            const target = document
+                .elementFromPoint(event.clientX, event.clientY)
+                ?.closest<HTMLElement>('[data-session-cell][data-session-row]');
+
+            if (drag && target?.dataset.sessionRow) {
+                const rowId = Number(target.dataset.sessionRow);
+
+                if (
+                    rowId !== drag.rowId ||
+                    target.dataset.sessionCell !== drag.field
+                ) {
+                    suppressRowClick.current = true;
+                }
+
+                if (target.dataset.sessionCell === drag.field) {
+                    extendSelection(rowId, drag.field);
+                }
+            }
+        };
+
+        const handlePointerUp = () => {
+            cellSelectDrag.current = null;
+        };
+
+        const clearCellSelectionOutsideTable = (event: PointerEvent) => {
+            const target = event.target;
+
+            if (
+                target instanceof Element &&
+                !target.closest(
+                    '[data-session-cell], [data-session-selection-statistics]',
+                )
+            ) {
+                setCellSelection(null);
+            }
+        };
+
+        window.addEventListener('pointermove', handlePointerMove);
+        window.addEventListener('pointerup', handlePointerUp);
+        window.addEventListener('pointercancel', handlePointerUp);
+        document.addEventListener(
+            'pointerdown',
+            clearCellSelectionOutsideTable,
+        );
+
+        return () => {
+            window.removeEventListener('pointermove', handlePointerMove);
+            window.removeEventListener('pointerup', handlePointerUp);
+            window.removeEventListener('pointercancel', handlePointerUp);
+            document.removeEventListener(
+                'pointerdown',
+                clearCellSelectionOutsideTable,
+            );
+        };
+    }, [extendSelection, setCellSelection]);
 
     const toggleColumnFilters = () => {
         if (showColumnFilters) {
@@ -62,6 +137,50 @@ export default function Sessions({ sessions }: SessionsIndexProps) {
             style: 'currency',
             currency: 'MAD',
         }).format(amount);
+    };
+
+    const getSelectionCellProps = (
+        rowId: number,
+        field: SessionSelectionField,
+    ) => {
+        const selectedCell = getSelectedCellRange(rowId);
+        const selected = selectedCell?.includes(`|${rowId}:${field}|`) ?? false;
+
+        return {
+            'data-session-cell': field,
+            'data-session-row': rowId,
+            onMouseDownCapture: (
+                event: ReactMouseEvent<HTMLTableCellElement>,
+            ) => {
+                suppressRowClick.current = false;
+                selectCell(rowId, field, event.shiftKey);
+                cellSelectDrag.current = event.shiftKey
+                    ? null
+                    : { rowId, field };
+            },
+            style: {
+                cursor: 'cell',
+                userSelect: 'none' as const,
+                ...(selected
+                    ? {
+                          position: 'relative' as const,
+                          backgroundColor: 'rgb(59 130 246 / 12%)',
+                          boxShadow: [
+                              'inset 1px 0 rgb(59 130 246)',
+                              'inset -1px 0 rgb(59 130 246)',
+                              selectedCell?.startsWith(`|${rowId}:${field}|`)
+                                  ? 'inset 0 1px rgb(59 130 246)'
+                                  : '',
+                              selectedCell?.endsWith(`|${rowId}:${field}|`)
+                                  ? 'inset 0 -1px rgb(59 130 246)'
+                                  : '',
+                          ]
+                              .filter(Boolean)
+                              .join(', '),
+                      }
+                    : {}),
+            },
+        };
     };
 
     return (
@@ -94,6 +213,15 @@ export default function Sessions({ sessions }: SessionsIndexProps) {
                             activeFilterCount={activeFilterCount}
                             onToggleColumnFilters={toggleColumnFilters}
                         />
+                        <div className="flex items-center gap-2">
+                            <SessionSelectionStatistics
+                                statistics={selectionStatistics}
+                            />
+                            <span className="text-xs text-muted-foreground">
+                                {filteredSessions.length} /{' '}
+                                {sessions.data.length} lignes
+                            </span>
+                        </div>
                     </div>
                     <Table>
                         <TableHeader
@@ -195,15 +323,36 @@ export default function Sessions({ sessions }: SessionsIndexProps) {
                                         <TableRow
                                             key={session.id}
                                             className="group cursor-pointer border-b border-slate-100 bg-white transition-all last:border-0 hover:bg-slate-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800/70"
-                                            onClick={() => {
+                                            onClick={(event) => {
+                                                if (
+                                                    event.shiftKey ||
+                                                    suppressRowClick.current
+                                                ) {
+                                                    suppressRowClick.current = false;
+
+                                                    return;
+                                                }
+
                                                 handleRowClick(session.id);
                                             }}
                                         >
-                                            <TableCell className="font-mono text-sm font-bold text-slate-700 dark:text-neutral-300">
+                                            <TableCell
+                                                {...getSelectionCellProps(
+                                                    session.id,
+                                                    'id',
+                                                )}
+                                                className="font-mono text-sm font-bold text-slate-700 dark:text-neutral-300"
+                                            >
                                                 #{session.id}
                                             </TableCell>
 
-                                            <TableCell className="font-medium text-slate-900 dark:text-neutral-100">
+                                            <TableCell
+                                                {...getSelectionCellProps(
+                                                    session.id,
+                                                    'session_date',
+                                                )}
+                                                className="font-medium text-slate-900 dark:text-neutral-100"
+                                            >
                                                 <div className="flex items-center gap-2">
                                                     <CalendarDays className="h-4 w-4 text-slate-400 dark:text-neutral-500" />
                                                     {formatDateDisplay(
@@ -212,7 +361,12 @@ export default function Sessions({ sessions }: SessionsIndexProps) {
                                                 </div>
                                             </TableCell>
 
-                                            <TableCell>
+                                            <TableCell
+                                                {...getSelectionCellProps(
+                                                    session.id,
+                                                    'status',
+                                                )}
+                                            >
                                                 {session.status === 'open' ? (
                                                     <Badge
                                                         variant="outline"
@@ -232,19 +386,35 @@ export default function Sessions({ sessions }: SessionsIndexProps) {
                                                 )}
                                             </TableCell>
 
-                                            <TableCell className="text-right font-mono text-sm font-medium text-slate-600 dark:text-neutral-300">
+                                            <TableCell
+                                                {...getSelectionCellProps(
+                                                    session.id,
+                                                    'total_buy',
+                                                )}
+                                                className="text-right font-mono text-sm font-medium text-slate-600 dark:text-neutral-300"
+                                            >
                                                 {formatCurrency(
                                                     session.total_buy,
                                                 )}
                                             </TableCell>
 
-                                            <TableCell className="text-right font-mono text-sm font-semibold text-blue-600 dark:text-blue-400">
+                                            <TableCell
+                                                {...getSelectionCellProps(
+                                                    session.id,
+                                                    'total_sell',
+                                                )}
+                                                className="text-right font-mono text-sm font-semibold text-blue-600 dark:text-blue-400"
+                                            >
                                                 {formatCurrency(
                                                     session.total_sell,
                                                 )}
                                             </TableCell>
 
                                             <TableCell
+                                                {...getSelectionCellProps(
+                                                    session.id,
+                                                    'margin',
+                                                )}
                                                 className={`text-right font-mono text-sm font-bold ${
                                                     margin >= 0
                                                         ? 'text-green-600 dark:text-green-400'
