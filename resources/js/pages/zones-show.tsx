@@ -21,6 +21,12 @@ import {
     ZoneSessionFilterSummary,
     ZoneSessionSearch,
 } from '@/components/zone-session-filters';
+import { ZoneSelectionStatistics } from '@/components/zone-selection-statistics';
+import {
+    getZoneSessionRowId,
+    useZoneCellSelection,
+} from '@/hooks/use-zone-cell-selection';
+import type { ZoneSelectionField } from '@/hooks/use-zone-cell-selection';
 import { useZoneSessionFilters } from '@/hooks/use-zone-session-filters';
 import type { ZoneDailySession } from '@/hooks/use-zone-session-filters';
 import { formatDateDisplay } from '@/lib/date';
@@ -34,8 +40,8 @@ import {
     MapPin,
     Unlock,
 } from 'lucide-react';
-import { useState } from 'react';
-import type { ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react';
 
 const DEFAULT_PAGE_SIZE = 10;
 
@@ -75,9 +81,13 @@ export default function ZoneShow({
         Math.ceil(filteredSessions.length / pageSize),
     );
     const currentPage = Math.min(page, pageCount);
-    const pageSessions = filteredSessions.slice(
-        (currentPage - 1) * pageSize,
-        currentPage * pageSize,
+    const pageSessions = useMemo(
+        () =>
+            filteredSessions.slice(
+                (currentPage - 1) * pageSize,
+                currentPage * pageSize,
+            ),
+        [currentPage, filteredSessions, pageSize],
     );
     const firstItem = filteredSessions.length
         ? (currentPage - 1) * pageSize + 1
@@ -85,6 +95,17 @@ export default function ZoneShow({
     const lastItem = Math.min(currentPage * pageSize, filteredSessions.length);
     const hasActiveFilters =
         filters.search.trim().length > 0 || activeFilterCount > 0;
+    const {
+        setSelection: setCellSelection,
+        selectCell,
+        extendSelection,
+        getSelectedCellRange,
+        statistics: selectionStatistics,
+    } = useZoneCellSelection(pageSessions);
+    const cellSelectDrag = useRef<{
+        rowId: string;
+        field: ZoneSelectionField;
+    } | null>(null);
 
     const toggleColumnFilters = () => {
         if (showColumnFilters) {
@@ -97,6 +118,109 @@ export default function ZoneShow({
 
         setShowColumnFilters(true);
     };
+
+    const getSelectionCellProps = (
+        rowId: string,
+        field: ZoneSelectionField,
+    ) => {
+        const selectedCell = getSelectedCellRange(rowId);
+        const selected = selectedCell?.includes(`|${rowId}:${field}|`) ?? false;
+
+        return {
+            'data-zone-cell': field,
+            'data-zone-row': rowId,
+            tabIndex: -1,
+            onMouseDownCapture: (
+                event: ReactMouseEvent<HTMLTableCellElement>,
+            ) => {
+                selectCell(rowId, field, event.shiftKey);
+                cellSelectDrag.current = event.shiftKey
+                    ? null
+                    : { rowId, field };
+            },
+            onClick: (event: ReactMouseEvent<HTMLTableCellElement>) => {
+                event.stopPropagation();
+            },
+            style: {
+                cursor: 'cell',
+                userSelect: 'none' as const,
+                ...(selected
+                    ? {
+                          position: 'relative' as const,
+                          backgroundColor: 'rgb(59 130 246 / 12%)',
+                          boxShadow: [
+                              'inset 1px 0 rgb(59 130 246)',
+                              'inset -1px 0 rgb(59 130 246)',
+                              selectedCell?.startsWith(`|${rowId}:${field}|`)
+                                  ? 'inset 0 1px rgb(59 130 246)'
+                                  : '',
+                              selectedCell?.endsWith(`|${rowId}:${field}|`)
+                                  ? 'inset 0 -1px rgb(59 130 246)'
+                                  : '',
+                          ]
+                              .filter(Boolean)
+                              .join(', '),
+                      }
+                    : {}),
+            },
+        };
+    };
+
+    useEffect(() => {
+        const handlePointerMove = (event: PointerEvent) => {
+            const drag = cellSelectDrag.current;
+            const target = document
+                .elementFromPoint(event.clientX, event.clientY)
+                ?.closest<HTMLElement>('[data-zone-cell][data-zone-row]');
+
+            if (
+                drag &&
+                target?.dataset.zoneCell === drag.field &&
+                target.dataset.zoneRow
+            ) {
+                extendSelection(target.dataset.zoneRow, drag.field);
+            }
+        };
+
+        const handlePointerUp = () => {
+            cellSelectDrag.current = null;
+        };
+
+        const clearCellSelectionOutsideTable = (event: PointerEvent) => {
+            const target = event.target;
+
+            if (
+                target instanceof Element &&
+                !target.closest(
+                    '[data-zone-cell], [data-zone-selection-statistics]',
+                )
+            ) {
+                setCellSelection(null);
+            }
+        };
+
+        window.addEventListener('pointermove', handlePointerMove);
+        window.addEventListener('pointerup', handlePointerUp);
+        window.addEventListener('pointercancel', handlePointerUp);
+        document.addEventListener(
+            'pointerdown',
+            clearCellSelectionOutsideTable,
+        );
+
+        return () => {
+            window.removeEventListener('pointermove', handlePointerMove);
+            window.removeEventListener('pointerup', handlePointerUp);
+            window.removeEventListener('pointercancel', handlePointerUp);
+            document.removeEventListener(
+                'pointerdown',
+                clearCellSelectionOutsideTable,
+            );
+        };
+    }, [extendSelection, setCellSelection]);
+
+    useEffect(() => {
+        setCellSelection(null);
+    }, [currentPage, filteredSessions, pageSize, setCellSelection]);
 
     return (
         <>
@@ -138,6 +262,15 @@ export default function ZoneShow({
                             activeFilterCount={activeFilterCount}
                             onToggleColumnFilters={toggleColumnFilters}
                         />
+                        <div className="flex items-center gap-2">
+                            <ZoneSelectionStatistics
+                                statistics={selectionStatistics}
+                            />
+                            <span className="text-xs text-muted-foreground">
+                                {filteredSessions.length} /{' '}
+                                {dailySessions.length} lignes
+                            </span>
+                        </div>
                     </div>
                     <Table>
                         <TableHeader
@@ -218,9 +351,13 @@ export default function ZoneShow({
                         </TableHeader>
                         <TableBody>
                             {pageSessions.length > 0 ? (
-                                pageSessions.map((session) => {
+                                pageSessions.map((session, index) => {
                                     const margin =
                                         session.total_sell - session.total_buy;
+                                    const selectionRowId = getZoneSessionRowId(
+                                        session,
+                                        index,
+                                    );
 
                                     return (
                                         <TableRow
@@ -260,17 +397,33 @@ export default function ZoneShow({
                                                         : 'Clôturée'}
                                                 </span>
                                             </TableCell>
-                                            <TableCell className="text-right font-mono">
+                                            <TableCell
+                                                {...getSelectionCellProps(
+                                                    selectionRowId,
+                                                    'total_buy',
+                                                )}
+                                                className="text-right font-mono"
+                                            >
                                                 {formatCurrency(
                                                     session.total_buy,
                                                 )}
                                             </TableCell>
-                                            <TableCell className="text-right font-mono text-blue-600">
+                                            <TableCell
+                                                {...getSelectionCellProps(
+                                                    selectionRowId,
+                                                    'total_sell',
+                                                )}
+                                                className="text-right font-mono text-blue-600"
+                                            >
                                                 {formatCurrency(
                                                     session.total_sell,
                                                 )}
                                             </TableCell>
                                             <TableCell
+                                                {...getSelectionCellProps(
+                                                    selectionRowId,
+                                                    'margin',
+                                                )}
                                                 className={`text-right font-mono font-bold ${margin >= 0 ? 'text-green-600' : 'text-red-600'}`}
                                             >
                                                 {formatCurrency(margin)}
