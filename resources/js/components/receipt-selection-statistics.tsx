@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import type { ReceiptSelectionStatisticsData } from '@/hooks/use-receipt-cell-selection';
 import {
     Popover,
     PopoverContent,
@@ -7,16 +8,8 @@ import {
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
 
-interface Statistics {
-    sum: number;
-    average: number | null;
-    minimum: number | null;
-    maximum: number | null;
-    count: number;
-}
-
 interface Props {
-    statistics: Statistics | null;
+    statistics: ReceiptSelectionStatisticsData | null;
 }
 
 const format = (value: number | null) =>
@@ -53,7 +46,10 @@ export function ReceiptSelectionStatistics({ statistics }: Props) {
                     className="h-8 gap-1 rounded-md px-3 text-xs font-medium"
                     aria-label="Statistiques de la sélection"
                 >
-                    Somme : {format(statistics.sum)}
+                    {statistics.numeric ? 'Somme' : 'Nombre'}:{' '}
+                    {statistics.numeric
+                        ? format(statistics.primary)
+                        : statistics.primary}
                     {open ? (
                         <ChevronUp className="size-3.5" />
                     ) : (

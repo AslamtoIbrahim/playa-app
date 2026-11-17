@@ -5,9 +5,11 @@ import {
     ChevronRight,
     FileText,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { MouseEvent as ReactMouseEvent } from 'react';
 
 // Components
+import { ReceiptSelectionStatistics } from '@/components/receipt-selection-statistics';
 import {
     ReceiptColumnFilter,
     ReceiptFilterSummary,
@@ -25,6 +27,8 @@ import {
 import { formatDateDisplay } from '@/lib/date';
 import { cn } from '@/lib/utils';
 import { useReceiptFilters } from '@/hooks/use-receipt-filters';
+import { useReceiptCellSelection } from '@/hooks/use-receipt-cell-selection';
+import type { ReceiptSelectionField } from '@/hooks/use-receipt-cell-selection';
 
 // Types
 import type { ReceiptsIndexProps } from '@/types/receipt';
@@ -33,6 +37,121 @@ export default function Receipts({ receipts }: ReceiptsIndexProps) {
     const [showColumnFilters, setShowColumnFilters] = useState(false);
     const { filters, setFilters, filteredReceipts, activeFilterCount } =
         useReceiptFilters(receipts.data);
+    const {
+        setSelection: setCellSelection,
+        selectCell,
+        extendSelection,
+        getSelectedCellRange,
+        statistics: selectionStatistics,
+    } = useReceiptCellSelection(filteredReceipts);
+    const cellSelectDrag = useRef<{
+        rowId: number;
+        field: ReceiptSelectionField;
+    } | null>(null);
+    const suppressRowClick = useRef(false);
+
+    useEffect(() => {
+        const handlePointerMove = (event: PointerEvent) => {
+            const drag = cellSelectDrag.current;
+            const target = document
+                .elementFromPoint(event.clientX, event.clientY)
+                ?.closest<HTMLElement>('[data-receipt-cell][data-receipt-row]');
+
+            if (drag && target?.dataset.receiptRow) {
+                const rowId = Number(target.dataset.receiptRow);
+
+                if (
+                    rowId !== drag.rowId ||
+                    target.dataset.receiptCell !== drag.field
+                ) {
+                    suppressRowClick.current = true;
+                }
+
+                if (target.dataset.receiptCell === drag.field) {
+                    extendSelection(rowId, drag.field);
+                }
+            }
+        };
+
+        const handlePointerUp = () => {
+            cellSelectDrag.current = null;
+        };
+
+        const clearCellSelectionOutsideTable = (event: PointerEvent) => {
+            const target = event.target;
+
+            if (
+                target instanceof Element &&
+                !target.closest(
+                    '[data-receipt-cell], [data-receipt-selection-statistics]',
+                )
+            ) {
+                setCellSelection(null);
+            }
+        };
+
+        window.addEventListener('pointermove', handlePointerMove);
+        window.addEventListener('pointerup', handlePointerUp);
+        window.addEventListener('pointercancel', handlePointerUp);
+        document.addEventListener(
+            'pointerdown',
+            clearCellSelectionOutsideTable,
+        );
+
+        return () => {
+            window.removeEventListener('pointermove', handlePointerMove);
+            window.removeEventListener('pointerup', handlePointerUp);
+            window.removeEventListener('pointercancel', handlePointerUp);
+            document.removeEventListener(
+                'pointerdown',
+                clearCellSelectionOutsideTable,
+            );
+        };
+    }, [extendSelection, setCellSelection]);
+
+    const getSelectionCellProps = (
+        rowId: number,
+        field: ReceiptSelectionField,
+    ) => {
+        const selectedCell = getSelectedCellRange(rowId);
+        const selected = selectedCell?.includes(`|${rowId}:${field}|`) ?? false;
+
+        return {
+            'data-receipt-cell': field,
+            'data-receipt-row': rowId,
+            onMouseDownCapture: (
+                event: ReactMouseEvent<HTMLTableCellElement>,
+            ) => {
+                suppressRowClick.current = false;
+                selectCell(rowId, field, event.shiftKey);
+                cellSelectDrag.current = event.shiftKey
+                    ? null
+                    : { rowId, field };
+            },
+            style: {
+                cursor: 'cell',
+                userSelect: 'none' as const,
+                ...(selected
+                    ? {
+                          position: 'relative' as const,
+                          backgroundColor: 'rgb(59 130 246 / 12%)',
+                          boxShadow: [
+                              'inset 1px 0 rgb(59 130 246)',
+                              'inset -1px 0 rgb(59 130 246)',
+                              selectedCell?.startsWith(`|${rowId}:${field}|`)
+                                  ? 'inset 0 1px rgb(59 130 246)'
+                                  : '',
+                              selectedCell?.endsWith(`|${rowId}:${field}|`)
+                                  ? 'inset 0 -1px rgb(59 130 246)'
+                                  : '',
+                          ]
+                              .filter(Boolean)
+                              .join(', '),
+                      }
+                    : {}),
+            },
+        };
+    };
 
     const handleRowClick = (receiptId: number) => {
         router.visit(`/receipts/${receiptId}`);
@@ -72,6 +191,15 @@ export default function Receipts({ receipts }: ReceiptsIndexProps) {
                                 setFilters({ search: '', columns: {} })
                             }
                         />
+                        <div className="flex items-center gap-3">
+                            <ReceiptSelectionStatistics
+                                statistics={selectionStatistics}
+                            />
+                            <span className="text-xs text-muted-foreground">
+                                {filteredReceipts.length} /{' '}
+                                {receipts.data.length} lignes
+                            </span>
+                        </div>
                     </div>
                     <Table>
                         <TableHeader
@@ -197,15 +325,36 @@ export default function Receipts({ receipts }: ReceiptsIndexProps) {
                                     <TableRow
                                         key={receipt.id}
                                         className="group cursor-pointer border-b border-slate-100 bg-white transition-all last:border-0 hover:bg-slate-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800/70"
-                                        onClick={() =>
-                                            handleRowClick(receipt.id)
-                                        }
+                                        onClick={(event) => {
+                                            if (
+                                                event.shiftKey ||
+                                                suppressRowClick.current
+                                            ) {
+                                                suppressRowClick.current = false;
+
+                                                return;
+                                            }
+
+                                            handleRowClick(receipt.id);
+                                        }}
                                     >
-                                        <TableCell className="font-mono text-sm font-bold text-slate-700 dark:text-neutral-300">
+                                        <TableCell
+                                            {...getSelectionCellProps(
+                                                receipt.id,
+                                                'id',
+                                            )}
+                                            className="font-mono text-sm font-bold text-slate-700 dark:text-neutral-300"
+                                        >
                                             #{receipt.id}
                                         </TableCell>
 
-                                        <TableCell className="font-medium text-slate-900 dark:text-neutral-100">
+                                        <TableCell
+                                            {...getSelectionCellProps(
+                                                receipt.id,
+                                                'date',
+                                            )}
+                                            className="font-medium text-slate-900 dark:text-neutral-100"
+                                        >
                                             <div className="flex items-center gap-2">
                                                 <CalendarDays className="h-4 w-4 text-slate-400 dark:text-neutral-500" />
                                                 {formatDateDisplay(
@@ -214,11 +363,23 @@ export default function Receipts({ receipts }: ReceiptsIndexProps) {
                                             </div>
                                         </TableCell>
 
-                                        <TableCell className="font-semibold text-slate-900 capitalize dark:text-neutral-100">
+                                        <TableCell
+                                            {...getSelectionCellProps(
+                                                receipt.id,
+                                                'customer',
+                                            )}
+                                            className="font-semibold text-slate-900 capitalize dark:text-neutral-100"
+                                        >
                                             {receipt.customer?.name || '---'}
                                         </TableCell>
 
-                                        <TableCell className="text-sm font-medium text-slate-600 dark:text-neutral-300">
+                                        <TableCell
+                                            {...getSelectionCellProps(
+                                                receipt.id,
+                                                'session_date',
+                                            )}
+                                            className="text-sm font-medium text-slate-600 dark:text-neutral-300"
+                                        >
                                             {receipt.session_zone?.daily_session
                                                 ?.session_date
                                                 ? formatDateDisplay(
@@ -229,12 +390,24 @@ export default function Receipts({ receipts }: ReceiptsIndexProps) {
                                                 : '-'}
                                         </TableCell>
 
-                                        <TableCell className="text-sm font-medium text-slate-600 dark:text-neutral-300">
+                                        <TableCell
+                                            {...getSelectionCellProps(
+                                                receipt.id,
+                                                'zone',
+                                            )}
+                                            className="text-sm font-medium text-slate-600 dark:text-neutral-300"
+                                        >
                                             {receipt.session_zone?.zone?.name ||
                                                 '-'}
                                         </TableCell>
 
-                                        <TableCell className="text-right font-mono text-sm font-semibold text-slate-900 dark:text-neutral-100">
+                                        <TableCell
+                                            {...getSelectionCellProps(
+                                                receipt.id,
+                                                'total_amount',
+                                            )}
+                                            className="text-right font-mono text-sm font-semibold text-slate-900 dark:text-neutral-100"
+                                        >
                                             {new Intl.NumberFormat('fr-FR', {
                                                 minimumFractionDigits: 2,
                                             }).format(
@@ -242,7 +415,13 @@ export default function Receipts({ receipts }: ReceiptsIndexProps) {
                                             )}
                                         </TableCell>
 
-                                        <TableCell className="text-right font-mono text-sm font-medium text-slate-600 dark:text-neutral-300">
+                                        <TableCell
+                                            {...getSelectionCellProps(
+                                                receipt.id,
+                                                'total_boxes',
+                                            )}
+                                            className="text-right font-mono text-sm font-medium text-slate-600 dark:text-neutral-300"
+                                        >
                                             {receipt.total_boxes || 0}
                                         </TableCell>
                                     </TableRow>
