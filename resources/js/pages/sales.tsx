@@ -1,7 +1,8 @@
 import { Head, router } from '@inertiajs/react';
 import { format } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { MouseEvent as ReactMouseEvent } from 'react';
 
 // Components
 import {
@@ -9,6 +10,7 @@ import {
     SalesFilterSummary,
     SalesSearch,
 } from '@/components/sales-filters';
+import { SaleSelectionStatistics } from '@/components/sale-selection-statistics';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,6 +23,8 @@ import {
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { useSaleFilters } from '@/hooks/use-sale-filters';
+import { useSaleTableCellSelection } from '@/hooks/use-sale-table-cell-selection';
+import type { SaleSelectionField } from '@/hooks/use-sale-table-cell-selection';
 
 // Types
 import { show } from '@/routes/sales';
@@ -49,6 +53,18 @@ export default function Sales({ sales }: Props) {
         activeFilterCount,
         clearColumnFilters,
     } = useSaleFilters(sales.data);
+    const {
+        setSelection: setCellSelection,
+        selectCell,
+        extendSelection,
+        getSelectedCellRange,
+        statistics: selectionStatistics,
+    } = useSaleTableCellSelection(filteredSales);
+    const cellSelectDrag = useRef<{
+        rowId: number;
+        field: SaleSelectionField;
+    } | null>(null);
+    const suppressRowClick = useRef(false);
     const filterOptions = useMemo(() => {
         return {
             customer: Array.from(
@@ -66,6 +82,65 @@ export default function Sales({ sales }: Props) {
         };
     }, [sales.data]);
 
+    useEffect(() => {
+        const handlePointerMove = (event: PointerEvent) => {
+            const drag = cellSelectDrag.current;
+            const target = document
+                .elementFromPoint(event.clientX, event.clientY)
+                ?.closest<HTMLElement>('[data-sale-cell][data-sale-row]');
+
+            if (drag && target?.dataset.saleRow) {
+                const rowId = Number(target.dataset.saleRow);
+
+                if (
+                    rowId !== drag.rowId ||
+                    target.dataset.saleCell !== drag.field
+                ) {
+                    suppressRowClick.current = true;
+                }
+
+                if (target.dataset.saleCell === drag.field) {
+                    extendSelection(rowId, drag.field);
+                }
+            }
+        };
+
+        const handlePointerUp = () => {
+            cellSelectDrag.current = null;
+        };
+
+        const clearCellSelectionOutsideTable = (event: PointerEvent) => {
+            const target = event.target;
+
+            if (
+                target instanceof Element &&
+                !target.closest(
+                    '[data-sale-cell], [data-sale-selection-statistics]',
+                )
+            ) {
+                setCellSelection(null);
+            }
+        };
+
+        window.addEventListener('pointermove', handlePointerMove);
+        window.addEventListener('pointerup', handlePointerUp);
+        window.addEventListener('pointercancel', handlePointerUp);
+        document.addEventListener(
+            'pointerdown',
+            clearCellSelectionOutsideTable,
+        );
+
+        return () => {
+            window.removeEventListener('pointermove', handlePointerMove);
+            window.removeEventListener('pointerup', handlePointerUp);
+            window.removeEventListener('pointercancel', handlePointerUp);
+            document.removeEventListener(
+                'pointerdown',
+                clearCellSelectionOutsideTable,
+            );
+        };
+    }, [extendSelection, setCellSelection]);
+
     const toggleColumnFilters = () => {
         if (showColumnFilters) {
             clearColumnFilters();
@@ -79,6 +154,50 @@ export default function Sales({ sales }: Props) {
 
     const handleRowClick = (saleId: number) => {
         router.visit(show(saleId));
+    };
+
+    const getSelectionCellProps = (
+        rowId: number,
+        field: SaleSelectionField,
+    ) => {
+        const selectedCell = getSelectedCellRange(rowId);
+        const selected = selectedCell?.includes(`|${rowId}:${field}|`) ?? false;
+
+        return {
+            'data-sale-cell': field,
+            'data-sale-row': rowId,
+            onMouseDownCapture: (
+                event: ReactMouseEvent<HTMLTableCellElement>,
+            ) => {
+                suppressRowClick.current = false;
+                selectCell(rowId, field, event.shiftKey);
+                cellSelectDrag.current = event.shiftKey
+                    ? null
+                    : { rowId, field };
+            },
+            style: {
+                cursor: 'cell',
+                userSelect: 'none' as const,
+                ...(selected
+                    ? {
+                          position: 'relative' as const,
+                          backgroundColor: 'rgb(59 130 246 / 12%)',
+                          boxShadow: [
+                              'inset 1px 0 rgb(59 130 246)',
+                              'inset -1px 0 rgb(59 130 246)',
+                              selectedCell?.startsWith(`|${rowId}:${field}|`)
+                                  ? 'inset 0 1px rgb(59 130 246)'
+                                  : '',
+                              selectedCell?.endsWith(`|${rowId}:${field}|`)
+                                  ? 'inset 0 -1px rgb(59 130 246)'
+                                  : '',
+                          ]
+                              .filter(Boolean)
+                              .join(', '),
+                      }
+                    : {}),
+            },
+        };
     };
 
     return (
@@ -113,6 +232,15 @@ export default function Sales({ sales }: Props) {
                             activeFilterCount={activeFilterCount}
                             onToggleColumnFilters={toggleColumnFilters}
                         />
+                        <div className="flex items-center gap-2">
+                            <SaleSelectionStatistics
+                                statistics={selectionStatistics}
+                            />
+                            <span className="text-xs text-muted-foreground">
+                                {filteredSales.length} / {sales.data.length}{' '}
+                                lignes
+                            </span>
+                        </div>
                     </div>
                     <Table>
                         <TableHeader
@@ -221,16 +349,37 @@ export default function Sales({ sales }: Props) {
                                 filteredSales.map((sale) => (
                                     <TableRow
                                         key={sale.id}
-                                        onClick={() => {
+                                        onClick={(event) => {
+                                            if (
+                                                event.shiftKey ||
+                                                suppressRowClick.current
+                                            ) {
+                                                suppressRowClick.current = false;
+
+                                                return;
+                                            }
+
                                             handleRowClick(sale.id);
                                         }}
                                         className="group cursor-pointer border-b border-slate-100 transition-all last:border-0 hover:bg-slate-50 dark:border-neutral-800 dark:hover:bg-neutral-800/50"
                                     >
-                                        <TableCell className="font-mono font-semibold text-slate-900">
+                                        <TableCell
+                                            {...getSelectionCellProps(
+                                                sale.id,
+                                                'id',
+                                            )}
+                                            className="font-mono font-semibold text-slate-900"
+                                        >
                                             #{sale.id}
                                         </TableCell>
 
-                                        <TableCell className="text-sm font-medium text-slate-600">
+                                        <TableCell
+                                            {...getSelectionCellProps(
+                                                sale.id,
+                                                'date',
+                                            )}
+                                            className="text-sm font-medium text-slate-600"
+                                        >
                                             <div className="flex items-center gap-2">
                                                 {format(
                                                     new Date(sale.date),
@@ -239,7 +388,12 @@ export default function Sales({ sales }: Props) {
                                             </div>
                                         </TableCell>
 
-                                        <TableCell>
+                                        <TableCell
+                                            {...getSelectionCellProps(
+                                                sale.id,
+                                                'customer',
+                                            )}
+                                        >
                                             <div className="flex items-center gap-2">
                                                 <span className="font-semibold text-slate-700">
                                                     {sale.owner?.name ||
@@ -248,7 +402,13 @@ export default function Sales({ sales }: Props) {
                                             </div>
                                         </TableCell>
 
-                                        <TableCell className="text-center">
+                                        <TableCell
+                                            {...getSelectionCellProps(
+                                                sale.id,
+                                                'session',
+                                            )}
+                                            className="text-center"
+                                        >
                                             {sale.session ? (
                                                 <Badge
                                                     variant="outline"
@@ -290,7 +450,13 @@ export default function Sales({ sales }: Props) {
                                             )}
                                         </TableCell>
 
-                                        <TableCell className="text-center">
+                                        <TableCell
+                                            {...getSelectionCellProps(
+                                                sale.id,
+                                                'type',
+                                            )}
+                                            className="text-center"
+                                        >
                                             <Badge
                                                 variant="secondary"
                                                 className={cn(
@@ -304,13 +470,25 @@ export default function Sales({ sales }: Props) {
                                             </Badge>
                                         </TableCell>
 
-                                        <TableCell className="text-center">
+                                        <TableCell
+                                            {...getSelectionCellProps(
+                                                sale.id,
+                                                'boxes',
+                                            )}
+                                            className="text-center"
+                                        >
                                             <div className="flex items-center justify-center gap-1.5 font-bold text-slate-700">
                                                 {sale.boxes || 0}
                                             </div>
                                         </TableCell>
 
-                                        <TableCell className="text-center">
+                                        <TableCell
+                                            {...getSelectionCellProps(
+                                                sale.id,
+                                                'weight',
+                                            )}
+                                            className="text-center"
+                                        >
                                             <div className="flex items-center justify-center gap-1.5 font-bold text-slate-700">
                                                 {sale.weight || 0}{' '}
                                                 <span className="text-[10px] text-muted-foreground">
@@ -319,7 +497,13 @@ export default function Sales({ sales }: Props) {
                                             </div>
                                         </TableCell>
 
-                                        <TableCell className="bg-slate-50/30 text-right text-base font-black text-slate-900 dark:bg-slate-900/30 dark:text-slate-100">
+                                        <TableCell
+                                            {...getSelectionCellProps(
+                                                sale.id,
+                                                'amount',
+                                            )}
+                                            className="bg-slate-50/30 text-right text-base font-black text-slate-900 dark:bg-slate-900/30 dark:text-slate-100"
+                                        >
                                             {new Intl.NumberFormat('fr-FR', {
                                                 minimumFractionDigits: 2,
                                             }).format(Number(sale.amount))}
