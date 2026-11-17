@@ -3,6 +3,7 @@ import {
     DifferenceFilterSummary,
     DifferenceSearch,
 } from '@/components/difference-filters';
+import { DifferenceSelectionStatistics } from '@/components/difference-selection-statistics';
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -12,6 +13,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useDifferenceCellSelection } from '@/hooks/use-difference-cell-selection';
 import { useDifferenceFilters } from '@/hooks/use-difference-filters';
 import { formatDateDisplay } from '@/lib/date';
 import { cn } from '@/lib/utils';
@@ -43,6 +45,11 @@ export default function Differences({ reports }: Props) {
     const [showColumnFilters, setShowColumnFilters] = useState(false);
     const { filters, setFilters, filteredReports, activeFilterCount } =
         useDifferenceFilters(reports.data);
+    const {
+        statistics: selectionStatistics,
+        getSelectionCellProps,
+        shouldIgnoreRowClick,
+    } = useDifferenceCellSelection(filteredReports);
 
     const viewReport = (
         customerId: number,
@@ -99,6 +106,15 @@ export default function Differences({ reports }: Props) {
                                 setFilters({ search: '', columns: {} })
                             }
                         />
+                        <div className="flex items-center gap-3">
+                            <DifferenceSelectionStatistics
+                                statistics={selectionStatistics}
+                            />
+                            <span className="text-xs text-muted-foreground">
+                                {filteredReports.length} / {reports.data.length}{' '}
+                                lignes
+                            </span>
+                        </div>
                     </div>
                     <Table>
                         <TableHeader
@@ -179,19 +195,39 @@ export default function Differences({ reports }: Props) {
                                     <TableRow
                                         key={item.id}
                                         className="group cursor-pointer border-b border-slate-100 bg-white transition-all last:border-0 hover:bg-slate-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800/70"
-                                        onClick={() =>
+                                        onClick={(event) => {
+                                            if (
+                                                shouldIgnoreRowClick(
+                                                    event.shiftKey,
+                                                )
+                                            ) {
+                                                return;
+                                            }
+
                                             viewReport(
                                                 item.customer_id,
                                                 item.invoice_date,
                                                 item.boat_id,
-                                            )
-                                        }
+                                            );
+                                        }}
                                     >
-                                        <TableCell className="font-mono text-sm font-bold text-slate-700 dark:text-neutral-300">
+                                        <TableCell
+                                            {...getSelectionCellProps(
+                                                item.id,
+                                                'id',
+                                            )}
+                                            className="font-mono text-sm font-bold text-slate-700 dark:text-neutral-300"
+                                        >
                                             #{item.id}
                                         </TableCell>
 
-                                        <TableCell className="font-medium text-slate-900 dark:text-neutral-100">
+                                        <TableCell
+                                            {...getSelectionCellProps(
+                                                item.id,
+                                                'invoice_date',
+                                            )}
+                                            className="font-medium text-slate-900 dark:text-neutral-100"
+                                        >
                                             <div className="flex items-center gap-2">
                                                 <CalendarDays className="h-4 w-4 text-slate-400 dark:text-neutral-500" />
                                                 {formatDateDisplay(
@@ -200,15 +236,33 @@ export default function Differences({ reports }: Props) {
                                             </div>
                                         </TableCell>
 
-                                        <TableCell className="font-semibold text-slate-900 capitalize dark:text-neutral-100">
+                                        <TableCell
+                                            {...getSelectionCellProps(
+                                                item.id,
+                                                'customer',
+                                            )}
+                                            className="font-semibold text-slate-900 capitalize dark:text-neutral-100"
+                                        >
                                             {item.customer?.name || '---'}
                                         </TableCell>
 
-                                        <TableCell className="text-sm font-medium text-slate-600 dark:text-neutral-300">
+                                        <TableCell
+                                            {...getSelectionCellProps(
+                                                item.id,
+                                                'boat',
+                                            )}
+                                            className="text-sm font-medium text-slate-600 dark:text-neutral-300"
+                                        >
                                             {item.boat_name || '---'}
                                         </TableCell>
 
-                                        <TableCell className="text-right font-mono text-sm font-semibold">
+                                        <TableCell
+                                            {...getSelectionCellProps(
+                                                item.id,
+                                                'total_diff_amount',
+                                            )}
+                                            className="text-right font-mono text-sm font-semibold"
+                                        >
                                             <span
                                                 className={cn(
                                                     Number(
