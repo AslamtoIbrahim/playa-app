@@ -1,14 +1,18 @@
 import { Head, router } from '@inertiajs/react';
 import { CalendarDays, ChevronLeft, ChevronRight, Users } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { MouseEvent as ReactMouseEvent } from 'react';
 
 // Components
+import { AttendanceSelectionStatistics } from '@/components/attendance-selection-statistics';
 import {
     AttendanceColumnFilter,
     AttendanceFilterSummary,
     AttendanceSearch,
 } from '@/components/attendance-filters';
 import { Button } from '@/components/ui/button';
+import { useAttendanceCellSelection } from '@/hooks/use-attendance-cell-selection';
+import type { AttendanceSelectionField } from '@/hooks/use-attendance-cell-selection';
 import {
     Table,
     TableBody,
@@ -32,9 +36,126 @@ export default function Attendances({ attendances }: AttendancesIndexProps) {
     const [showColumnFilters, setShowColumnFilters] = useState(false);
     const { filters, setFilters, filteredAttendances, activeFilterCount } =
         useAttendanceFilters(attendances.data);
+    const {
+        setSelection: setCellSelection,
+        selectCell,
+        extendSelection,
+        getSelectedCellRange,
+        statistics: selectionStatistics,
+    } = useAttendanceCellSelection(filteredAttendances);
+    const cellSelectDrag = useRef<{
+        rowId: number;
+        field: AttendanceSelectionField;
+    } | null>(null);
+    const suppressRowClick = useRef(false);
+
+    useEffect(() => {
+        const handlePointerMove = (event: PointerEvent) => {
+            const drag = cellSelectDrag.current;
+            const target = document
+                .elementFromPoint(event.clientX, event.clientY)
+                ?.closest<HTMLElement>(
+                    '[data-attendance-cell][data-attendance-row]',
+                );
+
+            if (drag && target?.dataset.attendanceRow) {
+                const rowId = Number(target.dataset.attendanceRow);
+
+                if (
+                    rowId !== drag.rowId ||
+                    target.dataset.attendanceCell !== drag.field
+                ) {
+                    suppressRowClick.current = true;
+                }
+
+                if (target.dataset.attendanceCell === drag.field) {
+                    extendSelection(rowId, drag.field);
+                }
+            }
+        };
+
+        const handlePointerUp = () => {
+            cellSelectDrag.current = null;
+        };
+
+        const clearCellSelectionOutsideTable = (event: PointerEvent) => {
+            const target = event.target;
+
+            if (
+                target instanceof Element &&
+                !target.closest(
+                    '[data-attendance-cell], [data-attendance-selection-statistics]',
+                )
+            ) {
+                setCellSelection(null);
+            }
+        };
+
+        window.addEventListener('pointermove', handlePointerMove);
+        window.addEventListener('pointerup', handlePointerUp);
+        window.addEventListener('pointercancel', handlePointerUp);
+        document.addEventListener(
+            'pointerdown',
+            clearCellSelectionOutsideTable,
+        );
+
+        return () => {
+            window.removeEventListener('pointermove', handlePointerMove);
+            window.removeEventListener('pointerup', handlePointerUp);
+            window.removeEventListener('pointercancel', handlePointerUp);
+            document.removeEventListener(
+                'pointerdown',
+                clearCellSelectionOutsideTable,
+            );
+        };
+    }, [extendSelection, setCellSelection]);
 
     const handleRowClick = (attendanceId: number) => {
         router.visit(`/attendances/${attendanceId}`);
+    };
+
+    const getSelectionCellProps = (
+        rowId: number,
+        field: AttendanceSelectionField,
+    ) => {
+        const selectedCell = getSelectedCellRange(rowId);
+        const selected = selectedCell?.includes(`|${rowId}:${field}|`) ?? false;
+
+        return {
+            'data-attendance-cell': field,
+            'data-attendance-row': rowId,
+            onMouseDownCapture: (
+                event: ReactMouseEvent<HTMLTableCellElement>,
+            ) => {
+                suppressRowClick.current = false;
+                selectCell(rowId, field, event.shiftKey);
+                cellSelectDrag.current = event.shiftKey
+                    ? null
+                    : { rowId, field };
+            },
+            style: {
+                cursor: 'cell',
+                userSelect: 'none' as const,
+                ...(selected
+                    ? {
+                          position: 'relative' as const,
+                          backgroundColor: 'rgb(59 130 246 / 12%)',
+                          boxShadow: [
+                              'inset 1px 0 rgb(59 130 246)',
+                              'inset -1px 0 rgb(59 130 246)',
+                              selectedCell?.startsWith(`|${rowId}:${field}|`)
+                                  ? 'inset 0 1px rgb(59 130 246)'
+                                  : '',
+                              selectedCell?.endsWith(`|${rowId}:${field}|`)
+                                  ? 'inset 0 -1px rgb(59 130 246)'
+                                  : '',
+                          ]
+                              .filter(Boolean)
+                              .join(', '),
+                      }
+                    : {}),
+            },
+        };
     };
 
     return (
@@ -69,6 +190,9 @@ export default function Attendances({ attendances }: AttendancesIndexProps) {
                                 setFilters({ search: '', columns: {} });
                                 setShowColumnFilters((current) => !current);
                             }}
+                        />
+                        <AttendanceSelectionStatistics
+                            statistics={selectionStatistics}
                         />
                     </div>
                     <Table>
@@ -152,15 +276,36 @@ export default function Attendances({ attendances }: AttendancesIndexProps) {
                                     <TableRow
                                         key={attendance.id}
                                         className="group cursor-pointer border-b border-slate-100 bg-white transition-all last:border-0 hover:bg-slate-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800/70"
-                                        onClick={() =>
-                                            handleRowClick(attendance.id)
-                                        }
+                                        onClick={(event) => {
+                                            if (
+                                                event.shiftKey ||
+                                                suppressRowClick.current
+                                            ) {
+                                                suppressRowClick.current = false;
+
+                                                return;
+                                            }
+
+                                            handleRowClick(attendance.id);
+                                        }}
                                     >
-                                        <TableCell className="font-mono text-sm font-bold text-slate-700 dark:text-neutral-300">
+                                        <TableCell
+                                            {...getSelectionCellProps(
+                                                attendance.id,
+                                                'id',
+                                            )}
+                                            className="font-mono text-sm font-bold text-slate-700 dark:text-neutral-300"
+                                        >
                                             #{attendance.id}
                                         </TableCell>
 
-                                        <TableCell className="font-medium text-slate-900 dark:text-neutral-100">
+                                        <TableCell
+                                            {...getSelectionCellProps(
+                                                attendance.id,
+                                                'date',
+                                            )}
+                                            className="font-medium text-slate-900 dark:text-neutral-100"
+                                        >
                                             <div className="flex items-center gap-2">
                                                 <CalendarDays className="h-4 w-4 text-slate-400 dark:text-neutral-500" />
                                                 {attendance.date
@@ -171,7 +316,13 @@ export default function Attendances({ attendances }: AttendancesIndexProps) {
                                             </div>
                                         </TableCell>
 
-                                        <TableCell className="text-sm font-medium text-slate-600 dark:text-neutral-300">
+                                        <TableCell
+                                            {...getSelectionCellProps(
+                                                attendance.id,
+                                                'session_date',
+                                            )}
+                                            className="text-sm font-medium text-slate-600 dark:text-neutral-300"
+                                        >
                                             {attendance.session_zone
                                                 ?.daily_session?.session_date
                                                 ? formatDateDisplay(
@@ -182,12 +333,24 @@ export default function Attendances({ attendances }: AttendancesIndexProps) {
                                                 : '-'}
                                         </TableCell>
 
-                                        <TableCell className="text-sm font-medium text-slate-600 dark:text-neutral-300">
+                                        <TableCell
+                                            {...getSelectionCellProps(
+                                                attendance.id,
+                                                'zone',
+                                            )}
+                                            className="text-sm font-medium text-slate-600 dark:text-neutral-300"
+                                        >
                                             {attendance.session_zone?.zone
                                                 ?.name || '-'}
                                         </TableCell>
 
-                                        <TableCell className="text-right font-mono text-sm font-semibold text-slate-900 dark:text-neutral-100">
+                                        <TableCell
+                                            {...getSelectionCellProps(
+                                                attendance.id,
+                                                'total_wage',
+                                            )}
+                                            className="text-right font-mono text-sm font-semibold text-slate-900 dark:text-neutral-100"
+                                        >
                                             {formatAttendanceCurrency(
                                                 Number(attendance.total_wage),
                                             )}
