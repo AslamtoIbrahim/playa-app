@@ -1,5 +1,6 @@
 import { Head, router } from '@inertiajs/react';
 import { format } from 'date-fns';
+import type { MouseEvent as ReactMouseEvent } from 'react';
 import {
     ArrowDownLeft,
     ArrowUpRight,
@@ -8,9 +9,10 @@ import {
     ShieldCheck,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 // Components
+import { InvoicesSelectionStatistics } from '@/components/invoices-selection-statistics';
 import {
     InvoiceColumnFilter,
     InvoiceFilterSummary,
@@ -27,6 +29,8 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useInvoicesCellSelection } from '@/hooks/use-invoices-cell-selection';
+import type { InvoicesSelectionField } from '@/hooks/use-invoices-cell-selection';
 import { cn } from '@/lib/utils';
 import { useInvoiceFilters } from '@/hooks/use-invoice-filters';
 import { show } from '@/routes/invoices';
@@ -63,6 +67,79 @@ export default function Invoices({ invoices }: Props) {
         activeFilterCount,
         clearColumnFilters,
     } = useInvoiceFilters(invoices.data);
+    const {
+        setSelection: setCellSelection,
+        selectCell,
+        extendSelection,
+        getSelectedCellRange,
+        statistics: selectionStatistics,
+    } = useInvoicesCellSelection(filteredInvoices);
+    const cellSelectDrag = useRef<{
+        rowId: number;
+        field: InvoicesSelectionField;
+    } | null>(null);
+    const suppressRowClick = useRef(false);
+
+    useEffect(() => {
+        const handlePointerMove = (event: PointerEvent) => {
+            const drag = cellSelectDrag.current;
+            const target = document
+                .elementFromPoint(event.clientX, event.clientY)
+                ?.closest<HTMLElement>(
+                    '[data-invoices-cell][data-invoices-row]',
+                );
+
+            if (drag && target?.dataset.invoicesRow) {
+                const rowId = Number(target.dataset.invoicesRow);
+
+                if (
+                    rowId !== drag.rowId ||
+                    target.dataset.invoicesCell !== drag.field
+                ) {
+                    suppressRowClick.current = true;
+                }
+
+                if (target.dataset.invoicesCell === drag.field) {
+                    extendSelection(rowId, drag.field);
+                }
+            }
+        };
+
+        const handlePointerUp = () => {
+            cellSelectDrag.current = null;
+        };
+
+        const clearCellSelectionOutsideTable = (event: PointerEvent) => {
+            const target = event.target;
+
+            if (
+                target instanceof Element &&
+                !target.closest(
+                    '[data-invoices-cell], [data-invoices-selection-statistics]',
+                )
+            ) {
+                setCellSelection(null);
+            }
+        };
+
+        window.addEventListener('pointermove', handlePointerMove);
+        window.addEventListener('pointerup', handlePointerUp);
+        window.addEventListener('pointercancel', handlePointerUp);
+        document.addEventListener(
+            'pointerdown',
+            clearCellSelectionOutsideTable,
+        );
+
+        return () => {
+            window.removeEventListener('pointermove', handlePointerMove);
+            window.removeEventListener('pointerup', handlePointerUp);
+            window.removeEventListener('pointercancel', handlePointerUp);
+            document.removeEventListener(
+                'pointerdown',
+                clearCellSelectionOutsideTable,
+            );
+        };
+    }, [extendSelection, setCellSelection]);
 
     const toggleColumnFilters = () => {
         if (showColumnFilters) {
@@ -77,6 +154,50 @@ export default function Invoices({ invoices }: Props) {
 
     const handleRowClick = (invoiceId: number): void => {
         router.visit(show.url(invoiceId));
+    };
+
+    const getSelectionCellProps = (
+        rowId: number,
+        field: InvoicesSelectionField,
+    ) => {
+        const selectedCell = getSelectedCellRange(rowId);
+        const selected = selectedCell?.includes(`|${rowId}:${field}|`) ?? false;
+
+        return {
+            'data-invoices-cell': field,
+            'data-invoices-row': rowId,
+            onMouseDownCapture: (
+                event: ReactMouseEvent<HTMLTableCellElement>,
+            ) => {
+                suppressRowClick.current = false;
+                selectCell(rowId, field, event.shiftKey);
+                cellSelectDrag.current = event.shiftKey
+                    ? null
+                    : { rowId, field };
+            },
+            style: {
+                cursor: 'cell',
+                userSelect: 'none' as const,
+                ...(selected
+                    ? {
+                          position: 'relative' as const,
+                          backgroundColor: 'rgb(59 130 246 / 12%)',
+                          boxShadow: [
+                              'inset 1px 0 rgb(59 130 246)',
+                              'inset -1px 0 rgb(59 130 246)',
+                              selectedCell?.startsWith(`|${rowId}:${field}|`)
+                                  ? 'inset 0 1px rgb(59 130 246)'
+                                  : '',
+                              selectedCell?.endsWith(`|${rowId}:${field}|`)
+                                  ? 'inset 0 -1px rgb(59 130 246)'
+                                  : '',
+                          ]
+                              .filter(Boolean)
+                              .join(', '),
+                      }
+                    : {}),
+            },
+        };
     };
 
     return (
@@ -110,6 +231,15 @@ export default function Invoices({ invoices }: Props) {
                             activeFilterCount={activeFilterCount}
                             onToggleColumnFilters={toggleColumnFilters}
                         />
+                        <div className="flex items-center gap-3">
+                            <InvoicesSelectionStatistics
+                                statistics={selectionStatistics}
+                            />
+                            <span className="text-xs text-muted-foreground">
+                                {filteredInvoices.length} /{' '}
+                                {invoices.data.length} lignes
+                            </span>
+                        </div>
                     </div>
                     <Table>
                         <TableHeader
@@ -232,16 +362,36 @@ export default function Invoices({ invoices }: Props) {
                                 filteredInvoices.map((invoice) => (
                                     <TableRow
                                         key={invoice.id}
-                                        onClick={() => {
+                                        onClick={(event) => {
+                                            if (
+                                                event.shiftKey ||
+                                                suppressRowClick.current
+                                            ) {
+                                                suppressRowClick.current = false;
+
+                                                return;
+                                            }
+
                                             handleRowClick(invoice.id);
                                         }}
                                         className="group cursor-pointer border-b border-slate-100 transition-all last:border-0 hover:bg-slate-50 dark:border-neutral-800/80 dark:hover:bg-neutral-800/60"
                                     >
-                                        <TableCell className="font-mono text-sm font-bold text-blue-700 dark:text-blue-400">
+                                        <TableCell
+                                            {...getSelectionCellProps(
+                                                invoice.id,
+                                                'invoice_number',
+                                            )}
+                                            className="font-mono text-sm font-bold text-blue-700 dark:text-blue-400"
+                                        >
                                             {invoice.invoice_number}
                                         </TableCell>
 
-                                        <TableCell>
+                                        <TableCell
+                                            {...getSelectionCellProps(
+                                                invoice.id,
+                                                'type',
+                                            )}
+                                        >
                                             {invoice.type === 'sale' ? (
                                                 <Badge
                                                     variant="outline"
@@ -261,14 +411,25 @@ export default function Invoices({ invoices }: Props) {
                                             )}
                                         </TableCell>
 
-                                        <TableCell className="text-sm font-medium text-slate-600 dark:text-neutral-400">
+                                        <TableCell
+                                            {...getSelectionCellProps(
+                                                invoice.id,
+                                                'date',
+                                            )}
+                                            className="text-sm font-medium text-slate-600 dark:text-neutral-400"
+                                        >
                                             {format(
                                                 new Date(invoice.date),
                                                 'dd/MM/yyyy',
                                             )}
                                         </TableCell>
 
-                                        <TableCell>
+                                        <TableCell
+                                            {...getSelectionCellProps(
+                                                invoice.id,
+                                                'session_zone',
+                                            )}
+                                        >
                                             {/* {getSessionDisplay(invoice)} */}
                                             <SessionZoneBadge
                                                 sessionZone={
@@ -278,7 +439,13 @@ export default function Invoices({ invoices }: Props) {
                                         </TableCell>
 
                                         {/* Bénéficiaire Column */}
-                                        <TableCell className="max-w-50">
+                                        <TableCell
+                                            {...getSelectionCellProps(
+                                                invoice.id,
+                                                'billable',
+                                            )}
+                                            className="max-w-50"
+                                        >
                                             <div className="flex items-center gap-2">
                                                 <span className="truncate text-sm font-semibold text-slate-700 dark:text-neutral-200">
                                                     {invoice.billable?.name ||
@@ -309,7 +476,12 @@ export default function Invoices({ invoices }: Props) {
                                         </TableCell>
 
                                         {/* Caution Column */}
-                                        <TableCell>
+                                        <TableCell
+                                            {...getSelectionCellProps(
+                                                invoice.id,
+                                                'caution',
+                                            )}
+                                        >
                                             {invoice.caution ? (
                                                 <div className="flex w-fit items-center gap-1.5 rounded-md border border-indigo-100 bg-indigo-50/50 px-2 py-0.5 text-[11px] font-bold text-indigo-700 dark:border-indigo-900/50 dark:bg-indigo-950/40 dark:text-indigo-400">
                                                     <ShieldCheck className="h-3 w-3 text-indigo-500 dark:text-indigo-400" />
@@ -325,17 +497,35 @@ export default function Invoices({ invoices }: Props) {
                                             )}
                                         </TableCell>
 
-                                        <TableCell className="text-center font-bold text-slate-700 dark:text-neutral-300">
+                                        <TableCell
+                                            {...getSelectionCellProps(
+                                                invoice.id,
+                                                'boxes',
+                                            )}
+                                            className="text-center font-bold text-slate-700 dark:text-neutral-300"
+                                        >
                                             {invoice.boxes || 0}
                                         </TableCell>
 
-                                        <TableCell className="bg-slate-50/30 text-right text-base font-black text-slate-900 dark:bg-neutral-800/30 dark:text-neutral-100">
+                                        <TableCell
+                                            {...getSelectionCellProps(
+                                                invoice.id,
+                                                'amount',
+                                            )}
+                                            className="bg-slate-50/30 text-right text-base font-black text-slate-900 dark:bg-neutral-800/30 dark:text-neutral-100"
+                                        >
                                             {new Intl.NumberFormat('fr-FR', {
                                                 minimumFractionDigits: 2,
                                             }).format(Number(invoice.amount))}
                                         </TableCell>
 
-                                        <TableCell className="text-center">
+                                        <TableCell
+                                            {...getSelectionCellProps(
+                                                invoice.id,
+                                                'status',
+                                            )}
+                                            className="text-center"
+                                        >
                                             <Badge
                                                 className={cn(
                                                     'rounded-full border px-2.5 py-0.5 text-[10px] font-bold capitalize shadow-none',
