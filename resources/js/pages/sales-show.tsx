@@ -14,6 +14,7 @@ import { SaleReceiptChargesTable } from '@/components/sale-receipt-charges-table
 import SaleShowItemRow from '@/components/sale-show-item-row';
 import { SaleStatsGrid } from '@/components/sale-stats-grid';
 import { SaleWorkersTable } from '@/components/sale-workers-table';
+import { SalesShowSelectionStatics } from '@/components/sales-show-selection-statics';
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -26,6 +27,7 @@ import {
 import { useSaleCalculations } from '@/hooks/use-sale-calculations';
 import { useSaleExport } from '@/hooks/use-sale-export';
 import { useSaleItemFilters } from '@/hooks/use-sale-item-filters';
+import { useSalesShowCellSelection } from '@/hooks/use-sales-show-cell-selection';
 import { useScreenshot } from '@/hooks/use-screenshot';
 import AppLayout from '@/layouts/app-layout';
 import type { Sale } from '@/types/sale';
@@ -90,6 +92,11 @@ export default function SalesShow({ sale, sessionZones, backUrl }: Props) {
         activeFilterCount,
         clearColumnFilters,
     } = useSaleItemFilters(items);
+    const {
+        statistics: selectionStatistics,
+        getSelectedCellRange,
+        getSelectionCellProps,
+    } = useSalesShowCellSelection(filteredItems);
 
     const toggleColumnFilters = () => {
         if (showColumnFilters) {
@@ -201,9 +208,14 @@ export default function SalesShow({ sale, sessionZones, backUrl }: Props) {
                         activeFilterCount={activeFilterCount}
                         onToggleColumnFilters={toggleColumnFilters}
                     />
-                    <span className="mr-2 text-xs text-muted-foreground">
-                        {filteredItems.length} / {items.length} lignes
-                    </span>
+                    <div className="mr-2 flex items-center gap-3">
+                        <SalesShowSelectionStatics
+                            statistics={selectionStatistics}
+                        />
+                        <span className="text-xs text-muted-foreground">
+                            {filteredItems.length} / {items.length} lignes
+                        </span>
+                    </div>
                 </div>
                 <Table>
                     <TableHeader
@@ -313,7 +325,14 @@ export default function SalesShow({ sale, sessionZones, backUrl }: Props) {
                     <TableBody>
                         {filteredItems.length > 0 ? (
                             filteredItems.map((item) => (
-                                <SaleShowItemRow key={item.id} item={item} />
+                                <SaleShowItemRow
+                                    key={item.id}
+                                    item={item}
+                                    selectedCell={getSelectedCellRange(item.id)}
+                                    getSelectionCellProps={
+                                        getSelectionCellProps
+                                    }
+                                />
                             ))
                         ) : (
                             <TableRow>

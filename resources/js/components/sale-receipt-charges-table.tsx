@@ -11,6 +11,38 @@ import {
 import { getReceiptCategoryInfo } from '@/lib/sales';
 import { cn } from '@/lib/utils';
 import type { SaleCharge } from '@/types/sale-charge';
+import { SalesShowSelectionStatics } from '@/components/sales-show-selection-statics';
+import { useSalesShowTableCellSelection } from '@/hooks/use-sales-show-table-cell-selection';
+
+type SelectionField = 'receipt_id' | 'voucher' | 'category' | 'amount';
+
+const numericFields = new Set<SelectionField>(['amount']);
+
+const getSelectionCellValue = (
+    charge: SaleCharge,
+    field: SelectionField,
+): string => {
+    const receiptCategory = getReceiptCategoryInfo(charge.receipt);
+
+    switch (field) {
+        case 'receipt_id':
+            return String(charge.receipt_id);
+        case 'voucher':
+            return (
+                charge.receipt?.boat?.name ??
+                charge.receipt?.customer?.name ??
+                '—'
+            );
+        case 'category':
+            return (
+                charge.category?.name ||
+                receiptCategory.label ||
+                (receiptCategory.isMerge ? 'Merge' : '—')
+            );
+        case 'amount':
+            return String(Number(charge.amount));
+    }
+};
 
 interface SaleReceiptChargesTableProps {
     charges: SaleCharge[];
@@ -28,6 +60,14 @@ export function SaleReceiptChargesTable({
     charges,
     className,
 }: SaleReceiptChargesTableProps) {
+    const { statistics, getSelectionCellProps } =
+        useSalesShowTableCellSelection(
+            charges,
+            'charges',
+            getSelectionCellValue,
+            numericFields,
+        );
+
     if (charges.length === 0) {
         return null;
     }
@@ -40,9 +80,12 @@ export function SaleReceiptChargesTable({
             )}
         >
             <CardHeader className="border-b border-slate-100 bg-linear-to-r from-orange-50/70 to-white px-4 py-3 dark:border-neutral-800 dark:from-orange-950/20 dark:to-neutral-900">
-                <CardTitle className="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-neutral-100">
-                    <span className="h-2 w-2 rounded-full bg-orange-500" />
-                    Bons imputés
+                <CardTitle className="flex items-center justify-between gap-2 text-sm font-semibold text-slate-800 dark:text-neutral-100">
+                    <span className="flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full bg-orange-500" />
+                        Bons imputés
+                    </span>
+                    <SalesShowSelectionStatics statistics={statistics} />
                 </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
@@ -84,17 +127,35 @@ export function SaleReceiptChargesTable({
                                     key={charge.id}
                                     className="h-11 transition-colors hover:bg-orange-50/40 dark:hover:bg-orange-950/10"
                                 >
-                                    <TableCell className="px-4 text-sm font-semibold text-slate-900 dark:text-neutral-100">
+                                    <TableCell
+                                        {...getSelectionCellProps(
+                                            charge.id,
+                                            'receipt_id',
+                                        )}
+                                        className="px-4 text-sm font-semibold text-slate-900 dark:text-neutral-100"
+                                    >
                                         {`#${charge.receipt_id}`}
                                     </TableCell>
 
-                                    <TableCell className="px-4 text-sm text-slate-600 capitalize dark:text-neutral-300">
+                                    <TableCell
+                                        {...getSelectionCellProps(
+                                            charge.id,
+                                            'voucher',
+                                        )}
+                                        className="px-4 text-sm text-slate-600 capitalize dark:text-neutral-300"
+                                    >
                                         {receipt?.boat?.name ||
                                             receipt?.customer?.name ||
                                             '—'}
                                     </TableCell>
 
-                                    <TableCell className="px-4 text-sm text-slate-600 dark:text-neutral-300">
+                                    <TableCell
+                                        {...getSelectionCellProps(
+                                            charge.id,
+                                            'category',
+                                        )}
+                                        className="px-4 text-sm text-slate-600 dark:text-neutral-300"
+                                    >
                                         {isMerge ? (
                                             <Badge
                                                 variant="outline"
@@ -115,7 +176,13 @@ export function SaleReceiptChargesTable({
                                         )}
                                     </TableCell>
 
-                                    <TableCell className="px-4 text-right text-sm font-bold text-slate-900 tabular-nums dark:text-neutral-100">
+                                    <TableCell
+                                        {...getSelectionCellProps(
+                                            charge.id,
+                                            'amount',
+                                        )}
+                                        className="px-4 text-right text-sm font-bold text-slate-900 tabular-nums dark:text-neutral-100"
+                                    >
                                         {`${Number(charge.amount).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DH`}
                                     </TableCell>
                                 </TableRow>
